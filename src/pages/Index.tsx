@@ -34,66 +34,62 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <TabsContent value="input" className={activeTab === 'input' ? 'block space-y-6' : 'hidden'}>
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">새 운행 기록 입력</h2>
-            <p className="text-gray-600">운행 정보를 입력하여 기록을 저장하세요.</p>
-          </div>
-          <TripForm onTripSaved={handleTripSaved} />
-        </TabsContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsContent value="input" className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">새 운행 기록 입력</h2>
+              <p className="text-gray-600">운행 정보를 입력하여 기록을 저장하세요.</p>
+            </div>
+            <TripForm onTripSaved={handleTripSaved} />
+          </TabsContent>
 
-        <TabsContent value="history" className={activeTab === 'history' ? 'block space-y-6' : 'hidden'}>
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">운행 기록 조회</h2>
-            <p className="text-gray-600">기간별 운행 기록을 확인하고 통계를 조회하세요.</p>
+          <TabsContent value="history" className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">운행 기록 조회</h2>
+              <p className="text-gray-600">기간별 운행 기록을 확인하고 통계를 조회하세요.</p>
+            </div>
+            <TripHistory refreshTrigger={refreshTrigger} />
+          </TabsContent>
+          
+          <TabsContent value="vehicles" className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">차량 관리</h2>
+              <p className="text-gray-600">차량을 등록하고 관리하세요.</p>
+            </div>
+            <VehicleManagement />
+          </TabsContent>
+
+          {/* Footer Navigation */}
+          <div className="mt-auto">
+            <div className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 shadow-lg">
+              <TabsList className="h-16 justify-around w-full bg-white">
+                <TabsTrigger 
+                  value="input" 
+                  className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
+                >
+                  <Plus className="h-5 w-5" />
+                  <span className="text-xs font-medium">입력</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="history" 
+                  className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
+                >
+                  <BarChart3 className="h-5 w-5" />
+                  <span className="text-xs font-medium">조회</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="vehicles" 
+                  className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
+                >
+                  <Settings className="h-5 w-5" />
+                  <span className="text-xs font-medium">차량관리</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            <div className="pb-20" /> {/* Add padding at the bottom to prevent content from being hidden behind the navigation */}
           </div>
-          <TripHistory refreshTrigger={refreshTrigger} />
-        </TabsContent>
-        
-        <TabsContent value="vehicles" className={activeTab === 'vehicles' ? 'block space-y-6' : 'hidden'}>
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">차량 관리</h2>
-            <p className="text-gray-600">차량을 등록하고 관리하세요.</p>
-          </div>
-          <VehicleManagement />
-        </TabsContent>
+        </Tabs>
       </main>
-
-      {/* Footer Navigation */}
-      <div className="mt-auto">
-        <div className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 shadow-lg">
-          <Tabs 
-            value={activeTab} 
-            onValueChange={setActiveTab}
-            className="w-full"
-          >
-            <TabsList className="h-16 justify-around w-full bg-white">
-              <TabsTrigger 
-                value="input" 
-                className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
-              >
-                <Plus className="h-5 w-5" />
-                <span className="text-xs font-medium">입력</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="history" 
-                className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
-              >
-                <BarChart3 className="h-5 w-5" />
-                <span className="text-xs font-medium">조회</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="vehicles" 
-                className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
-              >
-                <Settings className="h-5 w-5" />
-                <span className="text-xs font-medium">차량관리</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        <div className="pb-20" /> {/* Add padding at the bottom to prevent content from being hidden behind the navigation */}
-      </div>
     </div>
   );
 };
