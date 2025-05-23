@@ -62,10 +62,14 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
     const loadRecentDrivers = () => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
-        const drivers = [...new Set(savedTrips.map((trip: any) => trip.driverName))];
-        setRecentDrivers(drivers.filter(Boolean)); // Filter out empty values
+        const driversFromStorage = savedTrips.map((trip: any) => trip.driverName)
+          .filter((driver: string | null | undefined) => driver) // Remove null/undefined values
+          .filter((driver: unknown): driver is string => typeof driver === 'string'); // Type guard
+        
+        setRecentDrivers([...new Set(driversFromStorage)]); // Deduplicate
       } catch (error) {
         console.error('Error loading recent drivers:', error);
+        setRecentDrivers([]);
       }
     };
     
@@ -73,15 +77,22 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
     const loadRecentLocations = () => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
-        const departures = [...new Set(savedTrips.map((trip: any) => trip.departure))];
-        const destinations = [...new Set(savedTrips.map((trip: any) => trip.destination))];
+        
+        const departuresFromStorage = savedTrips.map((trip: any) => trip.departure)
+          .filter((place: string | null | undefined) => place)
+          .filter((place: unknown): place is string => typeof place === 'string');
+        
+        const destinationsFromStorage = savedTrips.map((trip: any) => trip.destination)
+          .filter((place: string | null | undefined) => place)
+          .filter((place: unknown): place is string => typeof place === 'string');
         
         setRecentLocations({
-          departures: departures.filter(Boolean),
-          destinations: destinations.filter(Boolean)
+          departures: [...new Set(departuresFromStorage)],
+          destinations: [...new Set(destinationsFromStorage)]
         });
       } catch (error) {
         console.error('Error loading recent locations:', error);
+        setRecentLocations({ departures: [], destinations: [] });
       }
     };
     
@@ -306,67 +317,45 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
             </div>
           </div>
 
-          {/* 장소 입력 - with autocomplete */}
+          {/* 장소 입력 - Fixed Issue: Replaced the Select+Command implementation with simple inputs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="departure" className="text-sm font-medium text-gray-700">
                 출발지
               </Label>
-              <Select
+              <Input
+                id="departure"
+                type="text"
+                placeholder="출발지를 입력하세요"
                 value={departure}
-                onValueChange={setDeparture}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="출발지를 선택하거나 입력하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  <CommandInput
-                    placeholder="출발지 검색 또는 입력..."
-                    onValueChange={setDeparture}
-                    value={departure}
-                    className="h-9"
-                  />
-                  {recentLocations.departures.length > 0 ? (
-                    recentLocations.departures.map((loc, index) => (
-                      <SelectItem key={`dep-${index}`} value={loc}>
-                        {loc}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>최근 출발지 없음</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                onChange={(e) => setDeparture(e.target.value)}
+                className="w-full"
+                list="departure-options"
+              />
+              <datalist id="departure-options">
+                {recentLocations.departures.map((loc, index) => (
+                  <option key={`dep-${index}`} value={loc} />
+                ))}
+              </datalist>
             </div>
             <div className="space-y-2">
               <Label htmlFor="destination" className="text-sm font-medium text-gray-700">
                 목적지
               </Label>
-              <Select
+              <Input
+                id="destination"
+                type="text"
+                placeholder="목적지를 입력하세요"
                 value={destination}
-                onValueChange={setDestination}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="목적지를 선택하거나 입력하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  <CommandInput
-                    placeholder="목적지 검색 또는 입력..."
-                    onValueChange={setDestination}
-                    value={destination}
-                    className="h-9"
-                  />
-                  {recentLocations.destinations.length > 0 ? (
-                    recentLocations.destinations.map((loc, index) => (
-                      <SelectItem key={`dest-${index}`} value={loc}>
-                        {loc}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>최근 목적지 없음</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                onChange={(e) => setDestination(e.target.value)}
+                className="w-full"
+                list="destination-options"
+              />
+              <datalist id="destination-options">
+                {recentLocations.destinations.map((loc, index) => (
+                  <option key={`dest-${index}`} value={loc} />
+                ))}
+              </datalist>
             </div>
           </div>
 

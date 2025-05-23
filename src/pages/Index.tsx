@@ -109,7 +109,7 @@ const Index = () => {
                 </TabsTrigger>
               </TabsList>
             </div>
-            <div className="pb-20" /> {/* Add padding at the bottom to prevent content from being hidden behind the navigation */}
+            <div className="pb-20" />
           </div>
         </Tabs>
       </main>
