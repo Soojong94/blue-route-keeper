@@ -109,8 +109,9 @@ const VehicleManagement: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="min-w-[120px]">번호판</TableHead>
                     <TableHead>차량명</TableHead>
-                    <TableHead>번호판</TableHead>
+                    <TableHead>주요 운전자</TableHead>
                     <TableHead>등록일</TableHead>
                     <TableHead>총 운행 횟수</TableHead>
                     <TableHead>총 운행 금액</TableHead>
@@ -122,11 +123,18 @@ const VehicleManagement: React.FC = () => {
                     const stats = getVehicleStats(vehicle.id);
                     return (
                       <TableRow key={vehicle.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">{vehicle.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        <TableCell className="min-w-[120px]">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-bold text-base px-3 py-1 break-words whitespace-normal">
                             {vehicle.licensePlate}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">{vehicle.name}</TableCell>
+                        <TableCell>
+                          {vehicle.mainDriver ? (
+                            <span className="text-sm">{vehicle.mainDriver}</span>
+                          ) : (
+                            <span className="text-sm text-gray-500 italic">미지정</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}

@@ -1,11 +1,12 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Car, FileText, BarChart3, Settings } from 'lucide-react';
+import { Car, FileText, BarChart3, Settings, MapPin } from 'lucide-react';
 import TripHistory from '@/components/TripHistory';
 import VehicleManagement from '@/components/VehicleManagement';
 import TripTable from '@/components/TripTable';
 import ExcelTripInput from '@/components/ExcelTripInput';
+import LocationManagement from '@/components/LocationManagement';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -71,6 +72,14 @@ const Index = () => {
             <VehicleManagement />
           </TabsContent>
 
+          <TabsContent value="locations" className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">장소 관리</h2>
+              <p className="text-gray-600">자주 사용하는 출발지와 목적지를 등록하고 관리하세요.</p>
+            </div>
+            <LocationManagement />
+          </TabsContent>
+
           {/* Footer Navigation */}
           <div className="mt-auto">
             <div className="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 shadow-lg">
@@ -100,8 +109,15 @@ const Index = () => {
                   value="vehicles" 
                   className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
                 >
-                  <Settings className="h-5 w-5" />
-                  <span className="text-xs font-medium">차량관리</span>
+                  <Car className="h-5 w-5" />
+                  <span className="text-xs font-medium">차량</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="locations" 
+                  className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
+                >
+                  <MapPin className="h-5 w-5" />
+                  <span className="text-xs font-medium">장소</span>
                 </TabsTrigger>
               </TabsList>
             </div>

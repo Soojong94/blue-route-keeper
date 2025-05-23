@@ -1,4 +1,3 @@
-
 export interface Trip {
   id: string;
   date: string;
@@ -24,9 +23,24 @@ export interface Vehicle {
   name: string;
   licensePlate: string;
   createdAt: string;
+  mainDriver?: string;
+  drivers?: string[];
 }
 
 export interface VehicleStats {
   totalTrips: number;
   totalAmount: number;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  alias?: string;
+  category: 'company' | 'client' | 'personal' | 'other';
+  type: 'departure' | 'destination' | 'both';
+  createdAt: string;
+}
+
+export interface LocationStats {
+  totalTrips: number;
 }

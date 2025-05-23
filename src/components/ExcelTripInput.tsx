@@ -9,9 +9,10 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { CalendarIcon, Clock, MapPin, DollarSign, Car, User, FileText, Plus, Trash2, Save } from 'lucide-react';
 import { saveTrip } from '@/utils/tripStorage';
-import { getVehicles } from '@/utils/vehicleStorage';
+import { getVehicles, getDriversForVehicle, getVehicleById } from '@/utils/vehicleStorage';
+import { getLocations, getLocationsByType } from '@/utils/locationStorage';
 import { useToast } from '@/hooks/use-toast';
-import { Vehicle, Trip } from '@/types/trip';
+import { Vehicle, Location } from '@/types/trip';
 
 interface ExcelTripInputProps {
   onTripSaved: () => void;
@@ -33,6 +34,10 @@ interface TripRow {
 const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
   const [rows, setRows] = useState<TripRow[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [departureLocations, setDepartureLocations] = useState<Location[]>([]);
+  const [destinationLocations, setDestinationLocations] = useState<Location[]>([]);
+  
   const [recentDrivers, setRecentDrivers] = useState<string[]>([]);
   const [recentLocations, setRecentLocations] = useState<{
     departures: string[];
@@ -44,20 +49,27 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
   
   const { toast } = useToast();
 
-  // Load vehicles and recent data on mount
+  // Load vehicles, locations and recent data on mount
   useEffect(() => {
     // Load vehicles
     setVehicles(getVehicles());
+    
+    // Load locations
+    const allLocations = getLocations();
+    setLocations(allLocations);
+    setDepartureLocations(allLocations.filter(loc => loc.type === 'departure' || loc.type === 'both'));
+    setDestinationLocations(allLocations.filter(loc => loc.type === 'destination' || loc.type === 'both'));
     
     // Load recent drivers from localStorage
     const loadRecentDrivers = () => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
-        const driversFromStorage = savedTrips.map((trip: any) => trip.driverName)
-          .filter((driver: string | null | undefined) => driver) // Remove null/undefined values
-          .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index); // Deduplicate
+        const driversList = savedTrips
+          .map((trip: any) => trip.driverName)
+          .filter((driver: unknown): driver is string => typeof driver === 'string')
+          .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index);
         
-        setRecentDrivers(driversFromStorage as string[]);
+        setRecentDrivers(driversList);
       } catch (error) {
         console.error('Error loading recent drivers:', error);
         setRecentDrivers([]);
@@ -69,17 +81,19 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
         
-        const departuresFromStorage = savedTrips.map((trip: any) => trip.departure)
-          .filter((place: string | null | undefined) => place)
+        const departuresFromStorage = savedTrips
+          .map((trip: any) => trip.departure)
+          .filter((place: unknown): place is string => typeof place === 'string')
           .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index);
         
-        const destinationsFromStorage = savedTrips.map((trip: any) => trip.destination)
-          .filter((place: string | null | undefined) => place)
+        const destinationsFromStorage = savedTrips
+          .map((trip: any) => trip.destination)
+          .filter((place: unknown): place is string => typeof place === 'string')
           .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index);
         
         setRecentLocations({
-          departures: departuresFromStorage as string[],
-          destinations: destinationsFromStorage as string[]
+          departures: departuresFromStorage,
+          destinations: destinationsFromStorage
         });
       } catch (error) {
         console.error('Error loading recent locations:', error);
@@ -129,6 +143,24 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
   
   // Handle cell value changes
   const handleChange = (id: string, field: keyof TripRow, value: string) => {
+    if (field === 'vehicleId' && value) {
+      // If a vehicle is selected, get its main driver
+      const vehicle = getVehicleById(value);
+      if (vehicle && vehicle.mainDriver) {
+        // Update the row with the vehicle's main driver if driver is not already set
+        setRows(
+          rows.map(row => 
+            row.id === id ? { 
+              ...row, 
+              [field]: value,
+              driverName: row.driverName ? row.driverName : vehicle.mainDriver || ''
+            } : row
+          )
+        );
+        return;
+      }
+    }
+    
     setRows(
       rows.map(row => 
         row.id === id ? { ...row, [field]: value } : row
@@ -223,11 +255,23 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
     const amount = parseFloat(row.amount) || 0;
     return sum + amount;
   }, 0);
-  
-  // Get vehicle name by ID
-  const getVehicleName = (vehicleId: string) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
-    return vehicle ? `${vehicle.name} (${vehicle.licensePlate})` : '';
+
+  // Get registered drivers for a vehicle
+  const getDriversForSelectedVehicle = (vehicleId: string) => {
+    if (!vehicleId) return [];
+    return getDriversForVehicle(vehicleId);
+  };
+
+  // Helper function to get location name by id or return original if not found
+  const getLocationName = (locationId: string, type: 'departure' | 'destination'): string => {
+    const locationList = type === 'departure' ? departureLocations : destinationLocations;
+    const location = locationList.find(l => l.id === locationId);
+    
+    if (location) {
+      return location.alias || location.name;
+    }
+    
+    return locationId;
   };
 
   return (
@@ -279,6 +323,27 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
           </div>
         )}
 
+        {/* Location management prompt if no locations */}
+        {locations.length === 0 && (
+          <div className="p-4 bg-blue-50 border-b border-blue-100 text-center">
+            <p className="text-blue-700 mb-2">등록된 장소가 없습니다. 자주 사용하는 장소를 등록하면 더 빠르게 입력할 수 있습니다.</p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="bg-white border-blue-500 text-blue-700 hover:bg-blue-100"
+              onClick={() => {
+                const activeTabElement = document.querySelector('[data-state="active"][value="locations"]');
+                if (activeTabElement) {
+                  (activeTabElement as HTMLElement).click();
+                }
+              }}
+            >
+              <MapPin className="mr-2 h-4 w-4" />
+              장소 등록하기
+            </Button>
+          </div>
+        )}
+
         {/* Excel-like Table */}
         <div className="overflow-x-auto">
           <Table>
@@ -286,7 +351,7 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
               <TableRow>
                 <TableHead className="w-[100px]">날짜</TableHead>
                 <TableHead className="w-[120px]">운전자</TableHead>
-                <TableHead className="w-[150px]">차량</TableHead>
+                <TableHead className="min-w-[150px]">차량</TableHead>
                 <TableHead className="w-[90px]">출발시간</TableHead>
                 <TableHead className="w-[90px]">도착시간</TableHead>
                 <TableHead className="w-[140px]">출발지</TableHead>
@@ -317,12 +382,19 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
                       placeholder="운전자명"
                     />
                     <datalist id={`drivers-${row.id}`}>
-                      {recentDrivers.map((driver, idx) => (
-                        <option key={`driver-${idx}`} value={driver} />
+                      {/* First show the registered drivers for this vehicle */}
+                      {row.vehicleId && getDriversForSelectedVehicle(row.vehicleId).map((driver, idx) => (
+                        <option key={`${row.id}-driver-${idx}-reg`} value={driver} />
+                      ))}
+                      {/* Then show other recent drivers */}
+                      {recentDrivers
+                        .filter(driver => !row.vehicleId || !getDriversForSelectedVehicle(row.vehicleId).includes(driver))
+                        .map((driver, idx) => (
+                          <option key={`${row.id}-driver-${idx}`} value={driver} />
                       ))}
                     </datalist>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="min-w-[150px]">
                     <Select 
                       value={row.vehicleId}
                       onValueChange={(value) => handleChange(row.id, 'vehicleId', value)}
@@ -332,8 +404,9 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
                       </SelectTrigger>
                       <SelectContent>
                         {vehicles.map((vehicle) => (
-                          <SelectItem key={vehicle.id} value={vehicle.id}>
-                            {vehicle.name} ({vehicle.licensePlate})
+                          <SelectItem key={vehicle.id} value={vehicle.id} className="flex flex-col items-start">
+                            <span className="font-bold text-lg">{vehicle.licensePlate}</span>
+                            <span className="text-sm text-gray-500">{vehicle.name}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -356,13 +429,49 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
                     />
                   </TableCell>
                   <TableCell>
+                    <Select
+                      value={row.departure}
+                      onValueChange={(value) => handleChange(row.id, 'departure', value)}
+                    >
+                      <SelectTrigger className="h-9 p-1 w-full">
+                        <SelectValue placeholder="출발지 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/* Show favorite locations first */}
+                        {departureLocations.length > 0 && (
+                          <>
+                            <SelectItem value="" disabled className="italic text-gray-400">
+                              등록된 장소
+                            </SelectItem>
+                            {departureLocations.map((loc) => (
+                              <SelectItem key={`dep-${loc.id}`} value={loc.id}>
+                                {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="" disabled className="italic text-gray-400">
+                              최근 장소
+                            </SelectItem>
+                          </>
+                        )}
+                        {recentLocations.departures.map((loc, idx) => (
+                          <SelectItem key={`recent-dep-${idx}`} value={loc}>
+                            {loc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {/* Allow direct text input */}
                     <Input 
                       type="text" 
-                      value={row.departure}
+                      value={
+                        departureLocations.find(loc => loc.id === row.departure) 
+                          ? getLocationName(row.departure, 'departure') 
+                          : row.departure
+                      }
                       onChange={(e) => handleChange(row.id, 'departure', e.target.value)}
                       list={`departures-${row.id}`}
-                      className="w-full h-9 p-1"
-                      placeholder="출발지"
+                      className="w-full h-9 p-1 mt-1"
+                      placeholder="직접 입력"
                     />
                     <datalist id={`departures-${row.id}`}>
                       {recentLocations.departures.map((loc, idx) => (
@@ -371,13 +480,49 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
                     </datalist>
                   </TableCell>
                   <TableCell>
+                    <Select
+                      value={row.destination}
+                      onValueChange={(value) => handleChange(row.id, 'destination', value)}
+                    >
+                      <SelectTrigger className="h-9 p-1 w-full">
+                        <SelectValue placeholder="목적지 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/* Show favorite locations first */}
+                        {destinationLocations.length > 0 && (
+                          <>
+                            <SelectItem value="" disabled className="italic text-gray-400">
+                              등록된 장소
+                            </SelectItem>
+                            {destinationLocations.map((loc) => (
+                              <SelectItem key={`dest-${loc.id}`} value={loc.id}>
+                                {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="" disabled className="italic text-gray-400">
+                              최근 장소
+                            </SelectItem>
+                          </>
+                        )}
+                        {recentLocations.destinations.map((loc, idx) => (
+                          <SelectItem key={`recent-dest-${idx}`} value={loc}>
+                            {loc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {/* Allow direct text input */}
                     <Input 
                       type="text" 
-                      value={row.destination}
+                      value={
+                        destinationLocations.find(loc => loc.id === row.destination) 
+                          ? getLocationName(row.destination, 'destination') 
+                          : row.destination
+                      }
                       onChange={(e) => handleChange(row.id, 'destination', e.target.value)}
                       list={`destinations-${row.id}`}
-                      className="w-full h-9 p-1"
-                      placeholder="목적지"
+                      className="w-full h-9 p-1 mt-1"
+                      placeholder="직접 입력"
                     />
                     <datalist id={`destinations-${row.id}`}>
                       {recentLocations.destinations.map((loc, idx) => (

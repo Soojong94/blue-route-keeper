@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,10 +13,10 @@ import { ko } from 'date-fns/locale';
 import { CalendarIcon, Clock, MapPin, DollarSign, Car, User, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { saveTrip } from '@/utils/tripStorage';
-import { getVehicles } from '@/utils/vehicleStorage';
+import { getVehicles, getDriversForVehicle } from '@/utils/vehicleStorage';
+import { getLocations, getLocationsByType } from '@/utils/locationStorage';
 import { useToast } from '@/hooks/use-toast';
-import { Vehicle } from '@/types/trip';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Vehicle, Location } from '@/types/trip';
 
 interface TripFormProps {
   onTripSaved: () => void;
@@ -40,6 +41,9 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
   const [driverName, setDriverName] = useState('');
   const [purpose, setPurpose] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [departureLocations, setDepartureLocations] = useState<Location[]>([]);
+  const [destinationLocations, setDestinationLocations] = useState<Location[]>([]);
 
   // For autocomplete functionality
   const [recentDrivers, setRecentDrivers] = useState<string[]>([]);
@@ -48,30 +52,29 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
     destinations: []
   });
   
-  // For driver autocomplete popup
-  const [showDriverPopover, setShowDriverPopover] = useState(false);
-  
   const { toast } = useToast();
 
   useEffect(() => {
     // Load all vehicles
     setVehicles(getVehicles());
+
+    // Load all locations
+    const allLocations = getLocations();
+    setLocations(allLocations);
+    setDepartureLocations(allLocations.filter(loc => loc.type === 'departure' || loc.type === 'both'));
+    setDestinationLocations(allLocations.filter(loc => loc.type === 'destination' || loc.type === 'both'));
     
     // Load recent drivers from localStorage
     const loadRecentDrivers = () => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
         // Use explicit filtering to ensure we have a string array
-        const drivers: string[] = [];
+        const drivers = savedTrips
+          .map((trip: any) => trip.driverName)
+          .filter((driver: unknown): driver is string => typeof driver === 'string')
+          .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index); // Deduplicate
         
-        savedTrips.forEach((trip: any) => {
-          if (trip && typeof trip.driverName === 'string') {
-            drivers.push(trip.driverName);
-          }
-        });
-        
-        // Remove duplicates
-        setRecentDrivers([...new Set(drivers)]);
+        setRecentDrivers(drivers);
       } catch (error) {
         console.error('Error loading recent drivers:', error);
         setRecentDrivers([]);
@@ -84,25 +87,20 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
         
         // Use explicit filtering for departures
-        const departures: string[] = [];
-        savedTrips.forEach((trip: any) => {
-          if (trip && typeof trip.departure === 'string') {
-            departures.push(trip.departure);
-          }
-        });
+        const departures = savedTrips
+          .map((trip: any) => trip.departure)
+          .filter((place: unknown): place is string => typeof place === 'string')
+          .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index); // Deduplicate
         
         // Use explicit filtering for destinations
-        const destinations: string[] = [];
-        savedTrips.forEach((trip: any) => {
-          if (trip && typeof trip.destination === 'string') {
-            destinations.push(trip.destination);
-          }
-        });
+        const destinations = savedTrips
+          .map((trip: any) => trip.destination)
+          .filter((place: unknown): place is string => typeof place === 'string')
+          .filter((value: string, index: number, self: string[]) => self.indexOf(value) === index); // Deduplicate
         
-        // Remove duplicates and set state
         setRecentLocations({
-          departures: [...new Set(departures)],
-          destinations: [...new Set(destinations)]
+          departures,
+          destinations
         });
       } catch (error) {
         console.error('Error loading recent locations:', error);
@@ -113,6 +111,16 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
     loadRecentDrivers();
     loadRecentLocations();
   }, []);
+
+  // When vehicle changes, try to set its main driver if no driver is already selected
+  useEffect(() => {
+    if (vehicleId && !driverName) {
+      const vehicle = vehicles.find(v => v.id === vehicleId);
+      if (vehicle && vehicle.mainDriver) {
+        setDriverName(vehicle.mainDriver);
+      }
+    }
+  }, [vehicleId, driverName, vehicles]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,10 +191,16 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
     }
   };
 
-  // Handle selection from autocomplete
-  const handleSelectDriver = (driver: string) => {
-    setDriverName(driver);
-    setShowDriverPopover(false);
+  // Helper function to get location name by id or return original if not found
+  const getLocationName = (locationId: string, type: 'departure' | 'destination'): string => {
+    const locationList = type === 'departure' ? departureLocations : destinationLocations;
+    const location = locationList.find(l => l.id === locationId);
+    
+    if (location) {
+      return location.alias || location.name;
+    }
+    
+    return locationId;
   };
 
   return (
@@ -212,8 +226,9 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
               <SelectContent>
                 {vehicles.length > 0 ? (
                   vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.name} ({vehicle.licensePlate})
+                    <SelectItem key={vehicle.id} value={vehicle.id} className="flex flex-col items-start">
+                      <span className="font-bold text-lg">{vehicle.licensePlate}</span>
+                      <span className="text-sm text-gray-500">{vehicle.name}</span>
                     </SelectItem>
                   ))
                 ) : (
@@ -241,9 +256,16 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
               list="drivers-datalist"
             />
             <datalist id="drivers-datalist">
-              {recentDrivers.map((driver, index) => (
-                <option key={index} value={driver} />
+              {/* First show the registered drivers for this vehicle */}
+              {vehicleId && getDriversForVehicle(vehicleId).map((driver, idx) => (
+                <option key={`driver-reg-${idx}`} value={driver} />
               ))}
+              {/* Then show other recent drivers */}
+              {recentDrivers
+                .filter(driver => !vehicleId || !getDriversForVehicle(vehicleId).includes(driver))
+                .map((driver, idx) => (
+                  <option key={`driver-${idx}`} value={driver} />
+                ))}
             </datalist>
           </div>
 
@@ -308,46 +330,110 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
             </div>
           </div>
 
-          {/* 장소 입력 - with datalist autocomplete */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="departure" className="text-sm font-medium text-gray-700">
-                출발지
-              </Label>
-              <Input
-                id="departure"
-                type="text"
-                placeholder="출발지를 입력하세요"
-                value={departure}
-                onChange={(e) => setDeparture(e.target.value)}
-                className="w-full"
-                list="departure-options"
-              />
-              <datalist id="departure-options">
-                {recentLocations.departures.map((loc, index) => (
-                  <option key={`dep-${index}`} value={loc} />
+          {/* 출발지 입력 */}
+          <div className="space-y-2">
+            <Label htmlFor="departure" className="text-sm font-medium text-gray-700">
+              출발지
+            </Label>
+            <Select value={departure} onValueChange={setDeparture}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="출발지를 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {departureLocations.length > 0 && (
+                  <>
+                    <SelectItem value="" disabled className="italic text-gray-400">
+                      등록된 장소
+                    </SelectItem>
+                    {departureLocations.map((loc) => (
+                      <SelectItem key={`dep-${loc.id}`} value={loc.id}>
+                        {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="" disabled className="italic text-gray-400">
+                      최근 장소
+                    </SelectItem>
+                  </>
+                )}
+                {recentLocations.departures.map((loc, idx) => (
+                  <SelectItem key={`recent-dep-${idx}`} value={loc}>
+                    {loc}
+                  </SelectItem>
                 ))}
-              </datalist>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="destination" className="text-sm font-medium text-gray-700">
-                목적지
-              </Label>
-              <Input
-                id="destination"
-                type="text"
-                placeholder="목적지를 입력하세요"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                className="w-full"
-                list="destination-options"
-              />
-              <datalist id="destination-options">
-                {recentLocations.destinations.map((loc, index) => (
-                  <option key={`dest-${index}`} value={loc} />
+              </SelectContent>
+            </Select>
+            {/* Allow direct text input */}
+            <Input
+              id="departure"
+              type="text"
+              placeholder="직접 입력하세요"
+              value={
+                departureLocations.find(loc => loc.id === departure) 
+                  ? getLocationName(departure, 'departure') 
+                  : departure
+              }
+              onChange={(e) => setDeparture(e.target.value)}
+              className="w-full mt-1"
+              list="departure-options"
+            />
+            <datalist id="departure-options">
+              {recentLocations.departures.map((loc, index) => (
+                <option key={`dep-${index}`} value={loc} />
+              ))}
+            </datalist>
+          </div>
+
+          {/* 목적지 입력 */}
+          <div className="space-y-2">
+            <Label htmlFor="destination" className="text-sm font-medium text-gray-700">
+              목적지
+            </Label>
+            <Select value={destination} onValueChange={setDestination}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="목적지를 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {destinationLocations.length > 0 && (
+                  <>
+                    <SelectItem value="" disabled className="italic text-gray-400">
+                      등록된 장소
+                    </SelectItem>
+                    {destinationLocations.map((loc) => (
+                      <SelectItem key={`dest-${loc.id}`} value={loc.id}>
+                        {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="" disabled className="italic text-gray-400">
+                      최근 장소
+                    </SelectItem>
+                  </>
+                )}
+                {recentLocations.destinations.map((loc, idx) => (
+                  <SelectItem key={`recent-dest-${idx}`} value={loc}>
+                    {loc}
+                  </SelectItem>
                 ))}
-              </datalist>
-            </div>
+              </SelectContent>
+            </Select>
+            {/* Allow direct text input */}
+            <Input
+              id="destination"
+              type="text"
+              placeholder="직접 입력하세요"
+              value={
+                destinationLocations.find(loc => loc.id === destination) 
+                  ? getLocationName(destination, 'destination') 
+                  : destination
+              }
+              onChange={(e) => setDestination(e.target.value)}
+              className="w-full mt-1"
+              list="destination-options"
+            />
+            <datalist id="destination-options">
+              {recentLocations.destinations.map((loc, index) => (
+                <option key={`dest-${index}`} value={loc} />
+              ))}
+            </datalist>
           </div>
 
           {/* 금액 입력 */}

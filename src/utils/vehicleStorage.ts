@@ -53,3 +53,35 @@ export const getVehicleStats = (vehicleId: string): VehicleStats => {
     totalAmount: trips.reduce((sum, trip) => sum + trip.amount, 0),
   };
 };
+
+export const getDriversForVehicle = (vehicleId: string): string[] => {
+  const vehicle = getVehicleById(vehicleId);
+  const drivers: string[] = [];
+  
+  if (vehicle) {
+    if (vehicle.mainDriver) {
+      drivers.push(vehicle.mainDriver);
+    }
+    if (vehicle.drivers) {
+      drivers.push(...vehicle.drivers);
+    }
+  }
+  
+  return drivers;
+};
+
+export const getAllRegisteredDrivers = (): string[] => {
+  const vehicles = getVehicles();
+  const drivers = new Set<string>();
+  
+  vehicles.forEach(vehicle => {
+    if (vehicle.mainDriver) {
+      drivers.add(vehicle.mainDriver);
+    }
+    if (vehicle.drivers) {
+      vehicle.drivers.forEach(driver => drivers.add(driver));
+    }
+  });
+  
+  return Array.from(drivers);
+};
