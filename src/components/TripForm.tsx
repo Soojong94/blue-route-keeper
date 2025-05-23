@@ -1,17 +1,21 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Clock, MapPin, DollarSign } from 'lucide-react';
+import { CalendarIcon, Clock, MapPin, DollarSign, Car, User, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { saveTrip } from '@/utils/tripStorage';
+import { getVehicles } from '@/utils/vehicleStorage';
 import { useToast } from '@/hooks/use-toast';
+import { Vehicle } from '@/types/trip';
 
 interface TripFormProps {
   onTripSaved: () => void;
@@ -24,15 +28,24 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
   const [departure, setDeparture] = useState('');
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
+  const [vehicleId, setVehicleId] = useState('');
+  const [driverName, setDriverName] = useState('');
+  const [purpose, setPurpose] = useState('');
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Load all vehicles
+    setVehicles(getVehicles());
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!date || !startTime || !endTime || !departure || !destination || !amount) {
+    if (!date || !startTime || !endTime || !departure || !destination || !amount || !vehicleId || !driverName) {
       toast({
         title: "입력 오류",
-        description: "모든 필드를 입력해주세요.",
+        description: "필수 필드를 모두 입력해주세요.",
         variant: "destructive",
       });
       return;
@@ -47,6 +60,15 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
       return;
     }
 
+    if (isNaN(parseFloat(amount)) || parseFloat(amount) < 0) {
+      toast({
+        title: "금액 오류",
+        description: "유효한 금액을 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       saveTrip({
         date: format(date, 'yyyy-MM-dd'),
@@ -55,6 +77,9 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
         departure,
         destination,
         amount: parseInt(amount),
+        vehicleId,
+        driverName,
+        purpose,
       });
 
       toast({
@@ -69,6 +94,9 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
       setDeparture('');
       setDestination('');
       setAmount('');
+      setVehicleId('');
+      setDriverName('');
+      setPurpose('');
       
       onTripSaved();
     } catch (error) {
@@ -90,9 +118,52 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 차량 선택 */}
+          <div className="space-y-2">
+            <Label htmlFor="vehicle" className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              <Car className="h-4 w-4" />
+              차량
+            </Label>
+            <Select value={vehicleId} onValueChange={setVehicleId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="차량을 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                {vehicles.length > 0 ? (
+                  vehicles.map((vehicle) => (
+                    <SelectItem key={vehicle.id} value={vehicle.id}>
+                      {vehicle.name} ({vehicle.licensePlate})
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled>
+                    등록된 차량이 없습니다
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 운전자명 */}
+          <div className="space-y-2">
+            <Label htmlFor="driverName" className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              <User className="h-4 w-4" />
+              운전자
+            </Label>
+            <Input
+              id="driverName"
+              type="text"
+              placeholder="운전자명을 입력하세요"
+              value={driverName}
+              onChange={(e) => setDriverName(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
           {/* 날짜 선택 */}
           <div className="space-y-2">
-            <Label htmlFor="date" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="date" className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              <CalendarIcon className="h-4 w-4" />
               운행 날짜
             </Label>
             <Popover>
@@ -194,6 +265,22 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
               onChange={(e) => setAmount(e.target.value)}
               className="w-full"
               min="0"
+            />
+          </div>
+
+          {/* 목적 또는 메모 */}
+          <div className="space-y-2">
+            <Label htmlFor="purpose" className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              <FileText className="h-4 w-4" />
+              목적 / 메모
+            </Label>
+            <Textarea
+              id="purpose"
+              placeholder="운행 목적이나 메모를 입력하세요 (선택사항)"
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              className="w-full"
+              rows={3}
             />
           </div>
 

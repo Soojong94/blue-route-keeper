@@ -33,3 +33,31 @@ export const deleteTrip = (id: string): void => {
   const trips = getTrips().filter(trip => trip.id !== id);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
 };
+
+export const updateTrip = (id: string, updates: Partial<Omit<Trip, 'id' | 'createdAt'>>): Trip | undefined => {
+  const trips = getTrips();
+  const index = trips.findIndex(trip => trip.id === id);
+  
+  if (index !== -1) {
+    trips[index] = { ...trips[index], ...updates };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+    return trips[index];
+  }
+  
+  return undefined;
+};
+
+export const searchTrips = (query: string): Trip[] => {
+  const trips = getTrips();
+  const lowercaseQuery = query.toLowerCase();
+  
+  return trips.filter(trip => 
+    trip.destination.toLowerCase().includes(lowercaseQuery) ||
+    trip.driverName.toLowerCase().includes(lowercaseQuery) ||
+    trip.purpose.toLowerCase().includes(lowercaseQuery)
+  );
+};
+
+export const getTripsByVehicle = (vehicleId: string): Trip[] => {
+  return getTrips().filter(trip => trip.vehicleId === vehicleId);
+};
