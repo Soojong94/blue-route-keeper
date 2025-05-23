@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,12 +61,17 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
     const loadRecentDrivers = () => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
-        const driversFromStorage = savedTrips
-          .map((trip: any) => trip.driverName)
-          .filter((driver: string | null | undefined) => driver) // Remove null/undefined values
-          .filter((driver: unknown): driver is string => typeof driver === 'string'); // Type guard
+        // Use explicit filtering to ensure we have a string array
+        const drivers: string[] = [];
         
-        setRecentDrivers([...new Set(driversFromStorage)]); // Deduplicate
+        savedTrips.forEach((trip: any) => {
+          if (trip && typeof trip.driverName === 'string') {
+            drivers.push(trip.driverName);
+          }
+        });
+        
+        // Remove duplicates
+        setRecentDrivers([...new Set(drivers)]);
       } catch (error) {
         console.error('Error loading recent drivers:', error);
         setRecentDrivers([]);
@@ -79,19 +83,26 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
         
-        const departuresFromStorage = savedTrips
-          .map((trip: any) => trip.departure)
-          .filter((place: string | null | undefined) => place)
-          .filter((place: unknown): place is string => typeof place === 'string');
+        // Use explicit filtering for departures
+        const departures: string[] = [];
+        savedTrips.forEach((trip: any) => {
+          if (trip && typeof trip.departure === 'string') {
+            departures.push(trip.departure);
+          }
+        });
         
-        const destinationsFromStorage = savedTrips
-          .map((trip: any) => trip.destination)
-          .filter((place: string | null | undefined) => place)
-          .filter((place: unknown): place is string => typeof place === 'string');
+        // Use explicit filtering for destinations
+        const destinations: string[] = [];
+        savedTrips.forEach((trip: any) => {
+          if (trip && typeof trip.destination === 'string') {
+            destinations.push(trip.destination);
+          }
+        });
         
+        // Remove duplicates and set state
         setRecentLocations({
-          departures: [...new Set(departuresFromStorage)],
-          destinations: [...new Set(destinationsFromStorage)]
+          departures: [...new Set(departures)],
+          destinations: [...new Set(destinations)]
         });
       } catch (error) {
         console.error('Error loading recent locations:', error);
@@ -214,49 +225,26 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
             </Select>
           </div>
 
-          {/* 운전자명 - with autocomplete */}
+          {/* 운전자명 - with datalist autocomplete */}
           <div className="space-y-2">
             <Label htmlFor="driverName" className="text-sm font-medium text-gray-700 flex items-center gap-1">
               <User className="h-4 w-4" />
               운전자
             </Label>
-            <Popover open={showDriverPopover} onOpenChange={setShowDriverPopover}>
-              <PopoverTrigger asChild>
-                <div className="relative">
-                  <Input
-                    id="driverName"
-                    type="text"
-                    placeholder="운전자명을 입력하세요"
-                    value={driverName}
-                    onChange={(e) => setDriverName(e.target.value)}
-                    onFocus={() => recentDrivers.length > 0 && setShowDriverPopover(true)}
-                    className="w-full"
-                  />
-                </div>
-              </PopoverTrigger>
-              {recentDrivers.length > 0 && (
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="이름 검색..." />
-                    <CommandEmpty>해당하는 운전자가 없습니다</CommandEmpty>
-                    <CommandGroup>
-                      {recentDrivers
-                        .filter(driver => driver.toLowerCase().includes(driverName.toLowerCase()))
-                        .map((driver, index) => (
-                          <CommandItem 
-                            key={index} 
-                            value={driver}
-                            onSelect={() => handleSelectDriver(driver)}
-                          >
-                            <User className="mr-2 h-4 w-4" />
-                            {driver}
-                          </CommandItem>
-                        ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              )}
-            </Popover>
+            <Input
+              id="driverName"
+              type="text"
+              placeholder="운전자명을 입력하세요"
+              value={driverName}
+              onChange={(e) => setDriverName(e.target.value)}
+              className="w-full"
+              list="drivers-datalist"
+            />
+            <datalist id="drivers-datalist">
+              {recentDrivers.map((driver, index) => (
+                <option key={index} value={driver} />
+              ))}
+            </datalist>
           </div>
 
           {/* 날짜 선택 - default today */}
