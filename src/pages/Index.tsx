@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Car, Plus, BarChart3, Settings, Download } from 'lucide-react';
-import TripForm from '@/components/TripForm';
+import { Car, FileText, BarChart3, Settings } from 'lucide-react';
 import TripHistory from '@/components/TripHistory';
 import VehicleManagement from '@/components/VehicleManagement';
 import TripTable from '@/components/TripTable';
+import ExcelTripInput from '@/components/ExcelTripInput';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -35,36 +35,32 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsContent value="input" className="space-y-6">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">새 운행 기록 입력</h2>
-              <p className="text-gray-600">운행 정보를 입력하여 기록을 저장하세요.</p>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">운행 기록 입력</h2>
+              <p className="text-gray-600">엑셀 형태로 한 번에 여러 운행 정보를 입력하세요.</p>
             </div>
-            <TripForm onTripSaved={handleTripSaved} />
+            <ExcelTripInput onTripSaved={handleTripSaved} />
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-6">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">운행 기록 조회</h2>
-              <p className="text-gray-600">기간별 운행 기록을 확인하고 통계를 조회하세요.</p>
-            </div>
-            <TripHistory refreshTrigger={refreshTrigger} />
-          </TabsContent>
-          
           <TabsContent value="table" className="space-y-6">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">전체 운행 기록 테이블</h2>
+                <h2 className="text-xl font-semibold text-gray-800">전체 운행 기록 조회</h2>
                 <p className="text-gray-600">모든 운행 기록을 테이블로 확인하고 관리하세요.</p>
               </div>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                엑셀 다운로드
-              </Button>
             </div>
             <TripTable refreshTrigger={refreshTrigger} />
+          </TabsContent>
+          
+          <TabsContent value="history" className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">운행 통계</h2>
+              <p className="text-gray-600">기간별 운행 기록을 확인하고 통계를 조회하세요.</p>
+            </div>
+            <TripHistory refreshTrigger={refreshTrigger} />
           </TabsContent>
           
           <TabsContent value="vehicles" className="space-y-6">
@@ -83,15 +79,15 @@ const Index = () => {
                   value="input" 
                   className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
                 >
-                  <Plus className="h-5 w-5" />
+                  <FileText className="h-5 w-5" />
                   <span className="text-xs font-medium">입력</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="table" 
                   className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
                 >
-                  <BarChart3 className="h-5 w-5" />
-                  <span className="text-xs font-medium">전체조회</span>
+                  <FileText className="h-5 w-5" />
+                  <span className="text-xs font-medium">조회</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="history" 
