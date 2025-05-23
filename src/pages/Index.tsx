@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Car, Plus, BarChart3, Settings } from 'lucide-react';
+import { Car, Plus, BarChart3, Settings, Download } from 'lucide-react';
 import TripForm from '@/components/TripForm';
 import TripHistory from '@/components/TripHistory';
 import VehicleManagement from '@/components/VehicleManagement';
+import TripTable from '@/components/TripTable';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -51,6 +53,20 @@ const Index = () => {
             <TripHistory refreshTrigger={refreshTrigger} />
           </TabsContent>
           
+          <TabsContent value="table" className="space-y-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">전체 운행 기록 테이블</h2>
+                <p className="text-gray-600">모든 운행 기록을 테이블로 확인하고 관리하세요.</p>
+              </div>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                엑셀 다운로드
+              </Button>
+            </div>
+            <TripTable refreshTrigger={refreshTrigger} />
+          </TabsContent>
+          
           <TabsContent value="vehicles" className="space-y-6">
             <div className="text-center mb-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-2">차량 관리</h2>
@@ -71,11 +87,18 @@ const Index = () => {
                   <span className="text-xs font-medium">입력</span>
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="table" 
+                  className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
+                >
+                  <BarChart3 className="h-5 w-5" />
+                  <span className="text-xs font-medium">전체조회</span>
+                </TabsTrigger>
+                <TabsTrigger 
                   value="history" 
                   className="flex-1 flex flex-col items-center gap-1 h-full data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 border-t-2 data-[state=active]:border-blue-600 data-[state=inactive]:border-transparent"
                 >
                   <BarChart3 className="h-5 w-5" />
-                  <span className="text-xs font-medium">조회</span>
+                  <span className="text-xs font-medium">통계</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="vehicles" 

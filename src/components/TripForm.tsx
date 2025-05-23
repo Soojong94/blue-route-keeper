@@ -16,15 +16,24 @@ import { saveTrip } from '@/utils/tripStorage';
 import { getVehicles } from '@/utils/vehicleStorage';
 import { useToast } from '@/hooks/use-toast';
 import { Vehicle } from '@/types/trip';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 
 interface TripFormProps {
   onTripSaved: () => void;
 }
 
 const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
-  const [date, setDate] = useState<Date>();
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  // Set default date to today
+  const [date, setDate] = useState<Date>(new Date());
+  
+  // Set default times
+  const now = new Date();
+  const defaultStartTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+  const defaultEndTime = `${String(oneHourLater.getHours()).padStart(2, '0')}:${String(oneHourLater.getMinutes()).padStart(2, '0')}`;
+
+  const [startTime, setStartTime] = useState(defaultStartTime);
+  const [endTime, setEndTime] = useState(defaultEndTime);
   const [departure, setDeparture] = useState('');
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
@@ -32,11 +41,52 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
   const [driverName, setDriverName] = useState('');
   const [purpose, setPurpose] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+  // For autocomplete functionality
+  const [recentDrivers, setRecentDrivers] = useState<string[]>([]);
+  const [recentLocations, setRecentLocations] = useState<{departures: string[], destinations: string[]}>({
+    departures: [],
+    destinations: []
+  });
+  
+  // For driver autocomplete popup
+  const [showDriverPopover, setShowDriverPopover] = useState(false);
+  
   const { toast } = useToast();
 
   useEffect(() => {
     // Load all vehicles
     setVehicles(getVehicles());
+    
+    // Load recent drivers from localStorage
+    const loadRecentDrivers = () => {
+      try {
+        const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
+        const drivers = [...new Set(savedTrips.map((trip: any) => trip.driverName))];
+        setRecentDrivers(drivers.filter(Boolean)); // Filter out empty values
+      } catch (error) {
+        console.error('Error loading recent drivers:', error);
+      }
+    };
+    
+    // Load recent locations from localStorage
+    const loadRecentLocations = () => {
+      try {
+        const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
+        const departures = [...new Set(savedTrips.map((trip: any) => trip.departure))];
+        const destinations = [...new Set(savedTrips.map((trip: any) => trip.destination))];
+        
+        setRecentLocations({
+          departures: departures.filter(Boolean),
+          destinations: destinations.filter(Boolean)
+        });
+      } catch (error) {
+        console.error('Error loading recent locations:', error);
+      }
+    };
+    
+    loadRecentDrivers();
+    loadRecentLocations();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -88,9 +138,9 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
       });
 
       // Reset form
-      setDate(undefined);
-      setStartTime('');
-      setEndTime('');
+      setDate(new Date());
+      setStartTime(defaultStartTime);
+      setEndTime(defaultEndTime);
       setDeparture('');
       setDestination('');
       setAmount('');
@@ -106,6 +156,12 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
         variant: "destructive",
       });
     }
+  };
+
+  // Handle selection from autocomplete
+  const handleSelectDriver = (driver: string) => {
+    setDriverName(driver);
+    setShowDriverPopover(false);
   };
 
   return (
@@ -144,23 +200,52 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
             </Select>
           </div>
 
-          {/* 운전자명 */}
+          {/* 운전자명 - with autocomplete */}
           <div className="space-y-2">
             <Label htmlFor="driverName" className="text-sm font-medium text-gray-700 flex items-center gap-1">
               <User className="h-4 w-4" />
               운전자
             </Label>
-            <Input
-              id="driverName"
-              type="text"
-              placeholder="운전자명을 입력하세요"
-              value={driverName}
-              onChange={(e) => setDriverName(e.target.value)}
-              className="w-full"
-            />
+            <Popover open={showDriverPopover} onOpenChange={setShowDriverPopover}>
+              <PopoverTrigger asChild>
+                <div className="relative">
+                  <Input
+                    id="driverName"
+                    type="text"
+                    placeholder="운전자명을 입력하세요"
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    onFocus={() => recentDrivers.length > 0 && setShowDriverPopover(true)}
+                    className="w-full"
+                  />
+                </div>
+              </PopoverTrigger>
+              {recentDrivers.length > 0 && (
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="이름 검색..." />
+                    <CommandEmpty>해당하는 운전자가 없습니다</CommandEmpty>
+                    <CommandGroup>
+                      {recentDrivers
+                        .filter(driver => driver.toLowerCase().includes(driverName.toLowerCase()))
+                        .map((driver, index) => (
+                          <CommandItem 
+                            key={index} 
+                            value={driver}
+                            onSelect={() => handleSelectDriver(driver)}
+                          >
+                            <User className="mr-2 h-4 w-4" />
+                            {driver}
+                          </CommandItem>
+                        ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              )}
+            </Popover>
           </div>
 
-          {/* 날짜 선택 */}
+          {/* 날짜 선택 - default today */}
           <div className="space-y-2">
             <Label htmlFor="date" className="text-sm font-medium text-gray-700 flex items-center gap-1">
               <CalendarIcon className="h-4 w-4" />
@@ -183,7 +268,7 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={(selectedDate) => selectedDate && setDate(selectedDate)}
                   initialFocus
                   className="p-3 pointer-events-auto"
                 />
@@ -191,7 +276,7 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
             </Popover>
           </div>
 
-          {/* 시간 입력 */}
+          {/* 시간 입력 - with defaults */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startTime" className="text-sm font-medium text-gray-700 flex items-center gap-1">
@@ -221,33 +306,67 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
             </div>
           </div>
 
-          {/* 장소 입력 */}
+          {/* 장소 입력 - with autocomplete */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="departure" className="text-sm font-medium text-gray-700">
                 출발지
               </Label>
-              <Input
-                id="departure"
-                type="text"
-                placeholder="출발지를 입력하세요"
+              <Select
                 value={departure}
-                onChange={(e) => setDeparture(e.target.value)}
-                className="w-full"
-              />
+                onValueChange={setDeparture}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="출발지를 선택하거나 입력하세요" />
+                </SelectTrigger>
+                <SelectContent>
+                  <CommandInput
+                    placeholder="출발지 검색 또는 입력..."
+                    onValueChange={setDeparture}
+                    value={departure}
+                    className="h-9"
+                  />
+                  {recentLocations.departures.length > 0 ? (
+                    recentLocations.departures.map((loc, index) => (
+                      <SelectItem key={`dep-${index}`} value={loc}>
+                        {loc}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>최근 출발지 없음</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="destination" className="text-sm font-medium text-gray-700">
                 목적지
               </Label>
-              <Input
-                id="destination"
-                type="text"
-                placeholder="목적지를 입력하세요"
+              <Select
                 value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                className="w-full"
-              />
+                onValueChange={setDestination}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="목적지를 선택하거나 입력하세요" />
+                </SelectTrigger>
+                <SelectContent>
+                  <CommandInput
+                    placeholder="목적지 검색 또는 입력..."
+                    onValueChange={setDestination}
+                    value={destination}
+                    className="h-9"
+                  />
+                  {recentLocations.destinations.length > 0 ? (
+                    recentLocations.destinations.map((loc, index) => (
+                      <SelectItem key={`dest-${index}`} value={loc}>
+                        {loc}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>최근 목적지 없음</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
