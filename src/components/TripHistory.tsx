@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,7 +46,7 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleStats, setVehicleStats] = useState<VehicleStats[]>([]);
   const [filters, setFilters] = useState<FilterOptions>({
-    vehicleId: '',
+    vehicleId: 'all', // Changed from empty string to 'all'
     location: '',
     driverName: '',
     searchQuery: '',
@@ -114,8 +113,8 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
   const applyFilters = () => {
     let filtered = [...allTrips];
     
-    // Apply vehicle filter
-    if (filters.vehicleId) {
+    // Apply vehicle filter - updated to check for 'all' instead of empty string
+    if (filters.vehicleId !== 'all') {
       filtered = filtered.filter(trip => trip.vehicleId === filters.vehicleId);
     }
     
@@ -296,7 +295,7 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">모든 차량</SelectItem>
+                  <SelectItem value="all">모든 차량</SelectItem>
                   {vehicles.map(vehicle => (
                     <SelectItem key={vehicle.id} value={vehicle.id}>
                       {vehicle.name} ({vehicle.licensePlate})
