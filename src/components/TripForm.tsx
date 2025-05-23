@@ -62,7 +62,8 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
     const loadRecentDrivers = () => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
-        const driversFromStorage = savedTrips.map((trip: any) => trip.driverName)
+        const driversFromStorage = savedTrips
+          .map((trip: any) => trip.driverName)
           .filter((driver: string | null | undefined) => driver) // Remove null/undefined values
           .filter((driver: unknown): driver is string => typeof driver === 'string'); // Type guard
         
@@ -78,11 +79,13 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
       try {
         const savedTrips = JSON.parse(localStorage.getItem('car-trips') || '[]');
         
-        const departuresFromStorage = savedTrips.map((trip: any) => trip.departure)
+        const departuresFromStorage = savedTrips
+          .map((trip: any) => trip.departure)
           .filter((place: string | null | undefined) => place)
           .filter((place: unknown): place is string => typeof place === 'string');
         
-        const destinationsFromStorage = savedTrips.map((trip: any) => trip.destination)
+        const destinationsFromStorage = savedTrips
+          .map((trip: any) => trip.destination)
           .filter((place: string | null | undefined) => place)
           .filter((place: unknown): place is string => typeof place === 'string');
         
@@ -317,7 +320,7 @@ const TripForm: React.FC<TripFormProps> = ({ onTripSaved }) => {
             </div>
           </div>
 
-          {/* 장소 입력 - Fixed Issue: Replaced the Select+Command implementation with simple inputs */}
+          {/* 장소 입력 - with datalist autocomplete */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="departure" className="text-sm font-medium text-gray-700">
