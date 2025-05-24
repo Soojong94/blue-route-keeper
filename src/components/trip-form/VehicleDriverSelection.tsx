@@ -55,7 +55,7 @@ const VehicleDriverSelection: React.FC<VehicleDriverSelectionProps> = ({
                 </SelectItem>
               ))
             ) : (
-              <SelectItem value="none" disabled>
+              <SelectItem value="no-vehicles" disabled>
                 등록된 차량이 없습니다
               </SelectItem>
             )}
