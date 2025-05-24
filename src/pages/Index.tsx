@@ -43,7 +43,7 @@ const Index = () => {
               <h2 className="text-xl font-semibold text-gray-800 mb-2">운행 기록 입력</h2>
               <p className="text-gray-600">엑셀 형태로 한 번에 여러 운행 정보를 입력하세요.</p>
             </div>
-            <ExcelTripInput onTripSaved={handleTripSaved} />
+            <ExcelTripInput onTripSaved={handleTripSaved} onTabChange={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="table" className="space-y-6">
