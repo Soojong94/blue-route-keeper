@@ -2,7 +2,7 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel } from '@/components/ui/select';
 import { Location } from '@/types/trip';
 
 interface LocationSelectionProps {
@@ -50,24 +50,24 @@ const LocationSelection: React.FC<LocationSelectionProps> = ({
           <SelectContent>
             {departureLocations.length > 0 && (
               <>
-                <SelectItem value="" disabled className="italic text-gray-400">
-                  등록된 장소
-                </SelectItem>
+                <SelectLabel>등록된 장소</SelectLabel>
                 {departureLocations.map((loc) => (
                   <SelectItem key={`dep-${loc.id}`} value={loc.id}>
                     {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
                   </SelectItem>
                 ))}
-                <SelectItem value="" disabled className="italic text-gray-400">
-                  최근 장소
-                </SelectItem>
               </>
             )}
-            {recentLocations.departures.map((loc, idx) => (
-              <SelectItem key={`recent-dep-${idx}`} value={loc}>
-                {loc}
-              </SelectItem>
-            ))}
+            {recentLocations.departures.length > 0 && (
+              <>
+                <SelectLabel>최근 장소</SelectLabel>
+                {recentLocations.departures.map((loc, idx) => (
+                  <SelectItem key={`recent-dep-${idx}`} value={loc}>
+                    {loc}
+                  </SelectItem>
+                ))}
+              </>
+            )}
           </SelectContent>
         </Select>
         {/* Allow direct text input */}
@@ -103,24 +103,24 @@ const LocationSelection: React.FC<LocationSelectionProps> = ({
           <SelectContent>
             {destinationLocations.length > 0 && (
               <>
-                <SelectItem value="" disabled className="italic text-gray-400">
-                  등록된 장소
-                </SelectItem>
+                <SelectLabel>등록된 장소</SelectLabel>
                 {destinationLocations.map((loc) => (
                   <SelectItem key={`dest-${loc.id}`} value={loc.id}>
                     {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
                   </SelectItem>
                 ))}
-                <SelectItem value="" disabled className="italic text-gray-400">
-                  최근 장소
-                </SelectItem>
               </>
             )}
-            {recentLocations.destinations.map((loc, idx) => (
-              <SelectItem key={`recent-dest-${idx}`} value={loc}>
-                {loc}
-              </SelectItem>
-            ))}
+            {recentLocations.destinations.length > 0 && (
+              <>
+                <SelectLabel>최근 장소</SelectLabel>
+                {recentLocations.destinations.map((loc, idx) => (
+                  <SelectItem key={`recent-dest-${idx}`} value={loc}>
+                    {loc}
+                  </SelectItem>
+                ))}
+              </>
+            )}
           </SelectContent>
         </Select>
         {/* Allow direct text input */}
