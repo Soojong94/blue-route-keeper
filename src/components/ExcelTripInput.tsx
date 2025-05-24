@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { CalendarIcon, Clock, MapPin, DollarSign, Car, User, FileText, Plus, Trash2, Save } from 'lucide-react';
@@ -440,17 +439,13 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
                         {/* Show favorite locations first */}
                         {departureLocations.length > 0 && (
                           <>
-                            <SelectItem value="" disabled className="italic text-gray-400">
-                              등록된 장소
-                            </SelectItem>
+                            <SelectLabel>등록된 장소</SelectLabel>
                             {departureLocations.map((loc) => (
                               <SelectItem key={`dep-${loc.id}`} value={loc.id}>
                                 {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
                               </SelectItem>
                             ))}
-                            <SelectItem value="" disabled className="italic text-gray-400">
-                              최근 장소
-                            </SelectItem>
+                            <SelectLabel>최근 장소</SelectLabel>
                           </>
                         )}
                         {recentLocations.departures.map((loc, idx) => (
@@ -491,17 +486,13 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved }) => {
                         {/* Show favorite locations first */}
                         {destinationLocations.length > 0 && (
                           <>
-                            <SelectItem value="" disabled className="italic text-gray-400">
-                              등록된 장소
-                            </SelectItem>
+                            <SelectLabel>등록된 장소</SelectLabel>
                             {destinationLocations.map((loc) => (
                               <SelectItem key={`dest-${loc.id}`} value={loc.id}>
                                 {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
                               </SelectItem>
                             ))}
-                            <SelectItem value="" disabled className="italic text-gray-400">
-                              최근 장소
-                            </SelectItem>
+                            <SelectLabel>최근 장소</SelectLabel>
                           </>
                         )}
                         {recentLocations.destinations.map((loc, idx) => (
