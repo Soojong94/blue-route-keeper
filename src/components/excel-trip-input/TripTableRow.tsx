@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectLabel, SelectGroup } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { TripRow } from './TripRowData';
@@ -123,21 +122,25 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
           </SelectTrigger>
           <SelectContent>
             {departureLocations.length > 0 && (
-              <>
+              <SelectGroup>
                 <SelectLabel>등록된 장소</SelectLabel>
                 {departureLocations.map((loc) => (
                   <SelectItem key={`dep-${loc.id}`} value={loc.id}>
                     {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
                   </SelectItem>
                 ))}
-                <SelectLabel>최근 장소</SelectLabel>
-              </>
+              </SelectGroup>
             )}
-            {recentLocations.departures.map((loc, idx) => (
-              <SelectItem key={`recent-dep-${idx}`} value={loc}>
-                {loc}
-              </SelectItem>
-            ))}
+            {recentLocations.departures.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>최근 장소</SelectLabel>
+                {recentLocations.departures.map((loc, idx) => (
+                  <SelectItem key={`recent-dep-${idx}`} value={loc}>
+                    {loc}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
         <Input 
@@ -168,21 +171,25 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
           </SelectTrigger>
           <SelectContent>
             {destinationLocations.length > 0 && (
-              <>
+              <SelectGroup>
                 <SelectLabel>등록된 장소</SelectLabel>
                 {destinationLocations.map((loc) => (
                   <SelectItem key={`dest-${loc.id}`} value={loc.id}>
                     {loc.alias ? `${loc.alias} (${loc.name})` : loc.name}
                   </SelectItem>
                 ))}
-                <SelectLabel>최근 장소</SelectLabel>
-              </>
+              </SelectGroup>
             )}
-            {recentLocations.destinations.map((loc, idx) => (
-              <SelectItem key={`recent-dest-${idx}`} value={loc}>
-                {loc}
-              </SelectItem>
-            ))}
+            {recentLocations.destinations.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>최근 장소</SelectLabel>
+              {recentLocations.destinations.map((loc, idx) => (
+                <SelectItem key={`recent-dest-${idx}`} value={loc}>
+                  {loc}
+                </SelectItem>
+              ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
         <Input 
