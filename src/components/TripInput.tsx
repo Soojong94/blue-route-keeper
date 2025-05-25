@@ -205,38 +205,41 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       </CardHeader>
 
       <CardContent className="p-0">
-        {/* 데스크톱 테이블 뷰 */}
-        <div className="hidden xl:block overflow-x-auto">
-          <table className="w-full table-fixed min-w-[1400px]">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="w-[110px] px-2 py-3 text-left text-sm font-medium text-gray-700">날짜</th>
-                <th className="w-[200px] px-2 py-3 text-left text-sm font-medium text-gray-700">차량</th>
-                <th className="w-[150px] px-2 py-3 text-left text-sm font-medium text-gray-700">출발지</th>
-                <th className="w-[150px] px-2 py-3 text-left text-sm font-medium text-gray-700">목적지</th>
-                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">단가</th>
-                <th className="w-[80px] px-2 py-3 text-left text-sm font-medium text-gray-700">횟수</th>
-                <th className="w-[120px] px-2 py-3 text-left text-sm font-medium text-gray-700">총액</th>
-                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">운전자</th>
-                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">메모</th>
-                <th className="w-[80px] px-2 py-3 text-center text-sm font-medium text-gray-700">삭제</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <DesktopTripRow
-                  key={row.id}
-                  row={row}
-                  vehicles={vehicles}
-                  locations={locations}
-                  recentData={recentData}
-                  onUpdate={updateRow}
-                  onRemove={removeRow}
-                  onVehicleSelect={handleVehicleSelect}
-                />
-              ))}
-            </tbody>
-          </table>
+        {/* 데스크톱 테이블 뷰 - 스크롤 없이 보이도록 컬럼 너비 최적화 */}
+        <div className="hidden lg:block">
+          <div className="w-full overflow-hidden">
+            <table className="w-full table-fixed">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="w-[8%] px-2 py-3 text-left text-xs font-medium text-gray-700">날짜</th>
+                  <th className="w-[15%] px-2 py-3 text-left text-xs font-medium text-gray-700">차량</th>
+                  <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-700">출발지</th>
+                  <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-700">목적지</th>
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">단가</th>
+                  <th className="w-[6%] px-2 py-3 text-left text-xs font-medium text-gray-700">횟수</th>
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">총액</th>
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">운전자</th>
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">메모</th>
+                  <th className="w-[7%] px-2 py-3 text-center text-xs font-medium text-gray-700">삭제</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <DesktopTripRow
+                    key={row.id}
+                    row={row}
+
+                    vehicles={vehicles}
+                    locations={locations}
+                    recentData={recentData}
+                    onUpdate={updateRow}
+                    onRemove={removeRow}
+                    onVehicleSelect={handleVehicleSelect}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* 태블릿/모바일 카드 뷰 */}
