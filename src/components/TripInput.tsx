@@ -48,7 +48,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
   function createNewRow(): TripRow {
     return {
-      id: crypto.randomUUID(),
+      id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
       date: new Date(),
       vehicleId: '',
       departure: '',

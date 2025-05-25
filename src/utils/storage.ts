@@ -46,7 +46,14 @@ export const getTripsByDateRange = (startDate: Date, endDate: Date): Trip[] => {
   const trips = getTrips();
   return trips.filter(trip => {
     const tripDate = new Date(trip.date);
-    return tripDate >= startDate && tripDate <= endDate;
+    
+    // 시간을 00:00:00으로 설정하여 날짜만 비교
+    const tripDateOnly = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate());
+    const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    
+    // 시작일과 종료일을 포함하여 비교 (>= startDate && <= endDate)
+    return tripDateOnly >= startDateOnly && tripDateOnly <= endDateOnly;
   });
 };
 
