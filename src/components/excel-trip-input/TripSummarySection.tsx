@@ -27,7 +27,7 @@ const TripSummarySection: React.FC<TripSummarySectionProps> = ({
       {/* Summary Section */}
       <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 border-b border-blue-100">
         <div className="text-center p-2 bg-white rounded-md shadow-sm">
-          <div className="text-sm text-blue-600">총 입력 건수</div>
+          <div className="text-sm text-blue-600">총 운행 건수</div>
           <div className="text-2xl font-semibold">{totalTrips}건</div>
         </div>
         <div className="text-center p-2 bg-white rounded-md shadow-sm">

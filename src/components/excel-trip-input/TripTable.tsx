@@ -35,14 +35,11 @@ const TripTable: React.FC<TripTableProps> = ({
         <TableHeader className="bg-gray-50">
           <TableRow>
             <TableHead className="w-[100px]">날짜</TableHead>
-            <TableHead className="w-[120px]">운전자</TableHead>
-            <TableHead className="min-w-[150px]">차량</TableHead>
-            <TableHead className="w-[90px]">출발시간</TableHead>
-            <TableHead className="w-[90px]">도착시간</TableHead>
+            <TableHead className="min-w-[200px]">차량</TableHead>
             <TableHead className="w-[140px]">출발지</TableHead>
             <TableHead className="w-[140px]">목적지</TableHead>
-            <TableHead className="w-[100px]">금액</TableHead>
-            <TableHead className="w-[150px]">메모</TableHead>
+            <TableHead className="w-[80px]">횟수</TableHead>
+            <TableHead className="w-[140px]">총액</TableHead>
             <TableHead className="w-[60px]"></TableHead>
           </TableRow>
         </TableHeader>

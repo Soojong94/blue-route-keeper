@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { TripRow } from './TripRowData';
 import { Vehicle, Location } from '@/types/trip';
-import { getDriversForVehicle, getVehicleById } from '@/utils/vehicleStorage';
 
 interface TripTableRowProps {
   row: TripRow;
@@ -27,16 +27,10 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
   vehicles,
   departureLocations,
   destinationLocations,
-  recentDrivers,
   recentLocations,
   onChange,
   onRemove
 }) => {
-  const getDriversForSelectedVehicle = (vehicleId: string) => {
-    if (!vehicleId) return [];
-    return getDriversForVehicle(vehicleId);
-  };
-
   const getLocationName = (locationId: string, type: 'departure' | 'destination'): string => {
     const locationList = type === 'departure' ? departureLocations : destinationLocations;
     const location = locationList.find(l => l.id === locationId);
@@ -46,6 +40,12 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
     }
     
     return locationId;
+  };
+
+  const handleAmountChange = (increment: boolean) => {
+    const currentAmount = parseFloat(row.amount) || 0;
+    const newAmount = increment ? currentAmount + 10000 : Math.max(0, currentAmount - 10000);
+    onChange(row.id, 'amount', newAmount.toString());
   };
 
   return (
@@ -58,27 +58,7 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
           className="w-full h-9 p-1"
         />
       </TableCell>
-      <TableCell>
-        <Input 
-          type="text" 
-          value={row.driverName}
-          onChange={(e) => onChange(row.id, 'driverName', e.target.value)}
-          list={`drivers-${row.id}`}
-          className="w-full h-9 p-1"
-          placeholder="운전자명"
-        />
-        <datalist id={`drivers-${row.id}`}>
-          {row.vehicleId && getDriversForSelectedVehicle(row.vehicleId).map((driver, idx) => (
-            <option key={`${row.id}-driver-${idx}-reg`} value={driver} />
-          ))}
-          {recentDrivers
-            .filter(driver => !row.vehicleId || !getDriversForSelectedVehicle(row.vehicleId).includes(driver))
-            .map((driver, idx) => (
-              <option key={`${row.id}-driver-${idx}`} value={driver} />
-          ))}
-        </datalist>
-      </TableCell>
-      <TableCell className="min-w-[150px]">
+      <TableCell className="min-w-[200px]">
         <Select 
           value={row.vehicleId}
           onValueChange={(value) => onChange(row.id, 'vehicleId', value)}
@@ -89,28 +69,14 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
           <SelectContent>
             {vehicles.map((vehicle) => (
               <SelectItem key={vehicle.id} value={vehicle.id} className="flex flex-col items-start">
-                <span className="font-bold text-lg">{vehicle.licensePlate}</span>
-                <span className="text-sm text-gray-500">{vehicle.name}</span>
+                <div className="w-full">
+                  <div className="font-bold text-base">{vehicle.licensePlate}</div>
+                  <div className="text-sm text-gray-500">{vehicle.name}</div>
+                </div>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </TableCell>
-      <TableCell>
-        <Input 
-          type="time" 
-          value={row.startTime}
-          onChange={(e) => onChange(row.id, 'startTime', e.target.value)}
-          className="w-full h-9 p-1"
-        />
-      </TableCell>
-      <TableCell>
-        <Input 
-          type="time" 
-          value={row.endTime}
-          onChange={(e) => onChange(row.id, 'endTime', e.target.value)}
-          className="w-full h-9 p-1"
-        />
       </TableCell>
       <TableCell>
         <Select
@@ -213,21 +179,45 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
       <TableCell>
         <Input 
           type="number" 
-          value={row.amount}
-          onChange={(e) => onChange(row.id, 'amount', e.target.value)}
-          className="w-full h-9 p-1"
-          placeholder="금액"
-          min="0"
-        />
-      </TableCell>
-      <TableCell>
-        <Input 
-          type="text" 
           value={row.purpose}
           onChange={(e) => onChange(row.id, 'purpose', e.target.value)}
           className="w-full h-9 p-1"
-          placeholder="메모"
+          placeholder="횟수"
+          min="1"
         />
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Input 
+            type="number" 
+            value={row.amount}
+            onChange={(e) => onChange(row.id, 'amount', e.target.value)}
+            className="w-full h-9 p-1"
+            placeholder="총액"
+            min="0"
+            step="10000"
+          />
+          <div className="flex flex-col gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-4 w-6 p-0 text-xs"
+              onClick={() => handleAmountChange(true)}
+            >
+              ▲
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-4 w-6 p-0 text-xs"
+              onClick={() => handleAmountChange(false)}
+            >
+              ▼
+            </Button>
+          </div>
+        </div>
       </TableCell>
       <TableCell>
         <Button 
