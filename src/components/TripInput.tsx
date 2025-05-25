@@ -205,48 +205,51 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
         </div>
       </CardHeader>
 
-
       <CardContent className="p-0">
-        {/* 데스크톱 테이블 뷰 - 더 넓은 최소 너비 설정 */}
-        <div className="hidden xl:block overflow-x-auto">
-          <table className="w-full table-fixed min-w-[1400px]">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="w-[110px] px-2 py-3 text-left text-sm font-medium text-gray-700">날짜</th>
-                <th className="w-[200px] px-2 py-3 text-left text-sm font-medium text-gray-700">차량</th>
-                <th className="w-[150px] px-2 py-3 text-left text-sm font-medium text-gray-700">출발지</th>
-                <th className="w-[150px] px-2 py-3 text-left text-sm font-medium text-gray-700">목적지</th>
-                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">단가</th>
-                <th className="w-[80px] px-2 py-3 text-left text-sm font-medium text-gray-700">횟수</th>
-                <th className="w-[120px] px-2 py-3 text-left text-sm font-medium text-gray-700">총액</th>
-                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">운전자</th>
-                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">메모</th>
-                <th className="w-[80px] px-2 py-3 text-center text-sm font-medium text-gray-700">삭제</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <DesktopTripRow
-                  key={row.id}
-                  row={row}
-                  vehicles={vehicles}
-                  locations={locations}
-                  recentData={recentData}
-                  onUpdate={updateRow}
-                  onRemove={removeRow}
-                  onVehicleSelect={handleVehicleSelect}
-                />
-              ))}
-            </tbody>
-          </table>
+        {/* 데스크톱 테이블 뷰 - 스크롤 없이 보이도록 컬럼 너비 최적화 */}
+        <div className="hidden lg:block">
+          <div className="w-full overflow-hidden">
+            <table className="w-full table-fixed">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="w-[8%] px-2 py-3 text-left text-xs font-medium text-gray-700">날짜</th>
+                  <th className="w-[15%] px-2 py-3 text-left text-xs font-medium text-gray-700">차량</th>
+                  <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-700">출발지</th>
+                  <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-700">목적지</th>
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">단가</th>
+                  <th className="w-[6%] px-2 py-3 text-left text-xs font-medium text-gray-700">횟수</th>
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">총액</th>
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">운전자</th>
+                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">메모</th>
+                  <th className="w-[7%] px-2 py-3 text-center text-xs font-medium text-gray-700">삭제</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <DesktopTripRow
+                    key={row.id}
+                    row={row}
+                    index={index + 1}
+                    vehicles={vehicles}
+                    locations={locations}
+                    recentData={recentData}
+                    onUpdate={updateRow}
+                    onRemove={removeRow}
+                    onVehicleSelect={handleVehicleSelect}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* 태블릿/모바일 카드 뷰 - xl 미만에서 표시 */}
-        <div className="xl:hidden space-y-4 p-4">
-          {rows.map((row) => (
+        {/* 태블릿/모바일 카드 뷰 - lg 미만에서 표시 */}
+        <div className="lg:hidden space-y-4 p-4">
+          {rows.map((row, index) => (
             <MobileTripCard
               key={row.id}
               row={row}
+              index={index + 1}
               vehicles={vehicles}
               locations={locations}
               recentData={recentData}
@@ -274,6 +277,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
 interface TripRowProps {
   row: TripRow;
+  index: number; // 순번 표시용
   vehicles: Vehicle[];
   locations: Location[];
   recentData: {
@@ -286,9 +290,10 @@ interface TripRowProps {
   onVehicleSelect: (rowId: string, vehicleId: string) => void;
 }
 
-// 데스크톱용 테이블 행 수정
+// 데스크톱용 테이블 행 - 컬럼 너비 최적화
 const DesktopTripRow: React.FC<TripRowProps> = ({
   row,
+  index,
   vehicles,
   locations,
   recentData,
@@ -304,14 +309,14 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
 
   return (
     <tr className="border-b hover:bg-gray-50">
-      {/* 날짜 */}
-      <td className="px-2 py-3">
+      {/* 날짜 - 8% */}
+      <td className="px-2 py-2">
         <Popover>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               className={cn(
-                "w-full justify-start text-left font-normal text-xs h-8",
+                "w-full justify-start text-left font-normal text-xs h-7",
                 !row.date && "text-muted-foreground"
               )}
             >
@@ -330,23 +335,18 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </Popover>
       </td>
 
-      {/* 차량 */}
-      <td className="px-2 py-3">
+      {/* 차량 - 15% */}
+      <td className="px-2 py-2">
         <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
-          <SelectTrigger className="text-xs h-8">
+          <SelectTrigger className="text-xs h-7">
             <SelectValue placeholder="차량 선택" />
           </SelectTrigger>
           <SelectContent>
             {vehicles.map((vehicle) => (
               <SelectItem key={vehicle.id} value={vehicle.id}>
                 <div className="flex flex-col">
-                  <span className="font-medium">{vehicle.licensePlate}</span>
-                  <span className="text-sm text-gray-500">{vehicle.name}</span>
-                  {vehicle.defaultUnitPrice && (
-                    <span className="text-xs text-blue-600">
-                      기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
-                    </span>
-                  )}
+                  <span className="font-medium text-xs">{vehicle.licensePlate}</span>
+                  <span className="text-xs text-gray-500">{vehicle.name}</span>
                 </div>
               </SelectItem>
             ))}
@@ -354,13 +354,13 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </Select>
       </td>
 
-      {/* 출발지 */}
-      <td className="px-2 py-3">
+      {/* 출발지 - 12% */}
+      <td className="px-2 py-2">
         <Input
           value={row.departure}
           onChange={(e) => onUpdate(row.id, 'departure', e.target.value)}
           placeholder="출발지"
-          className="text-xs h-8"
+          className="text-xs h-7"
           list={`departures-${row.id}`}
         />
         <datalist id={`departures-${row.id}`}>
@@ -373,13 +373,13 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </datalist>
       </td>
 
-      {/* 목적지 */}
-      <td className="px-2 py-3">
+      {/* 목적지 - 12% */}
+      <td className="px-2 py-2">
         <Input
           value={row.destination}
           onChange={(e) => onUpdate(row.id, 'destination', e.target.value)}
           placeholder="목적지"
-          className="text-xs h-8"
+          className="text-xs h-7"
           list={`destinations-${row.id}`}
         />
         <datalist id={`destinations-${row.id}`}>
@@ -392,45 +392,45 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </datalist>
       </td>
 
-      {/* 단가 - 넓은 공간 확보 */}
-      <td className="px-2 py-3">
+      {/* 단가 - 10% */}
+      <td className="px-2 py-2">
         <Input
           type="number"
           value={row.unitPrice}
           onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
           placeholder="단가"
-          className="text-xs h-8 w-full"
+          className="text-xs h-7"
           min="0"
           step="1000"
         />
       </td>
 
-      {/* 횟수 */}
-      <td className="px-2 py-3">
+      {/* 횟수 - 6% */}
+      <td className="px-2 py-2">
         <Input
           type="number"
           value={row.count}
           onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
           placeholder="횟수"
-          className="text-xs h-8"
+          className="text-xs h-7"
           min="1"
         />
       </td>
 
-      {/* 총액 */}
-      <td className="px-2 py-3">
-        <div className="font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded text-center text-xs">
+      {/* 총액 - 10% */}
+      <td className="px-2 py-2">
+        <div className="font-semibold text-blue-600 bg-blue-50 px-1 py-1 rounded text-center text-xs">
           {totalAmount.toLocaleString()}원
         </div>
       </td>
 
-      {/* 운전자 */}
-      <td className="px-2 py-3">
+      {/* 운전자 - 10% */}
+      <td className="px-2 py-2">
         <Input
           value={row.driverName}
           onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
           placeholder="운전자"
-          className="text-xs h-8"
+          className="text-xs h-7"
           list={`drivers-${row.id}`}
         />
         <datalist id={`drivers-${row.id}`}>
@@ -440,24 +440,24 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </datalist>
       </td>
 
-      {/* 메모 */}
-      <td className="px-2 py-3">
+      {/* 메모 - 10% */}
+      <td className="px-2 py-2">
         <Input
           value={row.memo}
           onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
           placeholder="메모"
-          className="text-xs h-8"
+          className="text-xs h-7"
         />
       </td>
 
-      {/* 삭제 - 더 넓은 공간과 명확한 버튼 */}
-      <td className="px-2 py-3">
+      {/* 삭제 - 7% */}
+      <td className="px-2 py-2">
         <div className="flex justify-center">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onRemove(row.id)}
-            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-16 text-xs border-red-200"
+            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 w-12 text-xs border-red-200"
           >
             삭제
           </Button>
@@ -467,9 +467,10 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
   );
 };
 
-// 모바일용 카드 컴포넌트
+// 모바일용 카드 컴포넌트 - 해시 대신 순번 표시
 const MobileTripCard: React.FC<TripRowProps> = ({
   row,
+  index,
   vehicles,
   locations,
   recentData,
@@ -486,7 +487,9 @@ const MobileTripCard: React.FC<TripRowProps> = ({
   return (
     <Card className="p-4 space-y-4">
       <div className="flex justify-between items-center">
-        <Badge variant="outline">운행 #{row.id.slice(0, 8)}</Badge>
+        <Badge variant="outline" className="bg-blue-50 text-blue-700">
+          운행 {index}번
+        </Badge>
         <Button
           variant="ghost"
           size="sm"
