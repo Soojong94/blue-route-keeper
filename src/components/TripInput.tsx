@@ -7,11 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Car, MapPin, Calculator, Plus, Trash2 } from 'lucide-react';
+import { CalendarIcon, Car, MapPin, Calculator, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { saveTrip, getVehicles, getLocations } from '@/utils/storage';
@@ -64,7 +63,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     setVehicles(getVehicles());
     setLocations(getLocations());
 
-    // 최근 데이터 로드 (별칭 기능 제거)
+    // 최근 데이터 로드
     try {
       const trips = JSON.parse(localStorage.getItem('car-trips') || '[]');
       const departures = [...new Set(trips.map((t: any) => t.departure).filter(Boolean))].slice(0, 10);
@@ -206,50 +205,46 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       </CardHeader>
 
       <CardContent className="p-0">
-        {/* 데스크톱 테이블 뷰 - 스크롤 없이 보이도록 컬럼 너비 최적화 */}
-        <div className="hidden lg:block">
-          <div className="w-full overflow-hidden">
-            <table className="w-full table-fixed">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="w-[8%] px-2 py-3 text-left text-xs font-medium text-gray-700">날짜</th>
-                  <th className="w-[15%] px-2 py-3 text-left text-xs font-medium text-gray-700">차량</th>
-                  <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-700">출발지</th>
-                  <th className="w-[12%] px-2 py-3 text-left text-xs font-medium text-gray-700">목적지</th>
-                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">단가</th>
-                  <th className="w-[6%] px-2 py-3 text-left text-xs font-medium text-gray-700">횟수</th>
-                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">총액</th>
-                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">운전자</th>
-                  <th className="w-[10%] px-2 py-3 text-left text-xs font-medium text-gray-700">메모</th>
-                  <th className="w-[7%] px-2 py-3 text-center text-xs font-medium text-gray-700">삭제</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <DesktopTripRow
-                    key={row.id}
-                    row={row}
-                    index={index + 1}
-                    vehicles={vehicles}
-                    locations={locations}
-                    recentData={recentData}
-                    onUpdate={updateRow}
-                    onRemove={removeRow}
-                    onVehicleSelect={handleVehicleSelect}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* 데스크톱 테이블 뷰 */}
+        <div className="hidden xl:block overflow-x-auto">
+          <table className="w-full table-fixed min-w-[1400px]">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="w-[110px] px-2 py-3 text-left text-sm font-medium text-gray-700">날짜</th>
+                <th className="w-[200px] px-2 py-3 text-left text-sm font-medium text-gray-700">차량</th>
+                <th className="w-[150px] px-2 py-3 text-left text-sm font-medium text-gray-700">출발지</th>
+                <th className="w-[150px] px-2 py-3 text-left text-sm font-medium text-gray-700">목적지</th>
+                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">단가</th>
+                <th className="w-[80px] px-2 py-3 text-left text-sm font-medium text-gray-700">횟수</th>
+                <th className="w-[120px] px-2 py-3 text-left text-sm font-medium text-gray-700">총액</th>
+                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">운전자</th>
+                <th className="w-[140px] px-2 py-3 text-left text-sm font-medium text-gray-700">메모</th>
+                <th className="w-[80px] px-2 py-3 text-center text-sm font-medium text-gray-700">삭제</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <DesktopTripRow
+                  key={row.id}
+                  row={row}
+                  vehicles={vehicles}
+                  locations={locations}
+                  recentData={recentData}
+                  onUpdate={updateRow}
+                  onRemove={removeRow}
+                  onVehicleSelect={handleVehicleSelect}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        {/* 태블릿/모바일 카드 뷰 - lg 미만에서 표시 */}
-        <div className="lg:hidden space-y-4 p-4">
-          {rows.map((row, index) => (
+        {/* 태블릿/모바일 카드 뷰 */}
+        <div className="xl:hidden space-y-4 p-4">
+          {rows.map((row) => (
             <MobileTripCard
               key={row.id}
               row={row}
-              index={index + 1}
               vehicles={vehicles}
               locations={locations}
               recentData={recentData}
@@ -277,7 +272,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
 interface TripRowProps {
   row: TripRow;
-  index: number; // 순번 표시용
   vehicles: Vehicle[];
   locations: Location[];
   recentData: {
@@ -290,10 +284,145 @@ interface TripRowProps {
   onVehicleSelect: (rowId: string, vehicleId: string) => void;
 }
 
-// 데스크톱용 테이블 행 - 컬럼 너비 최적화
+// 장소 선택 드롭다운 컴포넌트
+interface LocationSelectorProps {
+  value: string;
+  onChange: (value: string) => void;
+  locations: Location[];
+  recentLocations: string[];
+  placeholder: string;
+  className?: string;
+}
+
+const LocationSelector: React.FC<LocationSelectorProps> = ({
+  value,
+  onChange,
+  locations,
+  recentLocations,
+  placeholder,
+  className
+}) => {
+  const [isCustomInput, setIsCustomInput] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+
+  useEffect(() => {
+    // 현재 값이 등록된 장소나 최근 사용 장소에 없으면 직접 입력 모드로 설정
+    const isRegistered = locations.some(loc => loc.name === value) ||
+      recentLocations.includes(value);
+    if (value && !isRegistered) {
+      setIsCustomInput(true);
+      setCustomValue(value);
+    }
+  }, [value, locations, recentLocations]);
+
+  const handleSelectChange = (selectedValue: string) => {
+    if (selectedValue === 'custom') {
+      setIsCustomInput(true);
+      setCustomValue(value);
+    } else {
+      setIsCustomInput(false);
+      setCustomValue('');
+      onChange(selectedValue);
+    }
+  };
+
+  const handleCustomInputChange = (inputValue: string) => {
+    setCustomValue(inputValue);
+    onChange(inputValue);
+  };
+
+  if (isCustomInput) {
+    return (
+      <div className="flex gap-1">
+        <Input
+          value={customValue}
+          onChange={(e) => handleCustomInputChange(e.target.value)}
+          placeholder={placeholder}
+          className={className}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setIsCustomInput(false);
+            onChange('');
+            setCustomValue('');
+          }}
+          className="px-2 text-xs"
+        >
+          선택
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Select value={value} onValueChange={handleSelectChange}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {/* 즐겨찾기 장소 */}
+        {locations.length > 0 && (
+          <>
+            <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
+              즐겨찾기 장소
+            </div>
+            {locations.map((location) => (
+              <SelectItem key={location.id} value={location.name}>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3 w-3 text-gray-400" />
+                  <span>{location.name}</span>
+                  <Badge variant="outline" className="text-xs ml-auto">
+                    {location.category === 'company' && '회사'}
+                    {location.category === 'client' && '고객사'}
+                    {location.category === 'personal' && '개인'}
+                    {location.category === 'other' && '기타'}
+                  </Badge>
+                </div>
+              </SelectItem>
+            ))}
+          </>
+        )}
+
+        {/* 최근 사용 장소 */}
+        {recentLocations.length > 0 && (
+          <>
+            <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
+              최근 사용
+            </div>
+            {recentLocations
+              .filter(recent => !locations.some(loc => loc.name === recent))
+              .map((recent, idx) => (
+                <SelectItem key={`recent-${idx}`} value={recent}>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-3 w-3 text-gray-400" />
+                    <span>{recent}</span>
+                  </div>
+                </SelectItem>
+              ))}
+          </>
+        )}
+
+        {/* 직접 입력 옵션 */}
+        <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
+          기타
+        </div>
+        <SelectItem value="custom">
+          <div className="flex items-center gap-2">
+            <Plus className="h-3 w-3 text-blue-500" />
+            <span className="text-blue-600">직접 입력</span>
+          </div>
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  );
+};
+
+// 데스크톱용 테이블 행
 const DesktopTripRow: React.FC<TripRowProps> = ({
   row,
-  index,
   vehicles,
   locations,
   recentData,
@@ -309,14 +438,14 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
 
   return (
     <tr className="border-b hover:bg-gray-50">
-      {/* 날짜 - 8% */}
-      <td className="px-2 py-2">
+      {/* 날짜 */}
+      <td className="px-2 py-3">
         <Popover>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               className={cn(
-                "w-full justify-start text-left font-normal text-xs h-7",
+                "w-full justify-start text-left font-normal text-xs h-8",
                 !row.date && "text-muted-foreground"
               )}
             >
@@ -335,18 +464,23 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </Popover>
       </td>
 
-      {/* 차량 - 15% */}
-      <td className="px-2 py-2">
+      {/* 차량 */}
+      <td className="px-2 py-3">
         <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
-          <SelectTrigger className="text-xs h-7">
+          <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="차량 선택" />
           </SelectTrigger>
           <SelectContent>
             {vehicles.map((vehicle) => (
               <SelectItem key={vehicle.id} value={vehicle.id}>
                 <div className="flex flex-col">
-                  <span className="font-medium text-xs">{vehicle.licensePlate}</span>
-                  <span className="text-xs text-gray-500">{vehicle.name}</span>
+                  <span className="font-medium">{vehicle.licensePlate}</span>
+                  <span className="text-sm text-gray-500">{vehicle.name}</span>
+                  {vehicle.defaultUnitPrice && (
+                    <span className="text-xs text-blue-600">
+                      기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
+                    </span>
+                  )}
                 </div>
               </SelectItem>
             ))}
@@ -354,83 +488,69 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </Select>
       </td>
 
-      {/* 출발지 - 12% */}
-      <td className="px-2 py-2">
-        <Input
+      {/* 출발지 */}
+      <td className="px-2 py-3">
+        <LocationSelector
           value={row.departure}
-          onChange={(e) => onUpdate(row.id, 'departure', e.target.value)}
+          onChange={(value) => onUpdate(row.id, 'departure', value)}
+          locations={locations}
+          recentLocations={recentData.departures}
           placeholder="출발지"
-          className="text-xs h-7"
-          list={`departures-${row.id}`}
+          className="text-xs h-8"
         />
-        <datalist id={`departures-${row.id}`}>
-          {locations.map((loc) => (
-            <option key={loc.id} value={loc.name} />
-          ))}
-          {recentData.departures.map((dep, idx) => (
-            <option key={`recent-${idx}`} value={dep} />
-          ))}
-        </datalist>
       </td>
 
-      {/* 목적지 - 12% */}
-      <td className="px-2 py-2">
-        <Input
+      {/* 목적지 */}
+      <td className="px-2 py-3">
+        <LocationSelector
           value={row.destination}
-          onChange={(e) => onUpdate(row.id, 'destination', e.target.value)}
+          onChange={(value) => onUpdate(row.id, 'destination', value)}
+          locations={locations}
+          recentLocations={recentData.destinations}
           placeholder="목적지"
-          className="text-xs h-7"
-          list={`destinations-${row.id}`}
+          className="text-xs h-8"
         />
-        <datalist id={`destinations-${row.id}`}>
-          {locations.map((loc) => (
-            <option key={loc.id} value={loc.name} />
-          ))}
-          {recentData.destinations.map((dest, idx) => (
-            <option key={`recent-${idx}`} value={dest} />
-          ))}
-        </datalist>
       </td>
 
-      {/* 단가 - 10% */}
-      <td className="px-2 py-2">
+      {/* 단가 */}
+      <td className="px-2 py-3">
         <Input
           type="number"
           value={row.unitPrice}
           onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
           placeholder="단가"
-          className="text-xs h-7"
+          className="text-xs h-8 w-full"
           min="0"
           step="1000"
         />
       </td>
 
-      {/* 횟수 - 6% */}
-      <td className="px-2 py-2">
+      {/* 횟수 */}
+      <td className="px-2 py-3">
         <Input
           type="number"
           value={row.count}
           onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
           placeholder="횟수"
-          className="text-xs h-7"
+          className="text-xs h-8"
           min="1"
         />
       </td>
 
-      {/* 총액 - 10% */}
-      <td className="px-2 py-2">
-        <div className="font-semibold text-blue-600 bg-blue-50 px-1 py-1 rounded text-center text-xs">
+      {/* 총액 */}
+      <td className="px-2 py-3">
+        <div className="font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded text-center text-xs">
           {totalAmount.toLocaleString()}원
         </div>
       </td>
 
-      {/* 운전자 - 10% */}
-      <td className="px-2 py-2">
+      {/* 운전자 */}
+      <td className="px-2 py-3">
         <Input
           value={row.driverName}
           onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
           placeholder="운전자"
-          className="text-xs h-7"
+          className="text-xs h-8"
           list={`drivers-${row.id}`}
         />
         <datalist id={`drivers-${row.id}`}>
@@ -440,24 +560,24 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </datalist>
       </td>
 
-      {/* 메모 - 10% */}
-      <td className="px-2 py-2">
+      {/* 메모 */}
+      <td className="px-2 py-3">
         <Input
           value={row.memo}
           onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
           placeholder="메모"
-          className="text-xs h-7"
+          className="text-xs h-8"
         />
       </td>
 
-      {/* 삭제 - 7% */}
-      <td className="px-2 py-2">
+      {/* 삭제 */}
+      <td className="px-2 py-3">
         <div className="flex justify-center">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onRemove(row.id)}
-            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 w-12 text-xs border-red-200"
+            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-16 text-xs border-red-200"
           >
             삭제
           </Button>
@@ -467,10 +587,9 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
   );
 };
 
-// 모바일용 카드 컴포넌트 - 해시 대신 순번 표시
+// 모바일용 카드 컴포넌트
 const MobileTripCard: React.FC<TripRowProps> = ({
   row,
-  index,
   vehicles,
   locations,
   recentData,
@@ -487,9 +606,7 @@ const MobileTripCard: React.FC<TripRowProps> = ({
   return (
     <Card className="p-4 space-y-4">
       <div className="flex justify-between items-center">
-        <Badge variant="outline" className="bg-blue-50 text-blue-700">
-          운행 {index}번
-        </Badge>
+        <Badge variant="outline">운행</Badge>
         <Button
           variant="ghost"
           size="sm"
@@ -556,39 +673,25 @@ const MobileTripCard: React.FC<TripRowProps> = ({
         {/* 출발지 */}
         <div className="space-y-2">
           <Label className="text-sm">출발지</Label>
-          <Input
+          <LocationSelector
             value={row.departure}
-            onChange={(e) => onUpdate(row.id, 'departure', e.target.value)}
+            onChange={(value) => onUpdate(row.id, 'departure', value)}
+            locations={locations}
+            recentLocations={recentData.departures}
             placeholder="출발지"
-            list={`departures-${row.id}`}
           />
-          <datalist id={`departures-${row.id}`}>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.name} />
-            ))}
-            {recentData.departures.map((dep, idx) => (
-              <option key={`recent-${idx}`} value={dep} />
-            ))}
-          </datalist>
         </div>
 
         {/* 목적지 */}
         <div className="space-y-2">
           <Label className="text-sm">목적지</Label>
-          <Input
+          <LocationSelector
             value={row.destination}
-            onChange={(e) => onUpdate(row.id, 'destination', e.target.value)}
+            onChange={(value) => onUpdate(row.id, 'destination', value)}
+            locations={locations}
+            recentLocations={recentData.destinations}
             placeholder="목적지"
-            list={`destinations-${row.id}`}
           />
-          <datalist id={`destinations-${row.id}`}>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.name} />
-            ))}
-            {recentData.destinations.map((dest, idx) => (
-              <option key={`recent-${idx}`} value={dest} />
-            ))}
-          </datalist>
         </div>
 
         {/* 단가 */}
