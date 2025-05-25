@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ import { ko } from 'date-fns/locale';
 import { CalendarIcon, BarChart3, MapPin, Clock, Trash2, Search, Edit, Car, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getTripsByDateRange, deleteTrip, updateTrip } from '@/utils/tripStorage';
-import { getVehicles, getLocations } from '@/utils/vehicleStorage';
+import { getVehicles } from '@/utils/vehicleStorage';
 import { getLocations } from '@/utils/locationStorage';
 import { Trip, Vehicle, Location } from '@/types/trip';
 import { useToast } from '@/hooks/use-toast';

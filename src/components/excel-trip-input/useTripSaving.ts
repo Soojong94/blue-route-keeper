@@ -12,7 +12,7 @@ export const useTripSaving = (onTripSaved: () => void, resetRows: () => void) =>
     
     // Validate and save each row
     rows.forEach(row => {
-      // Skip empty rows (no driver, departure, destination, or amount)
+      // Skip empty rows (no essential data)
       if (!row.driverName && !row.departure && !row.destination && !row.amount) {
         return;
       }
