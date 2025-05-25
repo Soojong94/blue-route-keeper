@@ -10,7 +10,6 @@ interface TripTableProps {
   vehicles: Vehicle[];
   departureLocations: Location[];
   destinationLocations: Location[];
-  recentDrivers: string[];
   recentLocations: {
     departures: string[];
     destinations: string[];
@@ -51,7 +50,6 @@ const TripTable: React.FC<TripTableProps> = ({
               vehicles={vehicles}
               departureLocations={departureLocations}
               destinationLocations={destinationLocations}
-              recentDrivers={recentDrivers}
               recentLocations={recentLocations}
               onChange={onChange}
               onRemove={onRemove}
