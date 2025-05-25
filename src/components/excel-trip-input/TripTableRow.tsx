@@ -42,10 +42,25 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
     return locationId;
   };
 
+  const getVehicleDisplayName = (vehicleId: string): string => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      const driverInfo = vehicle.mainDriver ? ` (${vehicle.mainDriver})` : '';
+      return `${vehicle.licensePlate} - ${vehicle.name}${driverInfo}`;
+    }
+    return '';
+  };
+
   const handleAmountChange = (increment: boolean) => {
     const currentAmount = parseFloat(row.amount) || 0;
     const newAmount = increment ? currentAmount + 10000 : Math.max(0, currentAmount - 10000);
     onChange(row.id, 'amount', newAmount.toString());
+  };
+
+  const calculateTotal = (): number => {
+    const amount = parseFloat(row.amount) || 0;
+    const purpose = parseInt(row.purpose) || 0;
+    return amount * purpose;
   };
 
   return (
@@ -58,7 +73,7 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
           className="w-full h-9 p-1"
         />
       </TableCell>
-      <TableCell className="min-w-[200px]">
+      <TableCell className="min-w-[250px]">
         <Select 
           value={row.vehicleId}
           onValueChange={(value) => onChange(row.id, 'vehicleId', value)}
@@ -70,8 +85,10 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
             {vehicles.map((vehicle) => (
               <SelectItem key={vehicle.id} value={vehicle.id} className="flex flex-col items-start">
                 <div className="w-full">
-                  <div className="font-bold text-base">{vehicle.licensePlate}</div>
-                  <div className="text-sm text-gray-500">{vehicle.name}</div>
+                  <div className="font-bold text-base">{vehicle.licensePlate} - {vehicle.name}</div>
+                  {vehicle.mainDriver && (
+                    <div className="text-sm text-gray-600">운전자: {vehicle.mainDriver}</div>
+                  )}
                 </div>
               </SelectItem>
             ))}
@@ -193,7 +210,7 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
             value={row.amount}
             onChange={(e) => onChange(row.id, 'amount', e.target.value)}
             className="w-full h-9 p-1"
-            placeholder="총액"
+            placeholder="건당 금액"
             min="0"
             step="10000"
           />
@@ -217,6 +234,11 @@ const TripTableRow: React.FC<TripTableRowProps> = ({
               ▼
             </Button>
           </div>
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="text-center font-medium">
+          {new Intl.NumberFormat('ko-KR').format(calculateTotal())}원
         </div>
       </TableCell>
       <TableCell>

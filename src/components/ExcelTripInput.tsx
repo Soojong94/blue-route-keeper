@@ -33,12 +33,13 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved, onTabChang
 
   // Calculate totals for the summary
   const totalTrips = rows.filter(row => 
-    row.driverName && row.departure && row.destination && row.amount
-  ).length;
+    row.departure && row.destination && row.amount && row.purpose
+  ).reduce((sum, row) => sum + (parseInt(row.purpose) || 0), 0);
   
   const totalAmount = rows.reduce((sum, row) => {
     const amount = parseFloat(row.amount) || 0;
-    return sum + amount;
+    const purpose = parseInt(row.purpose) || 0;
+    return sum + (amount * purpose);
   }, 0);
 
   const showVehicleButton = vehicles.length === 0;

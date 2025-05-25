@@ -24,7 +24,6 @@ const TripTable: React.FC<TripTableProps> = ({
   vehicles,
   departureLocations,
   destinationLocations,
-  recentDrivers,
   recentLocations,
   onChange,
   onRemove
@@ -35,10 +34,11 @@ const TripTable: React.FC<TripTableProps> = ({
         <TableHeader className="bg-gray-50">
           <TableRow>
             <TableHead className="w-[100px]">날짜</TableHead>
-            <TableHead className="min-w-[200px]">차량</TableHead>
+            <TableHead className="min-w-[250px]">차량</TableHead>
             <TableHead className="w-[140px]">출발지</TableHead>
             <TableHead className="w-[140px]">목적지</TableHead>
             <TableHead className="w-[80px]">횟수</TableHead>
+            <TableHead className="w-[120px]">건당 금액</TableHead>
             <TableHead className="w-[140px]">총액</TableHead>
             <TableHead className="w-[60px]"></TableHead>
           </TableRow>
