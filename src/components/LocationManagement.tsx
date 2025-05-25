@@ -1,130 +1,163 @@
-
+// src/components/LocationManagement.tsx
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, Plus, MapPin } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { getLocations, deleteLocation } from '@/utils/locationStorage';
-import { Location } from '@/types/trip';
-import LocationForm from './LocationForm';
+import { MapPin, Plus, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+import { getLocations, saveLocation, updateLocation, deleteLocation } from '@/utils/storage';
+import { Location } from '@/types/trip';
 
 const LocationManagement: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
-  const [locationToEdit, setLocationToEdit] = useState<Location | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    alias: '',
+    category: 'company' as 'company' | 'client' | 'personal' | 'other',
+  });
+
   const { toast } = useToast();
 
   useEffect(() => {
     loadLocations();
-  }, [refreshTrigger]);
+  }, []);
 
   const loadLocations = () => {
-    const allLocations = getLocations();
-    setLocations(allLocations);
+    setLocations(getLocations());
   };
 
-  const handleDeleteLocation = (id: string) => {
-    try {
-      deleteLocation(id);
-      loadLocations();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name) {
       toast({
-        title: "삭제 완료",
-        description: "장소가 삭제되었습니다.",
+        title: "입력 오류",
+        description: "장소명은 필수 입력항목입니다.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      const locationData = {
+        name: formData.name,
+        alias: formData.alias || undefined,
+        category: formData.category,
+      };
+
+      if (editingLocation) {
+        updateLocation(editingLocation.id, locationData);
+        toast({
+          title: "수정 완료",
+          description: "장소 정보가 수정되었습니다.",
+        });
+      } else {
+        saveLocation(locationData);
+        toast({
+          title: "등록 완료",
+          description: "장소가 등록되었습니다.",
+        });
+      }
+
+      resetForm();
+      setIsDialogOpen(false);
+      loadLocations();
     } catch (error) {
       toast({
-        title: "삭제 실패",
-        description: "장소 삭제 중 오류가 발생했습니다.",
+        title: "저장 실패",
+        description: "장소 정보 저장 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     }
   };
 
-  const handleEditClick = (location: Location) => {
-    setLocationToEdit(location);
+  const handleEdit = (location: Location) => {
+    setEditingLocation(location);
+    setFormData({
+      name: location.name,
+      alias: location.alias || '',
+      category: location.category,
+    });
     setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('정말로 이 장소를 삭제하시겠습니까?')) {
+      try {
+        deleteLocation(id);
+        toast({
+          title: "삭제 완료",
+          description: "장소가 삭제되었습니다.",
+        });
+        loadLocations();
+      } catch (error) {
+        toast({
+          title: "삭제 실패",
+          description: "장소 삭제 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      alias: '',
+      category: 'company',
+    });
+    setEditingLocation(null);
   };
 
   const handleAddNew = () => {
-    setLocationToEdit(undefined);
+    resetForm();
     setIsDialogOpen(true);
   };
 
-  const handleLocationSaved = () => {
-    setIsDialogOpen(false);
-    setRefreshTrigger(prev => prev + 1);
-  };
-
   const getCategoryBadge = (category: string) => {
-    switch (category) {
-      case 'company':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">회사</Badge>;
-      case 'client':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">고객사</Badge>;
-      case 'personal':
-        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">개인</Badge>;
-      default:
-        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">기타</Badge>;
-    }
-  };
-
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'departure':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">출발지</Badge>;
-      case 'destination':
-        return <Badge variant="outline" className="bg-cyan-50 text-cyan-700 border-cyan-200">도착지</Badge>;
-      case 'both':
-        return <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200">모두</Badge>;
-      default:
-        return null;
-    }
+    const variants = {
+      company: { className: 'bg-blue-50 text-blue-700 border-blue-200', label: '회사' },
+      client: { className: 'bg-green-50 text-green-700 border-green-200', label: '고객사' },
+      personal: { className: 'bg-purple-50 text-purple-700 border-purple-200', label: '개인' },
+      other: { className: 'bg-gray-50 text-gray-700 border-gray-200', label: '기타' },
+    };
+    const variant = variants[category as keyof typeof variants] || variants.other;
+    return (
+      <Badge variant="outline" className={variant.className}>
+        {variant.label}
+      </Badge>
+    );
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="w-full max-w-6xl mx-auto">
       <Card>
-        <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg">
-          <CardTitle className="text-xl font-bold flex items-center gap-2">
+        <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
             장소 관리
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="flex justify-end mb-4">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  onClick={handleAddNew}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                >
-                  <Plus className="mr-1 h-4 w-4" /> 새 장소 등록
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>
-                    {locationToEdit ? '장소 정보 수정' : '새 장소 등록'}
-                  </DialogTitle>
-                </DialogHeader>
-                <LocationForm 
-                  onLocationSaved={handleLocationSaved} 
-                  locationToEdit={locationToEdit}
-                  onCancel={() => setIsDialogOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
+            <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="mr-2 h-4 w-4" />
+              장소 등록
+            </Button>
           </div>
 
           {locations.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              등록된 장소가 없습니다. 위의 '새 장소 등록' 버튼을 클릭하여 장소를 추가하세요.
+              등록된 장소가 없습니다. 자주 사용하는 장소를 등록해주세요.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -134,36 +167,42 @@ const LocationManagement: React.FC = () => {
                     <TableHead>장소명</TableHead>
                     <TableHead>별칭</TableHead>
                     <TableHead>카테고리</TableHead>
-                    <TableHead>유형</TableHead>
                     <TableHead>등록일</TableHead>
-                    <TableHead className="text-right">관리</TableHead>
+                    <TableHead className="text-center">관리</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {locations.map((location) => (
                     <TableRow key={location.id} className="hover:bg-gray-50">
                       <TableCell className="font-medium">{location.name}</TableCell>
-                      <TableCell>{location.alias || '-'}</TableCell>
-                      <TableCell>{getCategoryBadge(location.category)}</TableCell>
-                      <TableCell>{getTypeBadge(location.type)}</TableCell>
                       <TableCell>
+                        {location.alias ? (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                            {location.alias}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{getCategoryBadge(location.category)}</TableCell>
+                      <TableCell className="text-gray-500">
                         {format(new Date(location.createdAt), 'yyyy-MM-dd', { locale: ko })}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                      <TableCell>
+                        <div className="flex justify-center gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEditClick(location)}
-                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => handleEdit(location)}
+                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteLocation(location.id)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDelete(location.id)}
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -177,6 +216,74 @@ const LocationManagement: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* 장소 등록/수정 다이얼로그 */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingLocation ? '장소 정보 수정' : '새 장소 등록'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">장소명 (필수)</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="예: 서울시청, 강남역"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="alias">별칭 (선택)</Label>
+              <Input
+                id="alias"
+                value={formData.alias}
+                onChange={(e) => setFormData({...formData, alias: e.target.value})}
+                placeholder="예: 본사, 지점A"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">카테고리</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value: 'company' | 'client' | 'personal' | 'other') => 
+                  setFormData({...formData, category: value})
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="company">회사</SelectItem>
+                  <SelectItem value="client">고객사</SelectItem>
+                  <SelectItem value="personal">개인</SelectItem>
+                  <SelectItem value="other">기타</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  resetForm();
+                }}
+              >
+                취소
+              </Button>
+              <Button type="submit">
+                {editingLocation ? '수정' : '등록'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
