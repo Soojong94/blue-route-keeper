@@ -1,640 +1,657 @@
-// src/components/TripList.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+// src/components/TripInput.tsx
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car } from 'lucide-react';
+import { CalendarIcon, Car, MapPin, Calculator, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { getTrips, getTripsByDateRange, getVehicles, deleteTrip, updateTrip } from '@/utils/storage';
-import { getPeriodStats } from '@/utils/calculations';
-import { Trip, Vehicle, PeriodStats } from '@/types/trip';
+import { saveTrip, getVehicles, getLocations } from '@/utils/storage';
+import { calculateTotalAmount, getVehicleStats } from '@/utils/calculations';
+import { Trip, Vehicle, Location } from '@/types/trip';
 
-interface TripListProps {
-  refreshTrigger: number;
+interface TripRow {
+  id: string;
+  date: Date;
+  vehicleId: string;
+  departure: string;
+  destination: string;
+  unitPrice: string;
+  count: string;
+  driverName: string;
+  memo: string;
 }
 
-const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
-  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
-  const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
-  const [trips, setTrips] = useState<Trip[]>([]);
+interface TripInputProps {
+  onTripSaved: () => void;
+}
+
+const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
+  const [rows, setRows] = useState<TripRow[]>([createNewRow()]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedVehicle, setSelectedVehicle] = useState<string>('all');
-  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [recentData, setRecentData] = useState<{
+    departures: string[];
+    destinations: string[];
+    drivers: string[];
+  }>({ departures: [], destinations: [], drivers: [] });
 
   const { toast } = useToast();
 
+  function createNewRow(): TripRow {
+    return {
+      id: crypto.randomUUID(),
+      date: new Date(),
+      vehicleId: '',
+      departure: '',
+      destination: '',
+      unitPrice: '',
+      count: '1',
+      driverName: '',
+      memo: '',
+    };
+  }
+
   useEffect(() => {
-    loadTrips();
     setVehicles(getVehicles());
-  }, [startDate, endDate, refreshTrigger]);
+    setLocations(getLocations());
 
-  useEffect(() => {
-    applyFilters();
-  }, [trips, searchQuery, selectedVehicle]);
-
-  const loadTrips = () => {
-    const loadedTrips = getTripsByDateRange(startDate, endDate);
-    setTrips(loadedTrips);
-  };
-
-  const applyFilters = () => {
-    let filtered = [...trips];
-
-    // 차량 필터
-    if (selectedVehicle !== 'all') {
-      filtered = filtered.filter(trip => trip.vehicleId === selectedVehicle);
-    }
-
-    // 검색 필터
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(trip =>
-        trip.departure.toLowerCase().includes(query) ||
-        trip.destination.toLowerCase().includes(query) ||
-        (trip.driverName && trip.driverName.toLowerCase().includes(query)) ||
-        (trip.memo && trip.memo.toLowerCase().includes(query))
-      );
-    }
-
-    setFilteredTrips(filtered);
-  };
-
-  const handleEdit = (trip: Trip) => {
-    setEditingTrip({ ...trip });
-    setIsEditDialogOpen(true);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingTrip) return;
-
+    // 최근 데이터 로드
     try {
-      const updated = updateTrip(editingTrip.id, {
-        date: editingTrip.date,
-        departure: editingTrip.departure,
-        destination: editingTrip.destination,
-        unitPrice: editingTrip.unitPrice,
-        count: editingTrip.count,
-        vehicleId: editingTrip.vehicleId,
-        driverName: editingTrip.driverName,
-        memo: editingTrip.memo,
-      });
+      const trips = JSON.parse(localStorage.getItem('car-trips') || '[]');
+      const departures = [...new Set(trips.map((t: any) => t.departure).filter(Boolean))].slice(0, 10);
+      const destinations = [...new Set(trips.map((t: any) => t.destination).filter(Boolean))].slice(0, 10);
+      const drivers = [...new Set(trips.map((t: any) => t.driverName).filter(Boolean))].slice(0, 10);
 
-      if (updated) {
-        toast({
-          title: "수정 완료",
-          description: "운행 기록이 수정되었습니다.",
-        });
-        setIsEditDialogOpen(false);
-        loadTrips();
-      }
+      setRecentData({
+        departures: departures as string[],
+        destinations: destinations as string[],
+        drivers: drivers as string[]
+      });
     } catch (error) {
+      console.error('Error loading recent data:', error);
+      setRecentData({ departures: [], destinations: [], drivers: [] });
+    }
+  }, []);
+
+  const addRow = () => {
+    setRows([...rows, createNewRow()]);
+  };
+
+  const removeRow = (id: string) => {
+    if (rows.length > 1) {
+      setRows(rows.filter(row => row.id !== id));
+    }
+  };
+
+  const updateRow = (id: string, field: keyof TripRow, value: any) => {
+    setRows(rows.map(row =>
+      row.id === id ? { ...row, [field]: value } : row
+    ));
+  };
+
+  const handleVehicleSelect = (rowId: string, vehicleId: string) => {
+    updateRow(rowId, 'vehicleId', vehicleId);
+
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (vehicle?.defaultUnitPrice) {
+      updateRow(rowId, 'unitPrice', vehicle.defaultUnitPrice.toString());
+    }
+  };
+
+  const saveAllRows = async () => {
+    let savedCount = 0;
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      // 빈 행 건너뛰기
+      if (!row.departure && !row.destination && !row.unitPrice) {
+        continue;
+      }
+
+      // 필수 필드 검증
+      if (!row.date || !row.vehicleId || !row.departure || !row.destination || !row.unitPrice || !row.count) {
+        errors.push(`${row.departure || '미입력'} → ${row.destination || '미입력'}: 필수 정보가 누락되었습니다.`);
+        continue;
+      }
+
+      const unitPrice = parseFloat(row.unitPrice);
+      const count = parseInt(row.count);
+
+      if (isNaN(unitPrice) || unitPrice < 0) {
+        errors.push(`${row.departure} → ${row.destination}: 올바른 단가를 입력해주세요.`);
+        continue;
+      }
+
+      if (isNaN(count) || count < 1) {
+        errors.push(`${row.departure} → ${row.destination}: 횟수는 1 이상이어야 합니다.`);
+        continue;
+      }
+
+      try {
+        saveTrip({
+          date: format(row.date, 'yyyy-MM-dd'),
+          departure: row.departure,
+          destination: row.destination,
+          unitPrice: unitPrice,
+          count: count,
+          vehicleId: row.vehicleId,
+          ...(row.driverName && { driverName: row.driverName }),
+          ...(row.memo && { memo: row.memo }),
+        });
+        savedCount++;
+      } catch (error) {
+        errors.push(`${row.departure} → ${row.destination}: 저장 중 오류가 발생했습니다.`);
+      }
+    }
+
+    if (errors.length > 0) {
       toast({
-        title: "수정 실패",
-        description: "운행 기록 수정 중 오류가 발생했습니다.",
+        title: "일부 저장 실패",
+        description: `${savedCount}건 저장 완료, ${errors.length}건 실패\n${errors[0]}`,
         variant: "destructive",
       });
+    } else if (savedCount > 0) {
+      toast({
+        title: "저장 완료",
+        description: `${savedCount}건의 운행 기록이 저장되었습니다.`,
+      });
+
+      // 폼 초기화
+      setRows([createNewRow()]);
+      onTripSaved();
+    } else {
+      toast({
+        title: "저장할 데이터 없음",
+        description: "입력된 운행 기록이 없습니다.",
+      });
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('정말로 이 운행 기록을 삭제하시겠습니까?')) {
-      try {
-        deleteTrip(id);
-        toast({
-          title: "삭제 완료",
-          description: "운행 기록이 삭제되었습니다.",
-        });
-        loadTrips();
-      } catch (error) {
-        toast({
-          title: "삭제 실패",
-          description: "운행 기록 삭제 중 오류가 발생했습니다.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
-
-  const getVehicleName = (vehicleId: string) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
-    return vehicle ? `${vehicle.licensePlate} (${vehicle.name})` : '알 수 없음';
-  };
+  const totalAmount = rows.reduce((sum, row) => {
+    const unitPrice = parseFloat(row.unitPrice) || 0;
+    const count = parseInt(row.count) || 0;
+    return sum + (unitPrice * count);
+  }, 0);
 
   return (
-    <div className="space-y-6">
-      {/* 필터 및 통계 카드 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            운행 기록 조회 및 통계
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* 필터 컨트롤 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 시작일 */}
-            <div className="space-y-2">
-              <Label>시작일</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "yyyy-MM-dd") : "시작일"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => date && setStartDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* 종료일 */}
-            <div className="space-y-2">
-              <Label>종료일</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "yyyy-MM-dd") : "종료일"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={(date) => date && setEndDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* 차량 필터 */}
-            <div className="space-y-2">
-              <Label>차량</Label>
-              <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
-                <SelectTrigger>
-                  <SelectValue placeholder="전체 차량" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체 차량</SelectItem>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.licensePlate} ({vehicle.name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 검색 */}
-            <div className="space-y-2">
-              <Label>검색</Label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="출발지, 목적지, 운전자, 메모 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
+    <Card className="w-full">
+      <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+        <CardTitle className="flex items-center gap-2">
+          <Car className="h-5 w-5" />
+          운행 기록 입력
+        </CardTitle>
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="bg-white/20 rounded-lg p-3 text-center">
+            <div className="text-sm opacity-90">총 건수</div>
+            <div className="text-xl font-bold">
+              {rows.reduce((sum, row) => sum + (parseInt(row.count) || 0), 0)}건
             </div>
           </div>
-
-          {/* 통계 요약 */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-blue-600">총 운행</p>
-                  <p className="text-xl lg:text-2xl font-bold text-blue-800">{stats.totalTrips}회</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm text-green-600">총 금액</p>
-                  <p className="text-xl lg:text-2xl font-bold text-green-800">
-                    {stats.totalAmount.toLocaleString()}원
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-              <div className="flex items-center gap-2">
-                <Car className="h-5 w-5 text-purple-600" />
-                <div>
-                  <p className="text-sm text-purple-600">평균 금액</p>
-                  <p className="text-xl lg:text-2xl font-bold text-purple-800">
-                    {stats.totalTrips > 0
-                      ? Math.round(stats.totalAmount / stats.totalTrips).toLocaleString()
-                      : 0}원
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-amber-600" />
-                <div>
-                  <p className="text-sm text-amber-600">고유 경로</p>
-                  <p className="text-xl lg:text-2xl font-bold text-amber-800">{stats.uniqueRoutes}개</p>
-                </div>
-              </div>
+          <div className="bg-white/20 rounded-lg p-3 text-center">
+            <div className="text-sm opacity-90">총 금액</div>
+            <div className="text-xl font-bold">
+              {totalAmount.toLocaleString()}원
             </div>
           </div>
+        </div>
+      </CardHeader>
 
-          {/* 상위 경로 */}
-          {stats.topRoutes.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3">상위 운행 경로 (금액순)</h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {stats.topRoutes.slice(0, 4).map((route, index) => (
-                  <div key={`${route.departure}-${route.destination}`}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">{route.departure}</Badge>
-                          <ArrowRight className="h-3 w-3" />
-                          <Badge variant="outline" className="text-xs">{route.destination}</Badge>
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {route.totalCount}회 운행
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-sm lg:text-base">{route.totalAmount.toLocaleString()}원</div>
-                      <div className="text-xs text-gray-600">
-                        평균 {Math.round(route.totalAmount / route.totalCount).toLocaleString()}원
-                      </div>
-                    </div>
-                  </div>
+      // src/components/TripInput.tsx 의 테이블 부분만 수정
+
+      <CardContent className="p-0">
+        {/* 데스크톱 테이블 뷰 - lg부터 표시하도록 변경 */}
+        <div className="hidden lg:block overflow-x-auto">
+          <div className="min-w-full">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[110px]">날짜</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[160px]">차량</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[120px]">출발지</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[120px]">목적지</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[110px]">단가</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[70px]">횟수</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[100px]">총액</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[100px]">운전자</th>
+                  <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[100px]">메모</th>
+                  <th className="px-3 py-3 text-center text-sm font-medium text-gray-700 w-[80px]">삭제</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <DesktopTripRow
+                    key={row.id}
+                    row={row}
+                    index={index + 1}
+                    vehicles={vehicles}
+                    locations={locations}
+                    recentData={recentData}
+                    onUpdate={updateRow}
+                    onRemove={removeRow}
+                    onVehicleSelect={handleVehicleSelect}
+                  />
                 ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-      {/* 운행 기록 테이블 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>운행 기록 목록 ({filteredTrips.length}건)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredTrips.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              조건에 맞는 운행 기록이 없습니다.
-            </div>
-          ) : (
-            <>
-              {/* 데스크톱 테이블 */}
-              <div className="hidden lg:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>운행일</TableHead>
-                      <TableHead>차량</TableHead>
-                      <TableHead>경로</TableHead>
-                      <TableHead className="text-center">횟수</TableHead>
-                      <TableHead className="text-right">단가</TableHead>
-                      <TableHead className="text-right">총액</TableHead>
-                      <TableHead>운전자</TableHead>
-                      <TableHead>저장일시</TableHead>
-                      <TableHead className="text-center">관리</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTrips.map((trip) => (
-                      <TableRow key={trip.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">
-                          {format(new Date(trip.date), 'MM/dd', { locale: ko })}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="font-medium">{getVehicleName(trip.vehicleId)}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                              {trip.departure}
-                            </Badge>
-                            <ArrowRight className="h-4 w-4 text-gray-400" />
-                            <Badge variant="outline" className="bg-green-50 text-green-700">
-                              {trip.destination}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center font-medium">
-                          {trip.count}회
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {trip.unitPrice.toLocaleString()}원
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-blue-600">
-                          {trip.totalAmount.toLocaleString()}원
-                        </TableCell>
-                        <TableCell>
-                          {trip.driverName ? (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                              {trip.driverName}
-                            </Badge>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
-                          {trip.updatedAt && (
-                            <div className="text-xs text-blue-500">
-                              (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(trip)}
-                              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(trip.id)}
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+        {/* 태블릿/모바일 카드 뷰 - lg 미만에서 표시 */}
+        <div className="lg:hidden space-y-4 p-4">
+          {rows.map((row, index) => (
+            <MobileTripCard
+              key={row.id}
+              row={row}
+              index={index + 1}
+              vehicles={vehicles}
+              locations={locations}
+              recentData={recentData}
+              onUpdate={updateRow}
+              onRemove={removeRow}
+              onVehicleSelect={handleVehicleSelect}
+            />
+          ))}
+        </div>
 
-              {/* 모바일 카드 뷰 */}
-              <div className="lg:hidden space-y-4">
-                {filteredTrips.map((trip) => (
-                  <Card key={trip.id} className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="space-y-1">
-                        <div className="font-medium text-sm">
-                          {format(new Date(trip.date), 'MM/dd', { locale: ko })} |
-                          <span className="text-blue-600 ml-1">{getVehicleName(trip.vehicleId)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                            {trip.departure}
-                          </Badge>
-                          <ArrowRight className="h-3 w-3 text-gray-400" />
-                          <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
-                            {trip.destination}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(trip)}
-                          className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(trip.id)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">횟수:</span>
-                        <span className="font-medium ml-1">{trip.count}회</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">단가:</span>
-                        <span className="font-medium ml-1">{trip.unitPrice.toLocaleString()}원</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 p-2 bg-blue-50 rounded flex justify-between items-center">
-                      <span className="text-sm text-blue-600">총액</span>
-                      <span className="font-bold text-blue-800">{trip.totalAmount.toLocaleString()}원</span>
-                    </div>
-
-                    {(trip.driverName || trip.memo) && (
-                      <div className="mt-3 space-y-1 text-sm">
-                        {trip.driverName && (
-                          <div>
-                            <span className="text-gray-500">운전자:</span>
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 ml-2">
-                              {trip.driverName}
-                            </Badge>
-                          </div>
-                        )}
-                        {trip.memo && (
-                          <div>
-                            <span className="text-gray-500">메모:</span>
-                            <span className="ml-1">{trip.memo}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="mt-3 text-xs text-gray-500">
-                      저장: {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
-                      {trip.updatedAt && (
-                        <span className="text-blue-500 ml-2">
-                          (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
-                        </span>
-                      )}
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 수정 다이얼로그 */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>운행 기록 수정</DialogTitle>
-          </DialogHeader>
-          {editingTrip && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>날짜</Label>
-                  <Input
-                    type="date"
-                    value={editingTrip.date}
-                    onChange={(e) => setEditingTrip({ ...editingTrip, date: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>차량</Label>
-                  <Select
-                    value={editingTrip.vehicleId}
-                    onValueChange={(value) => setEditingTrip({ ...editingTrip, vehicleId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vehicles.map((vehicle) => (
-                        <SelectItem key={vehicle.id} value={vehicle.id}>
-                          {vehicle.licensePlate} ({vehicle.name})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>출발지</Label>
-                  <Input
-                    value={editingTrip.departure}
-                    onChange={(e) => setEditingTrip({ ...editingTrip, departure: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>목적지</Label>
-                  <Input
-                    value={editingTrip.destination}
-                    onChange={(e) => setEditingTrip({ ...editingTrip, destination: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>단가</Label>
-                  <Input
-                    type="number"
-                    value={editingTrip.unitPrice}
-                    onChange={(e) => setEditingTrip({
-                      ...editingTrip,
-                      unitPrice: parseInt(e.target.value) || 0
-                    })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>횟수</Label>
-                  <Input
-                    type="number"
-                    value={editingTrip.count}
-                    onChange={(e) => setEditingTrip({
-                      ...editingTrip,
-                      count: parseInt(e.target.value) || 1
-                    })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>총액</Label>
-                  <div className="px-3 py-2 bg-blue-50 rounded border font-semibold text-blue-800 text-sm">
-                    {(editingTrip.unitPrice * editingTrip.count).toLocaleString()}원
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>운전자 (선택)</Label>
-                <Input
-                  value={editingTrip.driverName || ''}
-                  onChange={(e) => setEditingTrip({ ...editingTrip, driverName: e.target.value })}
-                  placeholder="운전자명"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>메모 (선택)</Label>
-                <Input
-                  value={editingTrip.memo || ''}
-                  onChange={(e) => setEditingTrip({ ...editingTrip, memo: e.target.value })}
-                  placeholder="메모"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditDialogOpen(false)}
-                  className="w-full sm:w-auto"
-                >
-                  취소
-                </Button>
-                <Button onClick={handleSaveEdit} className="w-full sm:w-auto">
-                  저장
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+        <div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between gap-4">
+          <Button variant="outline" onClick={addRow} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            행 추가
+          </Button>
+          <Button onClick={saveAllRows} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+            <Calculator className="mr-2 h-4 w-4" />
+            일괄 저장
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
-export default TripList;
+interface TripRowProps {
+  row: TripRow;
+  index: number; // 추가: 순번 표시용
+  vehicles: Vehicle[];
+  locations: Location[];
+  recentData: {
+    departures: string[];
+    destinations: string[];
+    drivers: string[];
+  };
+  onUpdate: (id: string, field: keyof TripRow, value: any) => void;
+  onRemove: (id: string) => void;
+  onVehicleSelect: (rowId: string, vehicleId: string) => void;
+}
+
+const DesktopTripRow: React.FC<TripRowProps> = ({
+  row,
+  index,
+  vehicles,
+  locations,
+  recentData,
+  onUpdate,
+  onRemove,
+  onVehicleSelect
+}) => {
+  const totalAmount = useMemo(() => {
+    const unitPrice = parseFloat(row.unitPrice) || 0;
+    const count = parseInt(row.count) || 0;
+    return unitPrice * count;
+  }, [row.unitPrice, row.count]);
+
+  return (
+    <tr className="border-b hover:bg-gray-50">
+      {/* 날짜 */}
+      <td className="px-3 py-3">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal text-xs h-8",
+                !row.date && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-1 h-3 w-3" />
+              {row.date ? format(row.date, "MM/dd") : "날짜"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={row.date}
+              onSelect={(date) => date && onUpdate(row.id, 'date', date)}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </td>
+
+      {/* 차량 */}
+      <td className="px-3 py-3">
+        <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
+          <SelectTrigger className="text-xs h-8">
+            <SelectValue placeholder="차량 선택" />
+          </SelectTrigger>
+          <SelectContent>
+            {vehicles.map((vehicle) => (
+              <SelectItem key={vehicle.id} value={vehicle.id}>
+                <div className="flex flex-col">
+                  <span className="font-medium text-xs">{vehicle.licensePlate}</span>
+                  <span className="text-xs text-gray-500">{vehicle.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+
+      {/* 출발지 */}
+      <td className="px-3 py-3">
+        <Input
+          value={row.departure}
+          onChange={(e) => onUpdate(row.id, 'departure', e.target.value)}
+          placeholder="출발지"
+          className="text-xs h-8"
+          list={`departures-${row.id}`}
+        />
+        <datalist id={`departures-${row.id}`}>
+          {locations.map((loc) => (
+            <option key={loc.id} value={loc.name} />
+          ))}
+          {recentData.departures.map((dep, idx) => (
+            <option key={`recent-${idx}`} value={dep} />
+          ))}
+        </datalist>
+      </td>
+
+      {/* 목적지 */}
+      <td className="px-3 py-3">
+        <Input
+          value={row.destination}
+          onChange={(e) => onUpdate(row.id, 'destination', e.target.value)}
+          placeholder="목적지"
+          className="text-xs h-8"
+          list={`destinations-${row.id}`}
+        />
+        <datalist id={`destinations-${row.id}`}>
+          {locations.map((loc) => (
+            <option key={loc.id} value={loc.name} />
+          ))}
+          {recentData.destinations.map((dest, idx) => (
+            <option key={`recent-${idx}`} value={dest} />
+          ))}
+        </datalist>
+      </td>
+
+      {/* 단가 */}
+      <td className="px-3 py-3">
+        <Input
+          type="number"
+          value={row.unitPrice}
+          onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
+          placeholder="단가"
+          className="text-xs h-8"
+          min="0"
+          step="1000"
+        />
+      </td>
+
+      {/* 횟수 */}
+      <td className="px-3 py-3">
+        <Input
+          type="number"
+          value={row.count}
+          onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
+          placeholder="횟수"
+          className="text-xs h-8"
+          min="1"
+        />
+      </td>
+
+      {/* 총액 */}
+      <td className="px-3 py-3">
+        <div className="font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded text-center text-xs">
+          {totalAmount.toLocaleString()}원
+        </div>
+      </td>
+
+      {/* 운전자 */}
+      <td className="px-3 py-3">
+        <Input
+          value={row.driverName}
+          onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
+          placeholder="운전자"
+          className="text-xs h-8"
+          list={`drivers-${row.id}`}
+        />
+        <datalist id={`drivers-${row.id}`}>
+          {recentData.drivers.map((driver, idx) => (
+            <option key={idx} value={driver} />
+          ))}
+        </datalist>
+      </td>
+
+      {/* 메모 */}
+      <td className="px-3 py-3">
+        <Input
+          value={row.memo}
+          onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
+          placeholder="메모"
+          className="text-xs h-8"
+        />
+      </td>
+
+      {/* 삭제 */}
+      <td className="px-3 py-3">
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onRemove(row.id)}
+            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-14 text-xs border-red-200"
+          >
+            삭제
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+// 모바일용 카드 컴포넌트 - 랜덤 ID 대신 순번 표시
+const MobileTripCard: React.FC<TripRowProps> = ({
+  row,
+  index,
+  vehicles,
+  locations,
+  recentData,
+  onUpdate,
+  onRemove,
+  onVehicleSelect
+}) => {
+  const totalAmount = useMemo(() => {
+    const unitPrice = parseFloat(row.unitPrice) || 0;
+    const count = parseInt(row.count) || 0;
+    return unitPrice * count;
+  }, [row.unitPrice, row.count]);
+
+  return (
+    <Card className="p-4 space-y-4">
+      <div className="flex justify-between items-center">
+        <Badge variant="outline" className="bg-blue-50 text-blue-700">
+          운행 #{index}
+        </Badge>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(row.id)}
+          className="text-red-500 hover:text-red-700 h-8 w-8 p-0"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* 날짜 */}
+        <div className="space-y-2">
+          <Label className="text-sm">날짜</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !row.date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {row.date ? format(row.date, "MM/dd") : "날짜"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={row.date}
+                onSelect={(date) => date && onUpdate(row.id, 'date', date)}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* 차량 */}
+        <div className="space-y-2">
+          <Label className="text-sm">차량</Label>
+          <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="차량 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              {vehicles.map((vehicle) => (
+                <SelectItem key={vehicle.id} value={vehicle.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{vehicle.licensePlate}</span>
+                    <span className="text-sm text-gray-500">{vehicle.name}</span>
+                    {vehicle.defaultUnitPrice && (
+                      <span className="text-xs text-blue-600">
+                        기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
+                      </span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 출발지 */}
+        <div className="space-y-2">
+          <Label className="text-sm">출발지</Label>
+          <Input
+            value={row.departure}
+            onChange={(e) => onUpdate(row.id, 'departure', e.target.value)}
+            placeholder="출발지"
+            list={`departures-${row.id}`}
+          />
+          <datalist id={`departures-${row.id}`}>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.name} />
+            ))}
+            {recentData.departures.map((dep, idx) => (
+              <option key={`recent-${idx}`} value={dep} />
+            ))}
+          </datalist>
+        </div>
+
+        {/* 목적지 */}
+        <div className="space-y-2">
+          <Label className="text-sm">목적지</Label>
+          <Input
+            value={row.destination}
+            onChange={(e) => onUpdate(row.id, 'destination', e.target.value)}
+            placeholder="목적지"
+            list={`destinations-${row.id}`}
+          />
+          <datalist id={`destinations-${row.id}`}>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.name} />
+            ))}
+            {recentData.destinations.map((dest, idx) => (
+              <option key={`recent-${idx}`} value={dest} />
+            ))}
+          </datalist>
+        </div>
+
+        {/* 단가 */}
+        <div className="space-y-2">
+          <Label className="text-sm">단가</Label>
+          <Input
+            type="number"
+            value={row.unitPrice}
+            onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
+            placeholder="단가"
+            min="0"
+          />
+        </div>
+
+        {/* 횟수 */}
+        <div className="space-y-2">
+          <Label className="text-sm">횟수</Label>
+          <Input
+            type="number"
+            value={row.count}
+            onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
+            placeholder="횟수"
+            min="1"
+          />
+        </div>
+      </div>
+
+      {/* 총액 */}
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <div className="text-sm text-blue-600 mb-1">총액</div>
+        <div className="text-xl font-bold text-blue-800">
+          {totalAmount.toLocaleString()}원
+        </div>
+      </div>
+
+      {/* 운전자 */}
+      <div className="space-y-2">
+        <Label className="text-sm">운전자 (선택)</Label>
+        <Input
+          value={row.driverName}
+          onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
+          placeholder="운전자명"
+          list={`drivers-${row.id}`}
+        />
+        <datalist id={`drivers-${row.id}`}>
+          {recentData.drivers.map((driver, idx) => (
+            <option key={idx} value={driver} />
+          ))}
+        </datalist>
+      </div>
+
+      {/* 메모 */}
+      <div className="space-y-2">
+        <Label className="text-sm">메모 (선택)</Label>
+        <Input
+          value={row.memo}
+          onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
+          placeholder="메모"
+        />
+      </div>
+    </Card>
+  );
+};
+
+export default TripInput;
