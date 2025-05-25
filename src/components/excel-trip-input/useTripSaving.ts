@@ -1,6 +1,7 @@
 
 import { useToast } from '@/hooks/use-toast';
 import { saveTrip } from '@/utils/tripStorage';
+import { getVehicleById } from '@/utils/vehicleStorage';
 import { TripRow } from './TripRowData';
 
 export const useTripSaving = (onTripSaved: () => void, resetRows: () => void) => {
@@ -13,22 +14,26 @@ export const useTripSaving = (onTripSaved: () => void, resetRows: () => void) =>
     // Validate and save each row
     rows.forEach(row => {
       // Skip empty rows (no essential data)
-      if (!row.driverName && !row.departure && !row.destination && !row.amount) {
+      if (!row.departure && !row.destination && !row.amount) {
         return;
       }
       
       // Validate required fields
-      if (!row.date || !row.driverName || !row.vehicleId || !row.departure || 
-          !row.destination || !row.amount || !row.startTime || !row.endTime) {
+      if (!row.date || !row.vehicleId || !row.departure || 
+          !row.destination || !row.amount) {
         hasErrors = true;
         return;
       }
       
-      // Validate time
-      if (row.startTime >= row.endTime) {
+      // Get vehicle information
+      const vehicle = getVehicleById(row.vehicleId);
+      if (!vehicle) {
         hasErrors = true;
         return;
       }
+      
+      // Get driver name from vehicle (use mainDriver or first driver)
+      const driverName = vehicle.mainDriver || (vehicle.drivers && vehicle.drivers[0]) || '운전자 미지정';
       
       // Validate amount
       const amountNumber = parseFloat(row.amount);
@@ -41,13 +46,13 @@ export const useTripSaving = (onTripSaved: () => void, resetRows: () => void) =>
       try {
         saveTrip({
           date: row.date,
-          startTime: row.startTime,
-          endTime: row.endTime,
+          startTime: '09:00', // 기본값
+          endTime: '18:00', // 기본값
           departure: row.departure,
           destination: row.destination,
           amount: parseInt(row.amount),
           vehicleId: row.vehicleId,
-          driverName: row.driverName,
+          driverName: driverName,
           purpose: row.purpose
         });
         savedCount++;
