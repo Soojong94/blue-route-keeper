@@ -25,7 +25,6 @@ export interface Vehicle {
 export interface Location {
   id: string;
   name: string;                   // 장소명
-  alias?: string;                 // 별칭
   category: 'company' | 'client' | 'personal' | 'other';
   createdAt: string;
 }

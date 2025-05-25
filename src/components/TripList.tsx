@@ -147,7 +147,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* 필터 컨트롤 */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* 시작일 */}
             <div className="space-y-2">
               <Label>시작일</Label>
@@ -236,13 +236,13 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           </div>
 
           {/* 통계 요약 */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-blue-600" />
                 <div>
                   <p className="text-sm text-blue-600">총 운행</p>
-                  <p className="text-2xl font-bold text-blue-800">{stats.totalTrips}회</p>
+                  <p className="text-xl lg:text-2xl font-bold text-blue-800">{stats.totalTrips}회</p>
                 </div>
               </div>
             </div>
@@ -252,7 +252,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 <BarChart3 className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="text-sm text-green-600">총 금액</p>
-                  <p className="text-2xl font-bold text-green-800">
+                  <p className="text-xl lg:text-2xl font-bold text-green-800">
                     {stats.totalAmount.toLocaleString()}원
                   </p>
                 </div>
@@ -264,7 +264,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 <Car className="h-5 w-5 text-purple-600" />
                 <div>
                   <p className="text-sm text-purple-600">평균 금액</p>
-                  <p className="text-2xl font-bold text-purple-800">
+                  <p className="text-xl lg:text-2xl font-bold text-purple-800">
                     {stats.totalTrips > 0
                       ? Math.round(stats.totalAmount / stats.totalTrips).toLocaleString()
                       : 0}원
@@ -278,7 +278,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 <MapPin className="h-5 w-5 text-amber-600" />
                 <div>
                   <p className="text-sm text-amber-600">고유 경로</p>
-                  <p className="text-2xl font-bold text-amber-800">{stats.uniqueRoutes}개</p>
+                  <p className="text-xl lg:text-2xl font-bold text-amber-800">{stats.uniqueRoutes}개</p>
                 </div>
               </div>
             </div>
@@ -298,9 +298,9 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                       </span>
                       <div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline">{route.departure}</Badge>
-                          <ArrowRight className="h-4 w-4" />
-                          <Badge variant="outline">{route.destination}</Badge>
+                          <Badge variant="outline" className="text-xs">{route.departure}</Badge>
+                          <ArrowRight className="h-3 w-3" />
+                          <Badge variant="outline" className="text-xs">{route.destination}</Badge>
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
                           {route.totalCount}회 운행
@@ -308,8 +308,8 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold">{route.totalAmount.toLocaleString()}원</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="font-semibold text-sm lg:text-base">{route.totalAmount.toLocaleString()}원</div>
+                      <div className="text-xs text-gray-600">
                         평균 {Math.round(route.totalAmount / route.totalCount).toLocaleString()}원
                       </div>
                     </div>
@@ -332,107 +332,197 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
               조건에 맞는 운행 기록이 없습니다.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>운행일</TableHead>
-                    <TableHead>차량</TableHead>
-                    <TableHead>경로</TableHead>
-                    <TableHead className="text-center">횟수</TableHead>
-                    <TableHead className="text-right">단가</TableHead>
-                    <TableHead className="text-right">총액</TableHead>
-                    <TableHead>운전자</TableHead>
-                    <TableHead>저장일시</TableHead>
-                    <TableHead className="text-center">관리</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTrips.map((trip) => (
-                    <TableRow key={trip.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        {format(new Date(trip.date), 'MM/dd', { locale: ko })}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="font-medium">{getVehicleName(trip.vehicleId)}</div>
+            <>
+              {/* 데스크톱 테이블 */}
+              <div className="hidden lg:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>운행일</TableHead>
+                      <TableHead>차량</TableHead>
+                      <TableHead>경로</TableHead>
+                      <TableHead className="text-center">횟수</TableHead>
+                      <TableHead className="text-right">단가</TableHead>
+                      <TableHead className="text-right">총액</TableHead>
+                      <TableHead>운전자</TableHead>
+                      <TableHead>저장일시</TableHead>
+                      <TableHead className="text-center">관리</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTrips.map((trip) => (
+                      <TableRow key={trip.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">
+                          {format(new Date(trip.date), 'MM/dd', { locale: ko })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="font-medium">{getVehicleName(trip.vehicleId)}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                              {trip.departure}
+                            </Badge>
+                            <ArrowRight className="h-4 w-4 text-gray-400" />
+                            <Badge variant="outline" className="bg-green-50 text-green-700">
+                              {trip.destination}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-medium">
+                          {trip.count}회
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {trip.unitPrice.toLocaleString()}원
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-blue-600">
+                          {trip.totalAmount.toLocaleString()}원
+                        </TableCell>
+                        <TableCell>
+                          {trip.driverName ? (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                              {trip.driverName}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
+                          {trip.updatedAt && (
+                            <div className="text-xs text-blue-500">
+                              (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(trip)}
+                              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(trip.id)}
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* 모바일 카드 뷰 */}
+              <div className="lg:hidden space-y-4">
+                {filteredTrips.map((trip) => (
+                  <Card key={trip.id} className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="space-y-1">
+                        <div className="font-medium text-sm">
+                          {format(new Date(trip.date), 'MM/dd', { locale: ko })} |
+                          <span className="text-blue-600 ml-1">{getVehicleName(trip.vehicleId)}</span>
                         </div>
-                      </TableCell>
-                      <TableCell>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
                             {trip.departure}
                           </Badge>
-                          <ArrowRight className="h-4 w-4 text-gray-400" />
-                          <Badge variant="outline" className="bg-green-50 text-green-700">
+                          <ArrowRight className="h-3 w-3 text-gray-400" />
+                          <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
                             {trip.destination}
                           </Badge>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-center font-medium">
-                        {trip.count}회
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {trip.unitPrice.toLocaleString()}원
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-blue-600">
-                        {trip.totalAmount.toLocaleString()}원
-                      </TableCell>
-                      <TableCell>
-                        {trip.driverName ? (
-                          <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                            {trip.driverName}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">
-                        {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
-                        {trip.updatedAt && (
-                          <div className="text-xs text-blue-500">
-                            (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(trip)}
+                          className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(trip.id)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">횟수:</span>
+                        <span className="font-medium ml-1">{trip.count}회</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">단가:</span>
+                        <span className="font-medium ml-1">{trip.unitPrice.toLocaleString()}원</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 p-2 bg-blue-50 rounded flex justify-between items-center">
+                      <span className="text-sm text-blue-600">총액</span>
+                      <span className="font-bold text-blue-800">{trip.totalAmount.toLocaleString()}원</span>
+                    </div>
+
+                    {(trip.driverName || trip.memo) && (
+                      <div className="mt-3 space-y-1 text-sm">
+                        {trip.driverName && (
+                          <div>
+                            <span className="text-gray-500">운전자:</span>
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 ml-2">
+                              {trip.driverName}
+                            </Badge>
                           </div>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(trip)}
-                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(trip.id)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                        {trip.memo && (
+                          <div>
+                            <span className="text-gray-500">메모:</span>
+                            <span className="ml-1">{trip.memo}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-3 text-xs text-gray-500">
+                      저장: {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
+                      {trip.updatedAt && (
+                        <span className="text-blue-500 ml-2">
+                          (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
+                        </span>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       {/* 수정 다이얼로그 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>운행 기록 수정</DialogTitle>
           </DialogHeader>
           {editingTrip && (
             <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>날짜</Label>
                   <Input
@@ -461,7 +551,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>출발지</Label>
                   <Input
@@ -478,7 +568,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>단가</Label>
                   <Input
@@ -503,7 +593,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 </div>
                 <div className="space-y-2">
                   <Label>총액</Label>
-                  <div className="px-3 py-2 bg-blue-50 rounded border font-semibold text-blue-800">
+                  <div className="px-3 py-2 bg-blue-50 rounded border font-semibold text-blue-800 text-sm">
                     {(editingTrip.unitPrice * editingTrip.count).toLocaleString()}원
                   </div>
                 </div>
@@ -527,14 +617,15 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => setIsEditDialogOpen(false)}
+                  className="w-full sm:w-auto"
                 >
                   취소
                 </Button>
-                <Button onClick={handleSaveEdit}>
+                <Button onClick={handleSaveEdit} className="w-full sm:w-auto">
                   저장
                 </Button>
               </div>

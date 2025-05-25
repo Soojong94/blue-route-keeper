@@ -21,7 +21,6 @@ const LocationManagement: React.FC = () => {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    alias: '',
     category: 'company' as 'company' | 'client' | 'personal' | 'other',
   });
 
@@ -50,7 +49,6 @@ const LocationManagement: React.FC = () => {
     try {
       const locationData = {
         name: formData.name,
-        alias: formData.alias || undefined,
         category: formData.category,
       };
 
@@ -84,7 +82,6 @@ const LocationManagement: React.FC = () => {
     setEditingLocation(location);
     setFormData({
       name: location.name,
-      alias: location.alias || '',
       category: location.category,
     });
     setIsDialogOpen(true);
@@ -112,7 +109,6 @@ const LocationManagement: React.FC = () => {
   const resetForm = () => {
     setFormData({
       name: '',
-      alias: '',
       category: 'company',
     });
     setEditingLocation(null);
@@ -160,59 +156,89 @@ const LocationManagement: React.FC = () => {
               등록된 장소가 없습니다. 자주 사용하는 장소를 등록해주세요.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>장소명</TableHead>
-                    <TableHead>별칭</TableHead>
-                    <TableHead>카테고리</TableHead>
-                    <TableHead>등록일</TableHead>
-                    <TableHead className="text-center">관리</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {locations.map((location) => (
-                    <TableRow key={location.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">{location.name}</TableCell>
-                      <TableCell>
-                        {location.alias ? (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                            {location.alias}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{getCategoryBadge(location.category)}</TableCell>
-                      <TableCell className="text-gray-500">
-                        {format(new Date(location.createdAt), 'yyyy-MM-dd', { locale: ko })}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(location)}
-                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(location.id)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            <>
+              {/* 데스크톱 테이블 */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>장소명</TableHead>
+                      <TableHead>카테고리</TableHead>
+                      <TableHead>등록일</TableHead>
+                      <TableHead className="text-center">관리</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {locations.map((location) => (
+                      <TableRow key={location.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">{location.name}</TableCell>
+                        <TableCell>{getCategoryBadge(location.category)}</TableCell>
+                        <TableCell className="text-gray-500">
+                          {format(new Date(location.createdAt), 'yyyy-MM-dd', { locale: ko })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(location)}
+                              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(location.id)}
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* 모바일 카드 뷰 */}
+              <div className="md:hidden space-y-4">
+                {locations.map((location) => (
+                  <Card key={location.id} className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-medium text-lg">{location.name}</h3>
+                        <div className="mt-2">
+                          {getCategoryBadge(location.category)}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(location)}
+                          className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(location.id)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      등록일: {format(new Date(location.createdAt), 'yyyy-MM-dd', { locale: ko })}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -231,18 +257,8 @@ const LocationManagement: React.FC = () => {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="예: 서울시청, 강남역"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="alias">별칭 (선택)</Label>
-              <Input
-                id="alias"
-                value={formData.alias}
-                onChange={(e) => setFormData({...formData, alias: e.target.value})}
-                placeholder="예: 본사, 지점A"
               />
             </div>
 
@@ -250,8 +266,8 @@ const LocationManagement: React.FC = () => {
               <Label htmlFor="category">카테고리</Label>
               <Select
                 value={formData.category}
-                onValueChange={(value: 'company' | 'client' | 'personal' | 'other') => 
-                  setFormData({...formData, category: value})
+                onValueChange={(value: 'company' | 'client' | 'personal' | 'other') =>
+                  setFormData({ ...formData, category: value })
                 }
               >
                 <SelectTrigger>
