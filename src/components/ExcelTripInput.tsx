@@ -21,7 +21,6 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved, onTabChang
     locations,
     departureLocations,
     destinationLocations,
-    recentDrivers,
     recentLocations,
     addNewRow,
     removeRow,
@@ -84,7 +83,6 @@ const ExcelTripInput: React.FC<ExcelTripInputProps> = ({ onTripSaved, onTabChang
           vehicles={vehicles}
           departureLocations={departureLocations}
           destinationLocations={destinationLocations}
-          recentDrivers={recentDrivers}
           recentLocations={recentLocations}
           onChange={handleChange}
           onRemove={removeRow}

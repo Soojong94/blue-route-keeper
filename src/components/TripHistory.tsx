@@ -14,8 +14,9 @@ import { ko } from 'date-fns/locale';
 import { CalendarIcon, BarChart3, MapPin, Clock, Trash2, Search, Edit, Car, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getTripsByDateRange, deleteTrip, updateTrip } from '@/utils/tripStorage';
-import { getVehicles } from '@/utils/vehicleStorage';
-import { Trip, Vehicle } from '@/types/trip';
+import { getVehicles, getLocations } from '@/utils/vehicleStorage';
+import { getLocations } from '@/utils/locationStorage';
+import { Trip, Vehicle, Location } from '@/types/trip';
 import { useToast } from '@/hooks/use-toast';
 
 interface TripHistoryProps {
@@ -44,9 +45,10 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
   const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [vehicleStats, setVehicleStats] = useState<VehicleStats[]>([]);
   const [filters, setFilters] = useState<FilterOptions>({
-    vehicleId: 'all', // Changed from empty string to 'all'
+    vehicleId: 'all',
     location: '',
     driverName: '',
     searchQuery: '',
@@ -59,6 +61,7 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
   useEffect(() => {
     loadTrips();
     loadVehicles();
+    loadLocations();
   }, [startDate, endDate, refreshTrigger]);
 
   useEffect(() => {
@@ -75,6 +78,21 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
 
   const loadVehicles = () => {
     setVehicles(getVehicles());
+  };
+
+  const loadLocations = () => {
+    setLocations(getLocations());
+  };
+
+  const getLocationDisplayName = (locationValue: string): string => {
+    // First try to find in registered locations by ID
+    const location = locations.find(loc => loc.id === locationValue);
+    if (location) {
+      return location.alias || location.name;
+    }
+    
+    // If not found in registered locations, return the original value (for direct input)
+    return locationValue;
   };
 
   const calculateVehicleStats = (trips: Trip[]) => {
@@ -113,7 +131,7 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
   const applyFilters = () => {
     let filtered = [...allTrips];
     
-    // Apply vehicle filter - updated to check for 'all' instead of empty string
+    // Apply vehicle filter
     if (filters.vehicleId !== 'all') {
       filtered = filtered.filter(trip => trip.vehicleId === filters.vehicleId);
     }
@@ -122,8 +140,11 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
     if (filters.location) {
       const locationQuery = filters.location.toLowerCase();
       filtered = filtered.filter(
-        trip => trip.departure.toLowerCase().includes(locationQuery) || 
-               trip.destination.toLowerCase().includes(locationQuery)
+        trip => {
+          const departureDisplay = getLocationDisplayName(trip.departure).toLowerCase();
+          const destinationDisplay = getLocationDisplayName(trip.destination).toLowerCase();
+          return departureDisplay.includes(locationQuery) || destinationDisplay.includes(locationQuery);
+        }
       );
     }
     
@@ -138,10 +159,14 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       filtered = filtered.filter(
-        trip => trip.destination.toLowerCase().includes(query) || 
-               trip.departure.toLowerCase().includes(query) ||
-               trip.driverName.toLowerCase().includes(query) ||
-               trip.purpose.toLowerCase().includes(query)
+        trip => {
+          const departureDisplay = getLocationDisplayName(trip.departure).toLowerCase();
+          const destinationDisplay = getLocationDisplayName(trip.destination).toLowerCase();
+          return destinationDisplay.includes(query) || 
+                 departureDisplay.includes(query) ||
+                 trip.driverName.toLowerCase().includes(query) ||
+                 trip.purpose.toLowerCase().includes(query);
+        }
       );
     }
     
@@ -463,12 +488,12 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          {trip.departure}
+                          {getLocationDisplayName(trip.departure)}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          {trip.destination}
+                          {getLocationDisplayName(trip.destination)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">
@@ -512,7 +537,6 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
           {editingTrip && (
             <form onSubmit={saveEditedTrip} className="space-y-4 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 차량 선택 */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-vehicle">차량</Label>
                   <Select 
@@ -532,7 +556,6 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
                   </Select>
                 </div>
                 
-                {/* 운전자 */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-driver">운전자</Label>
                   <Input
@@ -544,7 +567,6 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 출발지 */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-departure">출발지</Label>
                   <Input
@@ -554,7 +576,6 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
                   />
                 </div>
                 
-                {/* 목적지 */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-destination">목적지</Label>
                   <Input
@@ -566,7 +587,6 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 금액 */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-amount">금액</Label>
                   <Input
@@ -581,7 +601,6 @@ const TripHistory: React.FC<TripHistoryProps> = ({ refreshTrigger }) => {
                   />
                 </div>
                 
-                {/* 목적/메모 */}
                 <div className="space-y-2">
                   <Label htmlFor="edit-purpose">목적/메모</Label>
                   <Input
