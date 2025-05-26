@@ -18,7 +18,7 @@ const MigrationDialog: React.FC<MigrationDialogProps> = ({
   onOpenChange,
   onMigrationComplete,
 }) => {
-  const [ismigrating, setIsMigrating] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
   const [migrationComplete, setMigrationComplete] = useState(false);
   const [migrationResults, setMigrationResults] = useState<{
     trips: number;
@@ -83,7 +83,7 @@ const MigrationDialog: React.FC<MigrationDialogProps> = ({
                 이전 후 모든 데이터를 안전하게 보관하고 다른 기기에서도 접근할 수 있습니다.
               </div>
               
-              {isM완료igrating && (
+              {isMigrating && (
                 <div className="space-y-2">
                   <Progress value={50} className="w-full" />
                   <p className="text-sm text-center text-gray-600">
@@ -96,16 +96,16 @@ const MigrationDialog: React.FC<MigrationDialogProps> = ({
                 <Button
                   variant="outline"
                   onClick={handleSkip}
-                  disabled={isM완료igrating}
+                  disabled={isMigrating}
                 >
                   나중에
                 </Button>
                 <Button
                   onClick={handleMigration}
-                  disabled={isM완료igrating}
+                  disabled={isMigrating}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {isM완료igrating ? '이전 중...' : '지금 이전'}
+                  {isMigrating ? '이전 중...' : '지금 이전'}
                 </Button>
               </div>
             </>
