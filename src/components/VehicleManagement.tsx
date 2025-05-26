@@ -140,10 +140,11 @@ const VehicleManagement: React.FC = () => {
     setIsDialogOpen(true);
   };
 
+  // VehicleManagement.tsx에서 getVehicleStatsData 함수 수정
   const getVehicleStatsData = async (vehicleId: string) => {
     try {
-      const trips = await getTrips();
-      return getVehicleStats(vehicleId, trips);
+      const [trips, vehicles] = await Promise.all([getTrips(), getVehicles()]);
+      return getVehicleStats(vehicleId, trips, vehicles);
     } catch (error) {
       console.error('Error getting vehicle stats:', error);
       return null;

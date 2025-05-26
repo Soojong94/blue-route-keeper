@@ -1,7 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Trip, Vehicle, Location } from '@/types/trip';
-import { getTrips, getVehicles, getLocations } from './storage';
 
 // Supabase CRUD operations for trips
 export const saveSupabaseTrip = async (tripData: {
@@ -86,7 +84,7 @@ export const getSupabaseTripsByDateRange = async (startDate: Date, endDate: Date
     .from('trips')
     .select('*')
     .gte('date', startDateStr)
-    .lte('date', endDateStr)
+    .lte('date', endDateStr) // 이건 그대로 두고
     .order('date', { ascending: false });
 
   if (error) throw error;
@@ -313,87 +311,4 @@ export const deleteSupabaseLocation = async (id: string): Promise<void> => {
     .eq('id', id);
 
   if (error) throw error;
-};
-
-// Data migration functions
-export const migrateLocalStorageToSupabase = async (): Promise<{
-  trips: number;
-  vehicles: number;
-  locations: number;
-}> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('User not authenticated');
-
-  let migratedCounts = { trips: 0, vehicles: 0, locations: 0 };
-
-  try {
-    // Migrate vehicles first (since trips reference vehicles)
-    const localVehicles = getVehicles();
-    const vehicleIdMap: { [oldId: string]: string } = {};
-    
-    for (const vehicle of localVehicles) {
-      const { data, error } = await supabase
-        .from('vehicles')
-        .insert([{
-          user_id: user.id,
-          name: vehicle.name,
-          license_plate: vehicle.licensePlate,
-          default_unit_price: vehicle.defaultUnitPrice,
-        }])
-        .select()
-        .single();
-      
-      if (!error && data) {
-        vehicleIdMap[vehicle.id] = data.id;
-        migratedCounts.vehicles++;
-      }
-    }
-
-    // Migrate locations
-    const localLocations = getLocations();
-    for (const location of localLocations) {
-      const { error } = await supabase
-        .from('locations')
-        .insert([{
-          user_id: user.id,
-          name: location.name,
-          category: location.category,
-        }]);
-      
-      if (!error) {
-        migratedCounts.locations++;
-      }
-    }
-
-    // Migrate trips (update vehicle IDs)
-    const localTrips = getTrips();
-    for (const trip of localTrips) {
-      const newVehicleId = vehicleIdMap[trip.vehicleId];
-      if (newVehicleId) {
-        const { error } = await supabase
-          .from('trips')
-          .insert([{
-            user_id: user.id,
-            date: trip.date,
-            departure: trip.departure,
-            destination: trip.destination,
-            unit_price: trip.unitPrice,
-            count: trip.count,
-            total_amount: trip.totalAmount,
-            vehicle_id: newVehicleId,
-            driver_name: trip.driverName,
-            memo: trip.memo,
-          }]);
-        
-        if (!error) {
-          migratedCounts.trips++;
-        }
-      }
-    }
-
-    return migratedCounts;
-  } catch (error) {
-    console.error('Migration error:', error);
-    throw error;
-  }
 };

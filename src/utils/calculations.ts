@@ -5,8 +5,7 @@ export const calculateTotalAmount = (unitPrice: number, count: number): number =
   return unitPrice * count;
 };
 
-export const getVehicleStats = (vehicleId: string, trips: Trip[]): VehicleStats | null => {
-  const vehicles = JSON.parse(localStorage.getItem('car-vehicles') || '[]');
+export const getVehicleStats = (vehicleId: string, trips: Trip[], vehicles: Vehicle[]): VehicleStats | null => {
   const vehicle = vehicles.find((v: Vehicle) => v.id === vehicleId);
   
   if (!vehicle) return null;
