@@ -79,15 +79,29 @@ export const getSupabaseTrips = async (): Promise<Trip[]> => {
 export const getSupabaseTripsByDateRange = async (startDate: Date, endDate: Date): Promise<Trip[]> => {
   const startDateStr = startDate.toISOString().split('T')[0];
   const endDateStr = endDate.toISOString().split('T')[0];
+  
+  // 🔍 디버그 출력
+  console.log('쿼리 실행:', {
+    startDateStr,
+    endDateStr,
+    원본startDate: startDate,
+    원본endDate: endDate
+  });
 
   const { data, error } = await supabase
     .from('trips')
     .select('*')
     .gte('date', startDateStr)
-    .lte('date', endDateStr) // 이건 그대로 두고
+    .lte('date', endDateStr)
     .order('date', { ascending: false });
 
-  if (error) throw error;
+  // 🔍 쿼리 결과 디버그
+  console.log('Supabase 응답:', { data, error, 결과개수: data?.length });
+
+  if (error) {
+    console.error('Supabase 에러:', error);
+    throw error;
+  }
 
   return data.map(trip => ({
     id: trip.id,

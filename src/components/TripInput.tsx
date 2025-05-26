@@ -151,8 +151,16 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       }
 
       try {
+        // 🔍 디버그: 저장하는 날짜 확인
+        const dateToSave = row.date.toISOString().split('T')[0];
+        console.log('저장할 날짜:', {
+          선택한날짜: row.date,
+          저장될날짜: dateToSave,
+          기존방식: format(row.date, 'yyyy-MM-dd')
+        });
+
         await saveTrip({
-          date: format(row.date, 'yyyy-MM-dd'),
+          date: dateToSave,
           departure: row.departure,
           destination: row.destination,
           unitPrice: unitPrice,
