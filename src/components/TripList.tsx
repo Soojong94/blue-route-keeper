@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,8 +24,15 @@ interface TripListProps {
 }
 
 const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
-  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
-  const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
+  // 🔥 초기값도 로컬 자정으로 정확히 설정
+  const [startDate, setStartDate] = useState<Date>(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+  });
+  const [endDate, setEndDate] = useState<Date>(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+  });
   const [trips, setTrips] = useState<Trip[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
@@ -192,7 +199,36 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                   <Calendar
                     mode="single"
                     selected={startDate}
-                    onSelect={(date) => date && setStartDate(date)}
+                    onSelect={(date) => {
+                      if (date) {
+                        console.log('🔥 Calendar에서 선택된 원본 date:', {
+                          selected_date: date,
+                          toString: date.toString(),
+                          getDate: date.getDate(),
+                          getMonth: date.getMonth(),
+                          getFullYear: date.getFullYear(),
+                          toISOString: date.toISOString()
+                        });
+
+                        // 🔥 로컬 자정으로 정확히 설정
+                        const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+
+                        console.log('🔥 생성된 localDate:', {
+                          localDate: localDate,
+                          toString: localDate.toString(),
+                          getDate: localDate.getDate(),
+                          getMonth: localDate.getMonth(),
+                          getFullYear: localDate.getFullYear()
+                        });
+
+                        setStartDate(localDate);
+                        // 시작일이 종료일보다 뒤에 있으면 종료일을 시작일로 설정
+                        if (localDate > endDate) {
+                          const endLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+                          setEndDate(endLocalDate);
+                        }
+                      }
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
@@ -219,7 +255,18 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                   <Calendar
                     mode="single"
                     selected={endDate}
-                    onSelect={(date) => date && setEndDate(date)}
+                    onSelect={(date) => {
+                      if (date) {
+                        // 🔥 로컬 자정으로 정확히 설정
+                        const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+                        setEndDate(localDate);
+                        // 종료일이 시작일보다 앞에 있으면 시작일을 종료일로 설정
+                        if (localDate < startDate) {
+                          const startLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+                          setStartDate(startLocalDate);
+                        }
+                      }
+                    }}
                     initialFocus
                   />
                 </PopoverContent>

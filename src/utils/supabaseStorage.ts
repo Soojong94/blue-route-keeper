@@ -77,16 +77,20 @@ export const getSupabaseTrips = async (): Promise<Trip[]> => {
 };
 
 export const getSupabaseTripsByDateRange = async (startDate: Date, endDate: Date): Promise<Trip[]> => {
-  const startDateStr = startDate.toISOString().split('T')[0];
-  const endDateStr = endDate.toISOString().split('T')[0];
-  
-  // 🔍 디버그 출력
-  console.log('쿼리 실행:', {
-    startDateStr,
-    endDateStr,
-    원본startDate: startDate,
-    원본endDate: endDate
-  });
+  // 🔥 타임존 문제 완전 해결: toString()에서 날짜 부분 추출
+  const formatLocalDate = (date: Date) => {
+    const dateStr = date.toString(); // "Mon May 26 2025 00:00:00 GMT+0900 (한국 표준시)"
+    const parts = dateStr.split(' ');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = String(monthNames.indexOf(parts[1]) + 1).padStart(2, '0');
+    const day = String(parseInt(parts[2])).padStart(2, '0');
+    const year = parts[3];
+    
+    return `${year}-${month}-${day}`;
+  };
+
+  const startDateStr = formatLocalDate(startDate);
+  const endDateStr = formatLocalDate(endDate);
 
   const { data, error } = await supabase
     .from('trips')
@@ -94,9 +98,6 @@ export const getSupabaseTripsByDateRange = async (startDate: Date, endDate: Date
     .gte('date', startDateStr)
     .lte('date', endDateStr)
     .order('date', { ascending: false });
-
-  // 🔍 쿼리 결과 디버그
-  console.log('Supabase 응답:', { data, error, 결과개수: data?.length });
 
   if (error) {
     console.error('Supabase 에러:', error);

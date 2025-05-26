@@ -125,6 +125,17 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     let savedCount = 0;
     const errors: string[] = [];
 
+    // 🔥 타임존 문제 해결을 위한 날짜 포맷 함수
+    const formatLocalDate = (date: Date) => {
+      const dateStr = date.toString();
+      const parts = dateStr.split(' ');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = String(monthNames.indexOf(parts[1]) + 1).padStart(2, '0');
+      const day = String(parseInt(parts[2])).padStart(2, '0');
+      const year = parts[3];
+      return `${year}-${month}-${day}`;
+    };
+
     for (const row of rows) {
       // 빈 행 건너뛰기
       if (!row.departure && !row.destination && !row.unitPrice) {
@@ -151,13 +162,8 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       }
 
       try {
-        // 🔍 디버그: 저장하는 날짜 확인
-        const dateToSave = row.date.toISOString().split('T')[0];
-        console.log('저장할 날짜:', {
-          선택한날짜: row.date,
-          저장될날짜: dateToSave,
-          기존방식: format(row.date, 'yyyy-MM-dd')
-        });
+        // 🔥 새로운 날짜 변환 방식 사용
+        const dateToSave = formatLocalDate(row.date);
 
         await saveTrip({
           date: dateToSave,
