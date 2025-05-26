@@ -1,17 +1,38 @@
-// src/pages/Index.tsx
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Car, FileText, BarChart3, MapPin, Plus } from 'lucide-react';
 import TripInput from '@/components/TripInput';
 import TripList from '@/components/TripList';
 import VehicleManagement from '@/components/VehicleManagement';
 import LocationManagement from '@/components/LocationManagement';
+import UserProfile from '@/components/UserProfile';
+import MigrationDialog from '@/components/MigrationDialog';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeTab, setActiveTab] = useState('input');
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    // Check if user has local data and hasn't migrated or skipped migration
+    const hasLocalTrips = localStorage.getItem('car-trips');
+    const hasLocalVehicles = localStorage.getItem('car-vehicles');
+    const hasLocalLocations = localStorage.getItem('car-locations');
+    const migrationSkipped = localStorage.getItem('migration-skipped');
+    
+    if (user && (hasLocalTrips || hasLocalVehicles || hasLocalLocations) && !migrationSkipped) {
+      setShowMigrationDialog(true);
+    }
+  }, [user]);
 
   const handleTripSaved = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleMigrationComplete = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -20,7 +41,7 @@ const Index = () => {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-blue-100 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center h-16">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg">
                 <Car className="h-6 w-6 text-white" />
@@ -29,6 +50,7 @@ const Index = () => {
                 차량 운행 관리 시스템
               </h1>
             </div>
+            <UserProfile />
           </div>
         </div>
       </header>
@@ -141,6 +163,13 @@ const Index = () => {
           <div className="md:hidden pb-20" />
         </Tabs>
       </main>
+
+      {/* Migration Dialog */}
+      <MigrationDialog
+        open={showMigrationDialog}
+        onOpenChange={setShowMigrationDialog}
+        onMigrationComplete={handleMigrationComplete}
+      />
     </div>
   );
 };

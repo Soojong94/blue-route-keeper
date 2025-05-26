@@ -9,7 +9,140 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      locations: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      trips: {
+        Row: {
+          count: number
+          created_at: string
+          date: string
+          departure: string
+          destination: string
+          driver_name: string | null
+          id: string
+          memo: string | null
+          total_amount: number
+          unit_price: number
+          updated_at: string | null
+          user_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          count: number
+          created_at?: string
+          date: string
+          departure: string
+          destination: string
+          driver_name?: string | null
+          id?: string
+          memo?: string | null
+          total_amount: number
+          unit_price: number
+          updated_at?: string | null
+          user_id: string
+          vehicle_id: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          date?: string
+          departure?: string
+          destination?: string
+          driver_name?: string | null
+          id?: string
+          memo?: string | null
+          total_amount?: number
+          unit_price?: number
+          updated_at?: string | null
+          user_id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          created_at: string
+          default_unit_price: number | null
+          id: string
+          license_plate: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_unit_price?: number | null
+          id?: string
+          license_plate: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_unit_price?: number | null
+          id?: string
+          license_plate?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
