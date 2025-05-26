@@ -125,14 +125,11 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     let savedCount = 0;
     const errors: string[] = [];
 
-    // 🔥 타임존 문제 해결을 위한 날짜 포맷 함수
-    const formatLocalDate = (date: Date) => {
-      const dateStr = date.toString();
-      const parts = dateStr.split(' ');
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const month = String(monthNames.indexOf(parts[1]) + 1).padStart(2, '0');
-      const day = String(parseInt(parts[2])).padStart(2, '0');
-      const year = parts[3];
+    // ✅ 안정적인 날짜 포맷 함수
+    const formatDateForSupabase = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
 
@@ -162,8 +159,14 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       }
 
       try {
-        // 🔥 새로운 날짜 변환 방식 사용
-        const dateToSave = formatLocalDate(row.date);
+        // ✅ 새로운 날짜 변환 방식 사용
+        const dateToSave = formatDateForSupabase(row.date);
+
+        console.log('💾 Saving trip with processed date:', {
+          originalDate: row.date,
+          processedDate: dateToSave,
+          dateToString: row.date.toString()
+        });
 
         await saveTrip({
           date: dateToSave,
@@ -274,7 +277,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
         </div>
 
         {/* 태블릿/모바일 카드 뷰 */}
-        <div className="xl:hidden space-y-4 p-4">
+        <div className="lg:hidden space-y-4 p-4">
           {rows.map((row) => (
             <MobileTripCard
               key={row.id}
@@ -307,9 +310,8 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     </Card>
   );
 };
-// TripInput.tsx 파일 맨 아래에 추가
 
-// 나머지 컴포넌트들 (기존 코드와 동일하게 유지)
+// 나머지 컴포넌트들
 interface TripRowProps {
   row: TripRow;
   vehicles: Vehicle[];
@@ -365,6 +367,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
       onChange(selectedValue);
     }
   };
+
   const handleCustomInputChange = (inputValue: string) => {
     setCustomValue(inputValue);
     onChange(inputValue);
@@ -496,7 +499,28 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
             <Calendar
               mode="single"
               selected={row.date}
-              onSelect={(date) => date && onUpdate(row.id, 'date', date)}
+              onSelect={(date) => {
+                if (date) {
+                  console.log('🔍 Desktop row date selected:', {
+                    original: date,
+                    toString: date.toString(),
+                    getDate: date.getDate(),
+                    getMonth: date.getMonth(),
+                    getFullYear: date.getFullYear()
+                  });
+
+                  // ✅ 로컬 날짜로 정확히 설정
+                  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+                  console.log('✅ Desktop row created local date:', {
+                    localDate: localDate,
+                    toString: localDate.toString(),
+                    formatted: format(localDate, 'yyyy-MM-dd')
+                  });
+
+                  onUpdate(row.id, 'date', localDate);
+                }
+              }}
               initialFocus
             />
           </PopoverContent>
@@ -677,7 +701,28 @@ const MobileTripCard: React.FC<TripRowProps> = ({
               <Calendar
                 mode="single"
                 selected={row.date}
-                onSelect={(date) => date && onUpdate(row.id, 'date', date)}
+                onSelect={(date) => {
+                  if (date) {
+                    console.log('🔍 Mobile card date selected:', {
+                      original: date,
+                      toString: date.toString(),
+                      getDate: date.getDate(),
+                      getMonth: date.getMonth(),
+                      getFullYear: date.getFullYear()
+                    });
+
+                    // ✅ 로컬 날짜로 정확히 설정
+                    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+                    console.log('✅ Mobile card created local date:', {
+                      localDate: localDate,
+                      toString: localDate.toString(),
+                      formatted: format(localDate, 'yyyy-MM-dd')
+                    });
+
+                    onUpdate(row.id, 'date', localDate);
+                  }
+                }}
                 initialFocus
               />
             </PopoverContent>

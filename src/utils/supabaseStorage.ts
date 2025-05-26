@@ -1,6 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Trip, Vehicle, Location } from '@/types/trip';
 
+// ✅ 안정적인 날짜 포맷 함수
+const formatDateForSupabase = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Supabase CRUD operations for trips
 export const saveSupabaseTrip = async (tripData: {
   date: string;
@@ -14,6 +22,8 @@ export const saveSupabaseTrip = async (tripData: {
 }): Promise<Trip> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
+
+  console.log('💾 Saving trip with date:', tripData.date);
 
   const newTrip = {
     user_id: user.id,
@@ -77,20 +87,17 @@ export const getSupabaseTrips = async (): Promise<Trip[]> => {
 };
 
 export const getSupabaseTripsByDateRange = async (startDate: Date, endDate: Date): Promise<Trip[]> => {
-  // 🔥 타임존 문제 완전 해결: toString()에서 날짜 부분 추출
-  const formatLocalDate = (date: Date) => {
-    const dateStr = date.toString(); // "Mon May 26 2025 00:00:00 GMT+0900 (한국 표준시)"
-    const parts = dateStr.split(' ');
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = String(monthNames.indexOf(parts[1]) + 1).padStart(2, '0');
-    const day = String(parseInt(parts[2])).padStart(2, '0');
-    const year = parts[3];
-    
-    return `${year}-${month}-${day}`;
-  };
+  const startDateStr = formatDateForSupabase(startDate);
+  const endDateStr = formatDateForSupabase(endDate);
 
-  const startDateStr = formatLocalDate(startDate);
-  const endDateStr = formatLocalDate(endDate);
+  console.log('🔍 Querying trips by date range:', {
+    startDate: startDate.toString(),
+    endDate: endDate.toString(),
+    startDateStr,
+    endDateStr,
+    startDateFormatted: startDate.toLocaleDateString(),
+    endDateFormatted: endDate.toLocaleDateString()
+  });
 
   const { data, error } = await supabase
     .from('trips')
@@ -103,6 +110,9 @@ export const getSupabaseTripsByDateRange = async (startDate: Date, endDate: Date
     console.error('Supabase 에러:', error);
     throw error;
   }
+
+  console.log('✅ Found trips:', data.length, 'trips');
+  console.log('📋 Trip dates:', data.map(trip => trip.date));
 
   return data.map(trip => ({
     id: trip.id,

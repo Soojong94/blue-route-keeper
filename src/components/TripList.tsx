@@ -24,15 +24,17 @@ interface TripListProps {
 }
 
 const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
-  // 🔥 초기값도 로컬 자정으로 정확히 설정
+  // ✅ 초기값을 오늘 날짜로 정확히 설정 (시간 부분 제거)
   const [startDate, setStartDate] = useState<Date>(() => {
     const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   });
+
   const [endDate, setEndDate] = useState<Date>(() => {
     const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   });
+
   const [trips, setTrips] = useState<Trip[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
@@ -56,7 +58,15 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const loadTrips = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Loading trips for date range:', {
+        startDate: startDate.toString(),
+        endDate: endDate.toString(),
+        startDateLocal: format(startDate, 'yyyy-MM-dd'),
+        endDateLocal: format(endDate, 'yyyy-MM-dd')
+      });
+
       const loadedTrips = await getTripsByDateRange(startDate, endDate);
+      console.log('✅ Loaded trips:', loadedTrips.length);
       setTrips(loadedTrips);
     } catch (error) {
       console.error('Error loading trips:', error);
@@ -201,30 +211,28 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                     selected={startDate}
                     onSelect={(date) => {
                       if (date) {
-                        console.log('🔥 Calendar에서 선택된 원본 date:', {
-                          selected_date: date,
+                        console.log('🔍 Start date selected:', {
+                          original: date,
                           toString: date.toString(),
                           getDate: date.getDate(),
                           getMonth: date.getMonth(),
-                          getFullYear: date.getFullYear(),
-                          toISOString: date.toISOString()
+                          getFullYear: date.getFullYear()
                         });
 
-                        // 🔥 로컬 자정으로 정확히 설정
-                        const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+                        // ✅ 로컬 날짜로 정확히 설정 (시간 부분 제거)
+                        const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-                        console.log('🔥 생성된 localDate:', {
+                        console.log('✅ Created local date:', {
                           localDate: localDate,
                           toString: localDate.toString(),
-                          getDate: localDate.getDate(),
-                          getMonth: localDate.getMonth(),
-                          getFullYear: localDate.getFullYear()
+                          formatted: format(localDate, 'yyyy-MM-dd')
                         });
 
                         setStartDate(localDate);
+
                         // 시작일이 종료일보다 뒤에 있으면 종료일을 시작일로 설정
                         if (localDate > endDate) {
-                          const endLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+                          const endLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                           setEndDate(endLocalDate);
                         }
                       }
@@ -257,12 +265,28 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                     selected={endDate}
                     onSelect={(date) => {
                       if (date) {
-                        // 🔥 로컬 자정으로 정확히 설정
-                        const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+                        console.log('🔍 End date selected:', {
+                          original: date,
+                          toString: date.toString(),
+                          getDate: date.getDate(),
+                          getMonth: date.getMonth(),
+                          getFullYear: date.getFullYear()
+                        });
+
+                        // ✅ 로컬 날짜로 정확히 설정 (시간 부분 제거)
+                        const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+                        console.log('✅ Created local date:', {
+                          localDate: localDate,
+                          toString: localDate.toString(),
+                          formatted: format(localDate, 'yyyy-MM-dd')
+                        });
+
                         setEndDate(localDate);
+
                         // 종료일이 시작일보다 앞에 있으면 시작일을 종료일로 설정
                         if (localDate < startDate) {
-                          const startLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+                          const startLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                           setStartDate(startLocalDate);
                         }
                       }
