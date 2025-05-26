@@ -11,7 +11,7 @@ import { Car, Plus, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { getVehicles, saveVehicle, updateVehicle, deleteVehicle } from '@/utils/storage';
+import { getVehicles, saveVehicle, updateVehicle, deleteVehicle, getTrips } from '@/utils/storage';
 import { getVehicleStats } from '@/utils/calculations';
 import { Vehicle } from '@/types/trip';
 
@@ -19,6 +19,7 @@ const VehicleManagement: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     licensePlate: '',
@@ -31,11 +32,21 @@ const VehicleManagement: React.FC = () => {
     loadVehicles();
   }, []);
 
-  const loadVehicles = () => {
-    setVehicles(getVehicles());
+  const loadVehicles = async () => {
+    try {
+      const vehiclesData = await getVehicles();
+      setVehicles(vehiclesData);
+    } catch (error) {
+      console.error('Error loading vehicles:', error);
+      toast({
+        title: "로드 실패",
+        description: "차량 목록을 불러오는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name || !formData.licensePlate) {
@@ -47,6 +58,8 @@ const VehicleManagement: React.FC = () => {
       return;
     }
 
+    setLoading(true);
+
     try {
       const vehicleData = {
         name: formData.name,
@@ -55,13 +68,13 @@ const VehicleManagement: React.FC = () => {
       };
 
       if (editingVehicle) {
-        updateVehicle(editingVehicle.id, vehicleData);
+        await updateVehicle(editingVehicle.id, vehicleData);
         toast({
           title: "수정 완료",
           description: "차량 정보가 수정되었습니다.",
         });
       } else {
-        saveVehicle(vehicleData);
+        await saveVehicle(vehicleData);
         toast({
           title: "등록 완료",
           description: "차량이 등록되었습니다.",
@@ -70,13 +83,16 @@ const VehicleManagement: React.FC = () => {
 
       resetForm();
       setIsDialogOpen(false);
-      loadVehicles();
+      await loadVehicles();
     } catch (error) {
+      console.error('Save vehicle error:', error);
       toast({
         title: "저장 실패",
         description: "차량 정보 저장 중 오류가 발생했습니다.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -90,16 +106,17 @@ const VehicleManagement: React.FC = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('정말로 이 차량을 삭제하시겠습니까?')) {
       try {
-        deleteVehicle(id);
+        await deleteVehicle(id);
         toast({
           title: "삭제 완료",
           description: "차량이 삭제되었습니다.",
         });
-        loadVehicles();
+        await loadVehicles();
       } catch (error) {
+        console.error('Delete vehicle error:', error);
         toast({
           title: "삭제 실패",
           description: "차량 삭제 중 오류가 발생했습니다.",
@@ -121,6 +138,16 @@ const VehicleManagement: React.FC = () => {
   const handleAddNew = () => {
     resetForm();
     setIsDialogOpen(true);
+  };
+
+  const getVehicleStatsData = async (vehicleId: string) => {
+    try {
+      const trips = await getTrips();
+      return getVehicleStats(vehicleId, trips);
+    } catch (error) {
+      console.error('Error getting vehicle stats:', error);
+      return null;
+    }
   };
 
   return (
@@ -161,128 +188,30 @@ const VehicleManagement: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vehicles.map((vehicle) => {
-                      const stats = getVehicleStats(vehicle.id, JSON.parse(localStorage.getItem('car-trips') || '[]'));
-                      return (
-                        <TableRow key={vehicle.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-base px-3 py-1">
-                              {vehicle.licensePlate}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-medium">{vehicle.name}</TableCell>
-                          <TableCell>
-                            {vehicle.defaultUnitPrice ? (
-                              <span className="text-green-600 font-medium">
-                                {vehicle.defaultUnitPrice.toLocaleString()}원
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">미설정</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-medium">{stats?.totalTrips || 0}회</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-medium text-blue-600">
-                              {(stats?.totalAmount || 0).toLocaleString()}원
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-gray-500">
-                            {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(vehicle)}
-                                className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(vehicle.id)}
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {vehicles.map((vehicle) => (
+                      <VehicleTableRow
+                        key={vehicle.id}
+                        vehicle={vehicle}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        getStats={getVehicleStatsData}
+                      />
+                    ))}
                   </TableBody>
                 </Table>
               </div>
 
               {/* 모바일 카드 뷰 */}
               <div className="md:hidden space-y-4">
-                {vehicles.map((vehicle) => {
-                  const stats = getVehicleStats(vehicle.id, JSON.parse(localStorage.getItem('car-trips') || '[]'));
-                  return (
-                    <Card key={vehicle.id} className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-lg px-3 py-1 mb-2">
-                            {vehicle.licensePlate}
-                          </Badge>
-                          <h3 className="font-medium text-lg">{vehicle.name}</h3>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(vehicle)}
-                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(vehicle.id)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                        <div>
-                          <span className="text-gray-500">기본 단가:</span>
-                          <div className="font-medium">
-                            {vehicle.defaultUnitPrice ? (
-                              <span className="text-green-600">
-                                {vehicle.defaultUnitPrice.toLocaleString()}원
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">미설정</span>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">총 운행:</span>
-                          <div className="font-medium">{stats?.totalTrips || 0}회</div>
-                        </div>
-                      </div>
-
-                      <div className="bg-blue-50 p-3 rounded-lg mb-3">
-                        <div className="text-sm text-blue-600">총 운행 금액</div>
-                        <div className="text-xl font-bold text-blue-800">
-                          {(stats?.totalAmount || 0).toLocaleString()}원
-                        </div>
-                      </div>
-
-                      <div className="text-sm text-gray-500">
-                        등록일: {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
-                      </div>
-                    </Card>
-                  );
-                })}
+                {vehicles.map((vehicle) => (
+                  <VehicleCard
+                    key={vehicle.id}
+                    vehicle={vehicle}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    getStats={getVehicleStatsData}
+                  />
+                ))}
               </div>
             </>
           )}
@@ -343,17 +272,166 @@ const VehicleManagement: React.FC = () => {
                   resetForm();
                 }}
                 className="w-full sm:w-auto"
+                disabled={loading}
               >
                 취소
               </Button>
-              <Button type="submit" className="w-full sm:w-auto">
-                {editingVehicle ? '수정' : '등록'}
+              <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
+                {loading ? '저장 중...' : (editingVehicle ? '수정' : '등록')}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
     </div>
+  );
+};
+
+// 테이블 행 컴포넌트
+const VehicleTableRow: React.FC<{
+  vehicle: Vehicle;
+  onEdit: (vehicle: Vehicle) => void;
+  onDelete: (id: string) => void;
+  getStats: (vehicleId: string) => Promise<any>;
+}> = ({ vehicle, onEdit, onDelete, getStats }) => {
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      const statsData = await getStats(vehicle.id);
+      setStats(statsData);
+    };
+    loadStats();
+  }, [vehicle.id, getStats]);
+
+  return (
+    <TableRow className="hover:bg-gray-50">
+      <TableCell>
+        <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-base px-3 py-1">
+          {vehicle.licensePlate}
+        </Badge>
+      </TableCell>
+      <TableCell className="font-medium">{vehicle.name}</TableCell>
+      <TableCell>
+        {vehicle.defaultUnitPrice ? (
+          <span className="text-green-600 font-medium">
+            {vehicle.defaultUnitPrice.toLocaleString()}원
+          </span>
+        ) : (
+          <span className="text-gray-400">미설정</span>
+        )}
+      </TableCell>
+      <TableCell>
+        <span className="font-medium">{stats?.totalTrips || 0}회</span>
+      </TableCell>
+      <TableCell>
+        <span className="font-medium text-blue-600">
+          {(stats?.totalAmount || 0).toLocaleString()}원
+        </span>
+      </TableCell>
+      <TableCell className="text-gray-500">
+        {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
+      </TableCell>
+      <TableCell>
+        <div className="flex justify-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEdit(vehicle)}
+            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(vehicle.id)}
+            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+};
+
+// 모바일 카드 컴포넌트
+const VehicleCard: React.FC<{
+  vehicle: Vehicle;
+  onEdit: (vehicle: Vehicle) => void;
+  onDelete: (id: string) => void;
+  getStats: (vehicleId: string) => Promise<any>;
+}> = ({ vehicle, onEdit, onDelete, getStats }) => {
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      const statsData = await getStats(vehicle.id);
+      setStats(statsData);
+    };
+    loadStats();
+  }, [vehicle.id, getStats]);
+
+  return (
+    <Card className="p-4">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-lg px-3 py-1 mb-2">
+            {vehicle.licensePlate}
+          </Badge>
+          <h3 className="font-medium text-lg">{vehicle.name}</h3>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEdit(vehicle)}
+            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(vehicle.id)}
+            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+        <div>
+          <span className="text-gray-500">기본 단가:</span>
+          <div className="font-medium">
+            {vehicle.defaultUnitPrice ? (
+              <span className="text-green-600">
+                {vehicle.defaultUnitPrice.toLocaleString()}원
+              </span>
+            ) : (
+              <span className="text-gray-400">미설정</span>
+            )}
+          </div>
+        </div>
+        <div>
+          <span className="text-gray-500">총 운행:</span>
+          <div className="font-medium">{stats?.totalTrips || 0}회</div>
+        </div>
+      </div>
+
+      <div className="bg-blue-50 p-3 rounded-lg mb-3">
+        <div className="text-sm text-blue-600">총 운행 금액</div>
+        <div className="text-xl font-bold text-blue-800">
+          {(stats?.totalAmount || 0).toLocaleString()}원
+        </div>
+      </div>
+
+      <div className="text-sm text-gray-500">
+        등록일: {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
+      </div>
+    </Card>
   );
 };
 

@@ -13,7 +13,7 @@ import { ko } from 'date-fns/locale';
 import { CalendarIcon, Car, MapPin, Calculator, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { saveTrip, getVehicles, getLocations } from '@/utils/storage';
+import { saveTrip, getVehicles, getLocations, getTrips } from '@/utils/storage';
 import { calculateTotalAmount, getVehicleStats } from '@/utils/calculations';
 import { Trip, Vehicle, Location } from '@/types/trip';
 
@@ -42,6 +42,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     destinations: string[];
     drivers: string[];
   }>({ departures: [], destinations: [], drivers: [] });
+  const [loading, setLoading] = useState(false);
 
   const { toast } = useToast();
 
@@ -60,15 +61,24 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
   }
 
   useEffect(() => {
-    setVehicles(getVehicles());
-    setLocations(getLocations());
+    loadInitialData();
+  }, []);
 
-    // 최근 데이터 로드
+  const loadInitialData = async () => {
     try {
-      const trips = JSON.parse(localStorage.getItem('car-trips') || '[]');
-      const departures = [...new Set(trips.map((t: any) => t.departure).filter(Boolean))].slice(0, 10);
-      const destinations = [...new Set(trips.map((t: any) => t.destination).filter(Boolean))].slice(0, 10);
-      const drivers = [...new Set(trips.map((t: any) => t.driverName).filter(Boolean))].slice(0, 10);
+      const [vehiclesData, locationsData, tripsData] = await Promise.all([
+        getVehicles(),
+        getLocations(),
+        getTrips()
+      ]);
+
+      setVehicles(vehiclesData);
+      setLocations(locationsData);
+
+      // 최근 데이터 추출
+      const departures = [...new Set(tripsData.map(t => t.departure).filter(Boolean))].slice(0, 10);
+      const destinations = [...new Set(tripsData.map(t => t.destination).filter(Boolean))].slice(0, 10);
+      const drivers = [...new Set(tripsData.map(t => t.driverName).filter(Boolean))].slice(0, 10);
 
       setRecentData({
         departures: departures as string[],
@@ -76,10 +86,14 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
         drivers: drivers as string[]
       });
     } catch (error) {
-      console.error('Error loading recent data:', error);
-      setRecentData({ departures: [], destinations: [], drivers: [] });
+      console.error('Error loading initial data:', error);
+      toast({
+        title: "데이터 로드 실패",
+        description: "초기 데이터를 불러오는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     }
-  }, []);
+  };
 
   const addRow = () => {
     setRows([...rows, createNewRow()]);
@@ -107,6 +121,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
   };
 
   const saveAllRows = async () => {
+    setLoading(true);
     let savedCount = 0;
     const errors: string[] = [];
 
@@ -136,7 +151,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       }
 
       try {
-        saveTrip({
+        await saveTrip({
           date: format(row.date, 'yyyy-MM-dd'),
           departure: row.departure,
           destination: row.destination,
@@ -148,9 +163,12 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
         });
         savedCount++;
       } catch (error) {
+        console.error('Save trip error:', error);
         errors.push(`${row.departure} → ${row.destination}: 저장 중 오류가 발생했습니다.`);
       }
     }
+
+    setLoading(false);
 
     if (errors.length > 0) {
       toast({
@@ -205,7 +223,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       </CardHeader>
 
       <CardContent className="p-0">
-        {/* 데스크톱 테이블 뷰 - 스크롤 없이 보이도록 컬럼 너비 최적화 */}
+        {/* 데스크톱 테이블 뷰 */}
         <div className="hidden lg:block">
           <div className="w-full overflow-hidden">
             <table className="w-full table-fixed">
@@ -228,7 +246,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
                   <DesktopTripRow
                     key={row.id}
                     row={row}
-
                     vehicles={vehicles}
                     locations={locations}
                     recentData={recentData}
@@ -259,20 +276,26 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
         </div>
 
         <div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between gap-4">
-          <Button variant="outline" onClick={addRow} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={addRow} className="w-full sm:w-auto" disabled={loading}>
             <Plus className="mr-2 h-4 w-4" />
             행 추가
           </Button>
-          <Button onClick={saveAllRows} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+          <Button
+            onClick={saveAllRows}
+            className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+            disabled={loading}
+          >
             <Calculator className="mr-2 h-4 w-4" />
-            일괄 저장
+            {loading ? '저장 중...' : '일괄 저장'}
           </Button>
         </div>
       </CardContent>
     </Card>
   );
 };
+// TripInput.tsx 파일 맨 아래에 추가
 
+// 나머지 컴포넌트들 (기존 코드와 동일하게 유지)
 interface TripRowProps {
   row: TripRow;
   vehicles: Vehicle[];
@@ -328,7 +351,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
       onChange(selectedValue);
     }
   };
-
   const handleCustomInputChange = (inputValue: string) => {
     setCustomValue(inputValue);
     onChange(inputValue);

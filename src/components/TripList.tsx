@@ -33,21 +33,43 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const [selectedVehicle, setSelectedVehicle] = useState<string>('all');
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const { toast } = useToast();
 
   useEffect(() => {
     loadTrips();
-    setVehicles(getVehicles());
+    loadVehicles();
   }, [startDate, endDate, refreshTrigger]);
 
   useEffect(() => {
     applyFilters();
   }, [trips, searchQuery, selectedVehicle]);
 
-  const loadTrips = () => {
-    const loadedTrips = getTripsByDateRange(startDate, endDate);
-    setTrips(loadedTrips);
+  const loadTrips = async () => {
+    try {
+      setLoading(true);
+      const loadedTrips = await getTripsByDateRange(startDate, endDate);
+      setTrips(loadedTrips);
+    } catch (error) {
+      console.error('Error loading trips:', error);
+      toast({
+        title: "로드 실패",
+        description: "운행 기록을 불러오는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadVehicles = async () => {
+    try {
+      const vehiclesData = await getVehicles();
+      setVehicles(vehiclesData);
+    } catch (error) {
+      console.error('Error loading vehicles:', error);
+    }
   };
 
   const applyFilters = () => {
@@ -81,7 +103,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     if (!editingTrip) return;
 
     try {
-      const updated = updateTrip(editingTrip.id, {
+      const updated = await updateTrip(editingTrip.id, {
         date: editingTrip.date,
         departure: editingTrip.departure,
         destination: editingTrip.destination,
@@ -98,9 +120,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           description: "운행 기록이 수정되었습니다.",
         });
         setIsEditDialogOpen(false);
-        loadTrips();
+        await loadTrips();
       }
     } catch (error) {
+      console.error('Update trip error:', error);
       toast({
         title: "수정 실패",
         description: "운행 기록 수정 중 오류가 발생했습니다.",
@@ -112,13 +135,14 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const handleDelete = async (id: string) => {
     if (confirm('정말로 이 운행 기록을 삭제하시겠습니까?')) {
       try {
-        deleteTrip(id);
+        await deleteTrip(id);
         toast({
           title: "삭제 완료",
           description: "운행 기록이 삭제되었습니다.",
         });
-        loadTrips();
+        await loadTrips();
       } catch (error) {
+        console.error('Delete trip error:', error);
         toast({
           title: "삭제 실패",
           description: "운행 기록 삭제 중 오류가 발생했습니다.",
@@ -324,12 +348,15 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       {/* 운행 기록 테이블 */}
       <Card>
         <CardHeader>
-          <CardTitle>운행 기록 목록 ({filteredTrips.length}건)</CardTitle>
+          <CardTitle>
+            운행 기록 목록 ({filteredTrips.length}건)
+            {loading && <span className="text-sm font-normal text-gray-500 ml-2">로딩 중...</span>}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {filteredTrips.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              조건에 맞는 운행 기록이 없습니다.
+              {loading ? '데이터를 불러오는 중입니다...' : '조건에 맞는 운행 기록이 없습니다.'}
             </div>
           ) : (
             <>

@@ -19,6 +19,7 @@ const LocationManagement: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: 'company' as 'company' | 'client' | 'personal' | 'other',
@@ -30,11 +31,21 @@ const LocationManagement: React.FC = () => {
     loadLocations();
   }, []);
 
-  const loadLocations = () => {
-    setLocations(getLocations());
+  const loadLocations = async () => {
+    try {
+      const locationsData = await getLocations();
+      setLocations(locationsData);
+    } catch (error) {
+      console.error('Error loading locations:', error);
+      toast({
+        title: "로드 실패",
+        description: "장소 목록을 불러오는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name) {
@@ -46,6 +57,8 @@ const LocationManagement: React.FC = () => {
       return;
     }
 
+    setLoading(true);
+
     try {
       const locationData = {
         name: formData.name,
@@ -53,13 +66,13 @@ const LocationManagement: React.FC = () => {
       };
 
       if (editingLocation) {
-        updateLocation(editingLocation.id, locationData);
+        await updateLocation(editingLocation.id, locationData);
         toast({
           title: "수정 완료",
           description: "장소 정보가 수정되었습니다.",
         });
       } else {
-        saveLocation(locationData);
+        await saveLocation(locationData);
         toast({
           title: "등록 완료",
           description: "장소가 등록되었습니다.",
@@ -68,13 +81,16 @@ const LocationManagement: React.FC = () => {
 
       resetForm();
       setIsDialogOpen(false);
-      loadLocations();
+      await loadLocations();
     } catch (error) {
+      console.error('Save location error:', error);
       toast({
         title: "저장 실패",
         description: "장소 정보 저장 중 오류가 발생했습니다.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,16 +103,17 @@ const LocationManagement: React.FC = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('정말로 이 장소를 삭제하시겠습니까?')) {
       try {
-        deleteLocation(id);
+        await deleteLocation(id);
         toast({
           title: "삭제 완료",
           description: "장소가 삭제되었습니다.",
         });
-        loadLocations();
+        await loadLocations();
       } catch (error) {
+        console.error('Delete location error:', error);
         toast({
           title: "삭제 실패",
           description: "장소 삭제 중 오류가 발생했습니다.",
@@ -290,11 +307,12 @@ const LocationManagement: React.FC = () => {
                   setIsDialogOpen(false);
                   resetForm();
                 }}
+                disabled={loading}
               >
                 취소
               </Button>
-              <Button type="submit">
-                {editingLocation ? '수정' : '등록'}
+              <Button type="submit" disabled={loading}>
+                {loading ? '저장 중...' : (editingLocation ? '수정' : '등록')}
               </Button>
             </div>
           </form>
