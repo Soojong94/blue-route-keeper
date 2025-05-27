@@ -36,227 +36,248 @@ interface TripListState {
 }
 
 const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
- // ✅ 오늘 날짜를 정확하게 가져오는 함수
- const getTodayString = () => {
-   const today = new Date();
-   const year = today.getFullYear();
-   const month = String(today.getMonth() + 1).padStart(2, '0');
-   const day = String(today.getDate()).padStart(2, '0');
-   return `${year}-${month}-${day}`;
- };
+  // ✅ 오늘 날짜를 정확하게 가져오는 함수
+  const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
- const [savedState, setSavedState] = useLocalStorage<TripListState>('tripList', {
-   startDate: getTodayString(),
-   endDate: getTodayString(),
-   selectedVehicle: 'all',
-   searchQuery: ''
- });
+  const [savedState, setSavedState] = useLocalStorage<TripListState>('tripList', {
+    startDate: getTodayString(),
+    endDate: getTodayString(),
+    selectedVehicle: 'all',
+    searchQuery: ''
+  });
 
- // ✅ 문자열을 Date 객체로 안전하게 변환
- const [startDate, setStartDate] = useState<Date>(() => {
-   const today = new Date();
-   if (savedState.startDate) {
-     const [year, month, day] = savedState.startDate.split('-').map(Number);
-     const date = new Date(year, month - 1, day); // month는 0부터 시작하므로 -1
-     date.setHours(0, 0, 0, 0);
-     return date;
-   }
-   today.setHours(0, 0, 0, 0);
-   return today;
- });
- 
- const [endDate, setEndDate] = useState<Date>(() => {
-   const today = new Date();
-   if (savedState.endDate) {
-     const [year, month, day] = savedState.endDate.split('-').map(Number);
-     const date = new Date(year, month - 1, day); // month는 0부터 시작하므로 -1
-     date.setHours(0, 0, 0, 0);
-     return date;
-   }
-   today.setHours(0, 0, 0, 0);
-   return today;
- });
+  // ✅ 문자열을 Date 객체로 안전하게 변환
+  const [startDate, setStartDate] = useState<Date>(() => {
+    const today = new Date();
+    if (savedState.startDate) {
+      const [year, month, day] = savedState.startDate.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
 
- const [trips, setTrips] = useState<Trip[]>([]);
- const [vehicles, setVehicles] = useState<Vehicle[]>([]);
- const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
- const [searchQuery, setSearchQuery] = useState(savedState.searchQuery);
- const [selectedVehicle, setSelectedVehicle] = useState<string>(savedState.selectedVehicle);
- const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
- const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
- const [loading, setLoading] = useState(false);
+  const [endDate, setEndDate] = useState<Date>(() => {
+    const today = new Date();
+    if (savedState.endDate) {
+      const [year, month, day] = savedState.endDate.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
 
- // 보고서 다이얼로그 상태
- const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
- const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
+  const [searchQuery, setSearchQuery] = useState(savedState.searchQuery);
+  const [selectedVehicle, setSelectedVehicle] = useState<string>(savedState.selectedVehicle);
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
- const { toast } = useToast();
+  // 보고서 다이얼로그 상태
+  const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
+  const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
 
- // 상태 변경 시 localStorage 업데이트
- useEffect(() => {
-   const formatDate = (date: Date) => {
-     const year = date.getFullYear();
-     const month = String(date.getMonth() + 1).padStart(2, '0');
-     const day = String(date.getDate()).padStart(2, '0');
-     return `${year}-${month}-${day}`;
-   };
+  const { toast } = useToast();
 
-   setSavedState({
-     startDate: formatDate(startDate),
-     endDate: formatDate(endDate),
-     selectedVehicle,
-     searchQuery
-   });
- }, [startDate, endDate, selectedVehicle, searchQuery, setSavedState]);
+  // 상태 변경 시 localStorage 업데이트
+  useEffect(() => {
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
- useEffect(() => {
-   loadTrips();
-   loadVehicles();
- }, [startDate, endDate, refreshTrigger]);
+    setSavedState({
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+      selectedVehicle,
+      searchQuery
+    });
+  }, [startDate, endDate, selectedVehicle, searchQuery, setSavedState]);
 
- useEffect(() => {
-   applyFilters();
- }, [trips, searchQuery, selectedVehicle]);
+  useEffect(() => {
+    loadTrips();
+    loadVehicles();
+  }, [startDate, endDate, refreshTrigger]);
 
- const loadTrips = async () => {
-   try {
-     setLoading(true);
-     console.log('🔍 Loading trips for date range:', {
-       startDate: startDate.toString(),
-       endDate: endDate.toString(),
-       startDateLocal: format(startDate, 'yyyy-MM-dd'),
-       endDateLocal: format(endDate, 'yyyy-MM-dd')
-     });
+  useEffect(() => {
+    applyFilters();
+  }, [trips, searchQuery, selectedVehicle]);
 
-     const loadedTrips = await getTripsByDateRange(startDate, endDate);
-     console.log('✅ Loaded trips:', loadedTrips.length);
-     setTrips(loadedTrips);
-   } catch (error) {
-     console.error('Error loading trips:', error);
-     toast({
-       title: "로드 실패",
-       description: "운행 기록을 불러오는 중 오류가 발생했습니다.",
-       variant: "destructive",
-     });
-   } finally {
-     setLoading(false);
-   }
- };
+  const loadTrips = async () => {
+    try {
+      setLoading(true);
+      const loadedTrips = await getTripsByDateRange(startDate, endDate);
+      setTrips(loadedTrips);
+    } catch (error) {
+      console.error('Error loading trips:', error);
+      toast({
+        title: "로드 실패",
+        description: "운행 기록을 불러오는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
- const loadVehicles = async () => {
-   try {
-     const vehiclesData = await getVehicles();
-     setVehicles(vehiclesData);
-   } catch (error) {
-     console.error('Error loading vehicles:', error);
-   }
- };
+  const loadVehicles = async () => {
+    try {
+      const vehiclesData = await getVehicles();
+      setVehicles(vehiclesData);
+    } catch (error) {
+      console.error('Error loading vehicles:', error);
+    }
+  };
 
- const applyFilters = () => {
-   let filtered = [...trips];
+  const applyFilters = () => {
+    let filtered = [...trips];
 
-   // 차량 필터
-   if (selectedVehicle !== 'all') {
-     filtered = filtered.filter(trip => trip.vehicleId === selectedVehicle);
-   }
+    // 차량 필터
+    if (selectedVehicle !== 'all') {
+      filtered = filtered.filter(trip => trip.vehicleId === selectedVehicle);
+    }
 
-   // 검색 필터
-   if (searchQuery) {
-     const query = searchQuery.toLowerCase();
-     filtered = filtered.filter(trip =>
-       trip.departure.toLowerCase().includes(query) ||
-       trip.destination.toLowerCase().includes(query) ||
-       (trip.driverName && trip.driverName.toLowerCase().includes(query)) ||
-       (trip.memo && trip.memo.toLowerCase().includes(query))
-     );
-   }
+    // 검색 필터
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(trip =>
+        trip.departure.toLowerCase().includes(query) ||
+        trip.destination.toLowerCase().includes(query) ||
+        (trip.driverName && trip.driverName.toLowerCase().includes(query)) ||
+        (trip.memo && trip.memo.toLowerCase().includes(query))
+      );
+    }
 
-   setFilteredTrips(filtered);
- };
+    setFilteredTrips(filtered);
+  };
 
- const handleEdit = (trip: Trip) => {
-   setEditingTrip({ ...trip });
-   setIsEditDialogOpen(true);
- };
+  const handleEdit = (trip: Trip) => {
+    setEditingTrip({ ...trip });
+    setIsEditDialogOpen(true);
+  };
 
- const handleSaveEdit = async () => {
-   if (!editingTrip) return;
+  const handleSaveEdit = async () => {
+    if (!editingTrip) return;
 
-   try {
-     const updated = await updateTrip(editingTrip.id, {
-       date: editingTrip.date,
-       departure: editingTrip.departure,
-       destination: editingTrip.destination,
-       unitPrice: editingTrip.unitPrice,
-       count: editingTrip.count,
-       vehicleId: editingTrip.vehicleId,
-       driverName: editingTrip.driverName,
-       memo: editingTrip.memo,
-     });
+    try {
+      const updated = await updateTrip(editingTrip.id, {
+        date: editingTrip.date,
+        departure: editingTrip.departure,
+        destination: editingTrip.destination,
+        unitPrice: editingTrip.unitPrice,
+        count: editingTrip.count,
+        vehicleId: editingTrip.vehicleId,
+        driverName: editingTrip.driverName,
+        memo: editingTrip.memo,
+      });
 
-     if (updated) {
-       toast({
-         title: "수정 완료",
-         description: "운행 기록이 수정되었습니다.",
-       });
-       setIsEditDialogOpen(false);
-       await loadTrips();
-     }
-   } catch (error) {
-     console.error('Update trip error:', error);
-     toast({
-       title: "수정 실패",
-       description: "운행 기록 수정 중 오류가 발생했습니다.",
-       variant: "destructive",
-     });
-   }
- };
+      if (updated) {
+        toast({
+          title: "수정 완료",
+          description: "운행 기록이 수정되었습니다.",
+        });
+        setIsEditDialogOpen(false);
+        await loadTrips();
+      }
+    } catch (error) {
+      console.error('Update trip error:', error);
+      toast({
+        title: "수정 실패",
+        description: "운행 기록 수정 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
 
- const handleDelete = async (id: string) => {
-   if (confirm('정말로 이 운행 기록을 삭제하시겠습니까?')) {
-     try {
-       await deleteTrip(id);
-       toast({
-         title: "삭제 완료",
-         description: "운행 기록이 삭제되었습니다.",
-       });
-       await loadTrips();
-     } catch (error) {
-       console.error('Delete trip error:', error);
-       toast({
-         title: "삭제 실패",
-         description: "운행 기록 삭제 중 오류가 발생했습니다.",
-         variant: "destructive",
-       });
-     }
-   }
- };
+  const handleDelete = async (id: string) => {
+    if (confirm('정말로 이 운행 기록을 삭제하시겠습니까?')) {
+      try {
+        await deleteTrip(id);
+        toast({
+          title: "삭제 완료",
+          description: "운행 기록이 삭제되었습니다.",
+        });
+        await loadTrips();
+      } catch (error) {
+        console.error('Delete trip error:', error);
+        toast({
+          title: "삭제 실패",
+          description: "운행 기록 삭제 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
- const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
- const dailyReportData = useMemo(() => {
-  console.log('📊 Generating daily report with trips:', filteredTrips.length);
-  return generateDailyReport(filteredTrips, vehicles);
-}, [filteredTrips, vehicles]);
+  const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
+  const dailyReportData = useMemo(() => {
+    return generateDailyReport(filteredTrips, vehicles);
+  }, [filteredTrips, vehicles]);
 
-const monthlyReportData = useMemo(() => {
-  console.log('📊 Generating monthly report with trips:', filteredTrips.length);
-  return generateMonthlyReport(filteredTrips);
-}, [filteredTrips]);
+  const monthlyReportData = useMemo(() => {
+    return generateMonthlyReport(filteredTrips);
+  }, [filteredTrips]);
 
- const getVehicleName = (vehicleId: string) => {
-   const vehicle = vehicles.find(v => v.id === vehicleId);
-   return vehicle ? `${vehicle.licensePlate} (${vehicle.name})` : '알 수 없음';
- };
+  const getVehicleName = (vehicleId: string) => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    return vehicle ? `${vehicle.licensePlate} (${vehicle.name})` : '알 수 없음';
+  };
 
+  // 차량별 운행 통계 계산
+  const vehicleStats = useMemo(() => {
+    const stats = new Map();
+
+    filteredTrips.forEach(trip => {
+      const vehicleKey = trip.vehicleId;
+      if (!stats.has(vehicleKey)) {
+        stats.set(vehicleKey, {
+          vehicle: getVehicleName(vehicleKey),
+          totalTrips: 0,
+          totalAmount: 0,
+          routes: new Map()
+        });
+      }
+
+      const vehicleStat = stats.get(vehicleKey);
+      vehicleStat.totalTrips += trip.count;
+      vehicleStat.totalAmount += trip.totalAmount;
+
+      // 경로별 통계
+      const routeKey = `${trip.departure} → ${trip.destination}`;
+      if (!vehicleStat.routes.has(routeKey)) {
+        vehicleStat.routes.set(routeKey, { count: 0, amount: 0 });
+      }
+      const routeStat = vehicleStat.routes.get(routeKey);
+      routeStat.count += trip.count;
+      routeStat.amount += trip.totalAmount;
+    });
+
+    return Array.from(stats.values());
+  }, [filteredTrips, vehicles]);
 
   return (
     <div className="space-y-6">
-      {/* 필터 및 통계 카드 */}
+      {/* 필터 및 기본 통계 카드 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            운행 기록 조회 및 통계
+            운행 기록 조회
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -312,7 +333,7 @@ const monthlyReportData = useMemo(() => {
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {endDate ? format(endDate, "yyyy-MM-dd") : "종료일"}
                   </Button>
-                </PopoverTrigger> 
+                </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
@@ -365,42 +386,14 @@ const monthlyReportData = useMemo(() => {
             </div>
           </div>
 
-          {/* 보고서 버튼 */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                console.log('🔍 Daily report data:', dailyReportData);
-                setIsDailyReportOpen(true);
-              }}
-              className="flex items-center gap-2"
-              disabled={filteredTrips.length === 0}
-            >
-              <FileText className="h-4 w-4" />
-              일간 보고서
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                console.log('🔍 Monthly report data:', monthlyReportData);
-                setIsMonthlyReportOpen(true);
-              }}
-              className="flex items-center gap-2"
-              disabled={filteredTrips.length === 0}
-            >
-              <CalendarReport className="h-4 w-4" />
-              월간 보고서
-            </Button>
-          </div>
-
-          {/* 통계 요약 */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 기본 통계 - 총 운행과 총 금액만 표시 */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-blue-600" />
                 <div>
                   <p className="text-sm text-blue-600">총 운행</p>
-                  <p className="text-xl lg:text-2xl font-bold text-blue-800">{stats.totalTrips}회</p>
+                  <p className="text-2xl font-bold text-blue-800">{stats.totalTrips}회</p>
                 </div>
               </div>
             </div>
@@ -410,76 +403,83 @@ const monthlyReportData = useMemo(() => {
                 <BarChart3 className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="text-sm text-green-600">총 금액</p>
-                  <p className="text-xl lg:text-2xl font-bold text-green-800">
+                  <p className="text-2xl font-bold text-green-800">
                     {stats.totalAmount.toLocaleString()}원
                   </p>
                 </div>
               </div>
             </div>
-
-            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-              <div className="flex items-center gap-2">
-                <Car className="h-5 w-5 text-purple-600" />
-                <div>
-                  <p className="text-sm text-purple-600">평균 금액</p>
-                  <p className="text-xl lg:text-2xl font-bold text-purple-800">
-                    {stats.totalTrips > 0
-                      ? Math.round(stats.totalAmount / stats.totalTrips).toLocaleString()
-                      : 0}원
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-amber-600" />
-                <div>
-                  <p className="text-sm text-amber-600">고유 경로</p>
-                  <p className="text-xl lg:text-2xl font-bold text-amber-800">{stats.uniqueRoutes}개</p>
-                </div>
-              </div>
-            </div>
           </div>
 
-          {/* 상위 경로 */}
-          {stats.topRoutes.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3">상위 운행 경로 (금액순)</h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {stats.topRoutes.slice(0, 4).map((route, index) => (
-                  <div key={`${route.departure}-${route.destination}`}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">{route.departure}</Badge>
-                          <ArrowRight className="h-3 w-3" />
-                          <Badge variant="outline" className="text-xs">{route.destination}</Badge>
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {route.totalCount}회 운행
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-sm lg:text-base">{route.totalAmount.toLocaleString()}원</div>
-                      <div className="text-xs text-gray-600">
-                        평균 {Math.round(route.totalAmount / route.totalCount).toLocaleString()}원
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* 보고서 버튼 */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsDailyReportOpen(true)}
+              className="flex items-center gap-2"
+              disabled={filteredTrips.length === 0}
+            >
+              <FileText className="h-4 w-4" />
+              일간 보고서
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsMonthlyReportOpen(true)}
+              className="flex items-center gap-2"
+              disabled={filteredTrips.length === 0}
+            >
+              <CalendarReport className="h-4 w-4" />
+              월간 보고서
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* 운행 기록 테이블 - 기존과 동일하므로 생략 */}
+      {/* 차량별 운행 요약 */}
+      {vehicleStats.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Car className="h-5 w-5" />
+              차량별 운행 요약
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {vehicleStats.map((stat, index) => (
+                <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-semibold text-lg">{stat.vehicle}</h3>
+                    <div className="flex gap-4 text-sm">
+                      <span className="text-blue-600 font-medium">{stat.totalTrips}회</span>
+                      <span className="text-green-600 font-medium">{stat.totalAmount.toLocaleString()}원</span>
+                    </div>
+                  </div>
+
+                  {/* 상위 3개 경로 표시 */}
+                  <div className="space-y-2">
+                    <div className="text-sm text-gray-600 mb-2">주요 운행 경로</div>
+                    {Array.from(stat.routes.entries())
+                      .sort((a, b) => b[1].count - a[1].count)
+                      .slice(0, 3)
+                      .map(([route, routeStat], idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm bg-white p-2 rounded">
+                          <span className="font-medium">{route}</span>
+                          <div className="flex gap-2 text-xs">
+                            <span className="text-blue-600">{routeStat.count}회</span>
+                            <span className="text-green-600">{routeStat.amount.toLocaleString()}원</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 운행 기록 테이블 */}
       <Card>
         <CardHeader>
           <CardTitle>
@@ -584,7 +584,7 @@ const monthlyReportData = useMemo(() => {
                 </Table>
               </div>
 
-              {/* 모바일 카드 뷰 - 기존과 동일하므로 생략 */}
+              {/* 모바일 카드 뷰 */}
               <div className="lg:hidden space-y-4">
                 {filteredTrips.map((trip) => (
                   <Card key={trip.id} className="p-4">
@@ -675,7 +675,7 @@ const monthlyReportData = useMemo(() => {
         </CardContent>
       </Card>
 
-      {/* 수정 다이얼로그 - 기존과 동일하므로 생략 */}
+      {/* 수정 다이얼로그 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -714,105 +714,105 @@ const monthlyReportData = useMemo(() => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                 <Label>출발지</Label>
-                 <Input
-                   value={editingTrip.departure}
-                   onChange={(e) => setEditingTrip({ ...editingTrip, departure: e.target.value })}
-                 />
-               </div>
-               <div className="space-y-2">
-                 <Label>목적지</Label>
-                 <Input
-                   value={editingTrip.destination}
-                   onChange={(e) => setEditingTrip({ ...editingTrip, destination: e.target.value })}
-                 />
-               </div>
-             </div>
+                  <Label>출발지</Label>
+                  <Input
+                    value={editingTrip.departure}
+                    onChange={(e) => setEditingTrip({ ...editingTrip, departure: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>목적지</Label>
+                  <Input
+                    value={editingTrip.destination}
+                    onChange={(e) => setEditingTrip({ ...editingTrip, destination: e.target.value })}
+                  />
+                </div>
+              </div>
 
-             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-               <div className="space-y-2">
-                 <Label>단가</Label>
-                 <Input
-                   type="number"
-                   value={editingTrip.unitPrice}
-                   onChange={(e) => setEditingTrip({
-                     ...editingTrip,
-                     unitPrice: parseInt(e.target.value) || 0
-                   })}
-                 />
-               </div>
-               <div className="space-y-2">
-                 <Label>횟수</Label>
-                 <Input
-                   type="number"
-                   value={editingTrip.count}
-                   onChange={(e) => setEditingTrip({
-                     ...editingTrip,
-                     count: parseInt(e.target.value) || 1
-                   })}
-                 />
-               </div>
-               <div className="space-y-2">
-                 <Label>총액</Label>
-                 <div className="px-3 py-2 bg-blue-50 rounded border font-semibold text-blue-800 text-sm">
-                   {(editingTrip.unitPrice * editingTrip.count).toLocaleString()}원
-                 </div>
-               </div>
-             </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>단가</Label>
+                  <Input
+                    type="number"
+                    value={editingTrip.unitPrice}
+                    onChange={(e) => setEditingTrip({
+                      ...editingTrip,
+                      unitPrice: parseInt(e.target.value) || 0
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>횟수</Label>
+                  <Input
+                    type="number"
+                    value={editingTrip.count}
+                    onChange={(e) => setEditingTrip({
+                      ...editingTrip,
+                      count: parseInt(e.target.value) || 1
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>총액</Label>
+                  <div className="px-3 py-2 bg-blue-50 rounded border font-semibold text-blue-800 text-sm">
+                    {(editingTrip.unitPrice * editingTrip.count).toLocaleString()}원
+                  </div>
+                </div>
+              </div>
 
-             <div className="space-y-2">
-               <Label>운전자 (선택)</Label>
-               <Input
-                 value={editingTrip.driverName || ''}
-                 onChange={(e) => setEditingTrip({ ...editingTrip, driverName: e.target.value })}
-                 placeholder="운전자명"
-               />
-             </div>
+              <div className="space-y-2">
+                <Label>운전자 (선택)</Label>
+                <Input
+                  value={editingTrip.driverName || ''}
+                  onChange={(e) => setEditingTrip({ ...editingTrip, driverName: e.target.value })}
+                  placeholder="운전자명"
+                />
+              </div>
 
-             <div className="space-y-2">
-               <Label>메모 (선택)</Label>
-               <Input
-                 value={editingTrip.memo || ''}
-                 onChange={(e) => setEditingTrip({ ...editingTrip, memo: e.target.value })}
-                 placeholder="메모"
-               />
-             </div>
+              <div className="space-y-2">
+                <Label>메모 (선택)</Label>
+                <Input
+                  value={editingTrip.memo || ''}
+                  onChange={(e) => setEditingTrip({ ...editingTrip, memo: e.target.value })}
+                  placeholder="메모"
+                />
+              </div>
 
-             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-               <Button
-                 variant="outline"
-                 onClick={() => setIsEditDialogOpen(false)}
-                 className="w-full sm:w-auto"
-               >
-                 취소
-               </Button>
-               <Button onClick={handleSaveEdit} className="w-full sm:w-auto">
-                 저장
-               </Button>
-             </div>
-           </div>
-         )}
-       </DialogContent>
-     </Dialog>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  className="w-full sm:w-auto"
+                >
+                  취소
+                </Button>
+                <Button onClick={handleSaveEdit} className="w-full sm:w-auto">
+                  저장
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
-     {/* 보고서 다이얼로그들 */}
-     <ReportDialog
-       open={isDailyReportOpen}
-       onOpenChange={setIsDailyReportOpen}
-       title="일간 운행 보고서"
-     >
-       <DailyReport data={dailyReportData} />
-     </ReportDialog>
+      {/* 보고서 다이얼로그들 */}
+      <ReportDialog
+        open={isDailyReportOpen}
+        onOpenChange={setIsDailyReportOpen}
+        title="일간 운행 보고서"
+      >
+        <DailyReport data={dailyReportData} />
+      </ReportDialog>
 
-     <ReportDialog
-       open={isMonthlyReportOpen}
-       onOpenChange={setIsMonthlyReportOpen}
-       title="월간 운행 보고서"
-     >
-       <MonthlyReport data={monthlyReportData} />
-     </ReportDialog>
-   </div>
- );
+      <ReportDialog
+        open={isMonthlyReportOpen}
+        onOpenChange={setIsMonthlyReportOpen}
+        title="월간 운행 보고서"
+      >
+        <MonthlyReport data={monthlyReportData} />
+      </ReportDialog>
+    </div>
+  );
 };
 
 export default TripList;
