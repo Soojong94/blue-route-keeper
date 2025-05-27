@@ -66,7 +66,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       vehicleId: '',
       departure: '',
       destination: '',
-      unitPrice: '',
+      unitPrice: '1', // 기본값을 1원으로 설정
       count: '1',
       driverName: '',
       memo: '',
@@ -83,7 +83,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
   useEffect(() => {
     const nonEmptyRows = rows.filter(row =>
-      row.departure || row.destination || row.unitPrice || row.driverName || row.memo
+      row.departure || row.destination || (row.unitPrice && row.unitPrice !== '1') || row.driverName || row.memo
     );
     setSavedRows(nonEmptyRows);
   }, [rows, setSavedRows]);
@@ -133,7 +133,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
   };
 
   const updateRow = (id: string, field: keyof TripRow, value: any) => {
-    setRows(rows.map(row =>
+    setRows(prevRows => prevRows.map(row =>
       row.id === id ? { ...row, [field]: value, isPriceAutoLoaded: field === 'unitPrice' ? false : row.isPriceAutoLoaded } : row
     ));
   };
@@ -148,18 +148,23 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
   };
 
   const loadSmartPrice = useCallback(async (rowId: string, departure: string, destination: string) => {
-    if (!departure || !destination) {
-      console.log('🚫 Smart pricing skipped: missing departure or destination');
+    if (!departure || !destination || departure === destination) {
       return;
     }
 
     const currentRow = rows.find(r => r.id === rowId);
-    if (!currentRow || currentRow.unitPrice) {
-      console.log('🚫 Smart pricing skipped: row not found or price already set');
+    if (!currentRow) {
       return;
     }
 
-    console.log('🔍 Starting smart price loading for:', { rowId, departure, destination });
+    // 기본값 1원이거나 자동 로딩된 단가인 경우에만 스마트 단가 적용
+    const canLoadSmartPrice =
+      currentRow.unitPrice === '1' || // 기본값
+      currentRow.isPriceAutoLoaded === true; // 이전에 자동 로딩된 단가
+
+    if (!canLoadSmartPrice) {
+      return; // 사용자가 직접 입력한 단가는 보호
+    }
 
     const existingTimeout = smartPriceTimeouts.current.get(rowId);
     if (existingTimeout) {
@@ -173,12 +178,18 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
         const recentPrice = await getRecentUnitPrice(departure, destination);
 
         if (recentPrice) {
-          console.log('✅ Setting smart price:', recentPrice);
-
           setRows(prevRows => {
             const targetRow = prevRows.find(r => r.id === rowId);
-            if (!targetRow || targetRow.unitPrice) {
-              console.log('🚫 Smart pricing cancelled: row changed');
+            if (!targetRow) {
+              return prevRows;
+            }
+
+            // 다시 한번 확인: 기본값이거나 자동 로딩된 단가만 변경
+            const canUpdate =
+              targetRow.unitPrice === '1' ||
+              targetRow.isPriceAutoLoaded === true;
+
+            if (!canUpdate) {
               return prevRows;
             }
 
@@ -194,11 +205,9 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
             description: `${departure} → ${destination}: ${recentPrice.toLocaleString()}원`,
             duration: 2000,
           });
-        } else {
-          console.log('🚫 No smart price found');
         }
       } catch (error) {
-        console.error('❌ Smart pricing error:', error);
+        console.error('Smart pricing error:', error);
       } finally {
         setPriceLoadingRows(prev => {
           const newSet = new Set(prev);
@@ -207,47 +216,38 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
         });
         smartPriceTimeouts.current.delete(rowId);
       }
-    }, 300);
+    }, 500);
 
     smartPriceTimeouts.current.set(rowId, timeoutId);
   }, [rows, toast]);
 
   const handleLocationChange = useCallback((rowId: string, field: 'departure' | 'destination', value: string) => {
-    console.log('📍 Location changed called:', { rowId, field, value });
-
-    console.log('🔄 Calling updateRow...');
+    console.log('🔥 handleLocationChange called:', { rowId, field, value });
     updateRow(rowId, field, value);
 
+    // setTimeout 대신 setRows의 콜백을 활용
     setRows(prevRows => {
-      console.log('🔍 setRows callback called, current rows:', prevRows.length);
+      const updatedRows = prevRows.map(row =>
+        row.id === rowId ? { ...row, [field]: value } : row
+      );
 
-      const row = prevRows.find(r => r.id === rowId);
-      if (!row) {
-        console.log('❌ Row not found:', rowId);
-        return prevRows;
+      const currentRow = updatedRows.find(r => r.id === rowId);
+      if (currentRow) {
+        const departure = field === 'departure' ? value : currentRow.departure;
+        const destination = field === 'destination' ? value : currentRow.destination;
+
+        console.log('🔥 Smart price check:', { departure, destination });
+
+        if (departure && destination && departure !== destination) {
+          console.log('🔥 Calling loadSmartPrice');
+          // 즉시 실행하지 말고 다음 tick에서 실행
+          setTimeout(() => {
+            loadSmartPrice(rowId, departure, destination);
+          }, 100);
+        }
       }
 
-      console.log('✅ Found row:', { departure: row.departure, destination: row.destination, unitPrice: row.unitPrice });
-
-      const departure = field === 'departure' ? value : row.departure;
-      const destination = field === 'destination' ? value : row.destination;
-
-      console.log('🔍 Checking smart price conditions:', {
-        departure,
-        destination,
-        hasPrice: !!row.unitPrice,
-        areDifferent: departure !== destination,
-        bothExist: !!(departure && destination)
-      });
-
-      if (departure && destination && departure !== destination && !row.unitPrice) {
-        console.log('✅ All conditions met - Triggering smart price loading');
-        loadSmartPrice(rowId, departure, destination);
-      } else {
-        console.log('🚫 Conditions not met for smart pricing');
-      }
-
-      return prevRows;
+      return updatedRows;
     });
   }, [updateRow, loadSmartPrice]);
 
@@ -264,11 +264,9 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       } else if (typeof dateInput === 'string') {
         date = new Date(dateInput);
         if (isNaN(date.getTime())) {
-          console.warn('Invalid date string, using current date:', dateInput);
           date = new Date();
         }
       } else {
-        console.warn('Invalid date format, using current date:', dateInput);
         date = new Date();
       }
 
@@ -279,10 +277,12 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     };
 
     for (const row of rows) {
-      if (!row.departure && !row.destination && !row.unitPrice) {
+      // 빈 행 스킵
+      if (!row.departure && !row.destination && (!row.unitPrice || row.unitPrice === '1')) {
         continue;
       }
 
+      // 필수 정보 검증
       if (!row.date || !row.vehicleId || !row.departure || !row.destination || !row.unitPrice || !row.count) {
         errors.push(`${row.departure || '미입력'} → ${row.destination || '미입력'}: 필수 정보가 누락되었습니다.`);
         continue;
@@ -291,8 +291,8 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       const unitPrice = parseFloat(row.unitPrice);
       const count = parseInt(row.count);
 
-      if (isNaN(unitPrice) || unitPrice < 0) {
-        errors.push(`${row.departure} → ${row.destination}: 올바른 단가를 입력해주세요.`);
+      if (isNaN(unitPrice) || unitPrice < 1) {
+        errors.push(`${row.departure} → ${row.destination}: 단가는 1원 이상이어야 합니다.`);
         continue;
       }
 
@@ -303,12 +303,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
       try {
         const dateToSave = formatDateForSupabase(row.date);
-
-        console.log('💾 Saving trip with processed date:', {
-          originalDate: row.date,
-          processedDate: dateToSave,
-          dateType: typeof row.date
-        });
 
         await saveTrip({
           date: dateToSave,
@@ -480,7 +474,7 @@ interface LocationSelectorProps {
   className?: string;
 }
 
-const LocationSelector: React.FC<LocationSelectorProps> = ({
+const LocationSelector: React.FC<LocationSelectorProps> = React.memo(({
   value,
   onChange,
   locations,
@@ -491,34 +485,28 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
 
-  console.log('🏗️ LocationSelector rendered:', { value, placeholder, locationsCount: locations.length, recentCount: recentLocations.length });
-
   useEffect(() => {
     const isRegistered = locations.some(loc => loc.name === value) ||
       recentLocations.includes(value);
     if (value && !isRegistered) {
-      console.log('🔄 Switching to custom input mode:', value);
       setIsCustomInput(true);
       setCustomValue(value);
     }
   }, [value, locations, recentLocations]);
 
   const handleSelectChange = (selectedValue: string) => {
-    console.log('🎯 LocationSelector handleSelectChange called:', { selectedValue, placeholder });
-
     if (selectedValue === 'custom') {
       setIsCustomInput(true);
       setCustomValue(value);
     } else {
       setIsCustomInput(false);
       setCustomValue('');
-      console.log('🚀 Calling onChange from LocationSelector:', selectedValue);
+      console.log('🔥 LocationSelector calling onChange:', selectedValue); // 임시 로그
       onChange(selectedValue);
     }
   };
 
   const handleCustomInputChange = (inputValue: string) => {
-    console.log('✏️ Custom input change:', { inputValue, placeholder });
     setCustomValue(inputValue);
     onChange(inputValue);
   };
@@ -528,10 +516,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
       <div className="flex gap-1">
         <Input
           value={customValue}
-          onChange={(e) => {
-            console.log('📝 Direct input change:', { value: e.target.value, placeholder });
-            handleCustomInputChange(e.target.value);
-          }}
+          onChange={(e) => handleCustomInputChange(e.target.value)}
           placeholder={placeholder}
           className={className}
         />
@@ -540,7 +525,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           variant="outline"
           size="sm"
           onClick={() => {
-            console.log('🔙 Switching back to select mode');
             setIsCustomInput(false);
             onChange('');
             setCustomValue('');
@@ -611,8 +595,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
       </SelectContent>
     </Select>
   );
-};
-// src/components/TripInput.tsx - LocationSelector 대신 간단한 Input으로 임시 교체
+});
 
 const DesktopTripRow: React.FC<TripRowProps> = ({
   row,
@@ -686,27 +669,23 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </Select>
       </td>
 
-      {/* ✅ 임시로 간단한 Input으로 교체 - 출발지 */}
       <td className="px-2 py-3">
-        <Input
+        <LocationSelector
           value={row.departure}
-          onChange={(e) => {
-            console.log('🖥️ Desktop departure DIRECT INPUT onChange:', { rowId: row.id, value: e.target.value });
-            onLocationChange(row.id, 'departure', e.target.value);
-          }}
+          onChange={(value) => onLocationChange(row.id, 'departure', value)}
+          locations={locations}
+          recentLocations={recentData.departures}
           placeholder="출발지"
           className="text-xs h-8"
         />
       </td>
 
-      {/* ✅ 임시로 간단한 Input으로 교체 - 목적지 */}
       <td className="px-2 py-3">
-        <Input
+        <LocationSelector
           value={row.destination}
-          onChange={(e) => {
-            console.log('🖥️ Desktop destination DIRECT INPUT onChange:', { rowId: row.id, value: e.target.value });
-            onLocationChange(row.id, 'destination', e.target.value);
-          }}
+          onChange={(value) => onLocationChange(row.id, 'destination', value)}
+          locations={locations}
+          recentLocations={recentData.destinations}
           placeholder="목적지"
           className="text-xs h-8"
         />
@@ -723,7 +702,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
               "text-xs h-8 w-full pr-8",
               row.isPriceAutoLoaded && "bg-blue-50 border-blue-200"
             )}
-            min="0"
+            min="1"
             step="1000"
           />
           {isPriceLoading && (
@@ -795,6 +774,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
     </tr>
   );
 };
+
 const MobileTripCard: React.FC<TripRowProps> = ({
   row,
   vehicles,
@@ -882,28 +862,24 @@ const MobileTripCard: React.FC<TripRowProps> = ({
           </Select>
         </div>
 
-        {/* ✅ 임시로 간단한 Input으로 교체 - 출발지 */}
         <div className="space-y-2">
           <Label className="text-sm">출발지</Label>
-          <Input
+          <LocationSelector
             value={row.departure}
-            onChange={(e) => {
-              console.log('📱 Mobile departure DIRECT INPUT onChange:', { rowId: row.id, value: e.target.value });
-              onLocationChange(row.id, 'departure', e.target.value);
-            }}
+            onChange={(value) => onLocationChange(row.id, 'departure', value)}
+            locations={locations}
+            recentLocations={recentData.departures}
             placeholder="출발지"
           />
         </div>
 
-        {/* ✅ 임시로 간단한 Input으로 교체 - 목적지 */}
         <div className="space-y-2">
           <Label className="text-sm">목적지</Label>
-          <Input
+          <LocationSelector
             value={row.destination}
-            onChange={(e) => {
-              console.log('📱 Mobile destination DIRECT INPUT onChange:', { rowId: row.id, value: e.target.value });
-              onLocationChange(row.id, 'destination', e.target.value);
-            }}
+            onChange={(value) => onLocationChange(row.id, 'destination', value)}
+            locations={locations}
+            recentLocations={recentData.destinations}
             placeholder="목적지"
           />
         </div>
@@ -927,7 +903,7 @@ const MobileTripCard: React.FC<TripRowProps> = ({
               className={cn(
                 row.isPriceAutoLoaded && "bg-blue-50 border-blue-200"
               )}
-              min="0"
+              min="1"
             />
             {isPriceLoading && (
               <div className="absolute right-3 top-3">
