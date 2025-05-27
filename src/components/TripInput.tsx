@@ -1,5 +1,5 @@
 // src/components/TripInput.tsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ interface TripRow {
   count: string;
   driverName: string;
   memo: string;
-  isPriceAutoLoaded?: boolean; // 자동으로 로딩된 단가인지 표시
+  isPriceAutoLoaded?: boolean;
 }
 
 interface TripInputProps {
@@ -37,12 +37,11 @@ interface TripInputProps {
 }
 
 const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
-  // ✅ localStorage를 사용한 상태 유지
   const [savedRows, setSavedRows] = useLocalStorage<TripRow[]>('tripInputRows', []);
-  const [rows, setRows] = useState<TripRow[]>(() => 
+  const [rows, setRows] = useState<TripRow[]>(() =>
     savedRows.length > 0 ? savedRows : [createNewRow()]
   );
-  
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [recentData, setRecentData] = useState<{
@@ -53,32 +52,37 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
   const [loading, setLoading] = useState(false);
   const [priceLoadingRows, setPriceLoadingRows] = useState<Set<string>>(new Set());
 
+  const smartPriceTimeouts = useRef(new Map<string, NodeJS.Timeout>());
+
   const { toast } = useToast();
 
-function createNewRow(): TripRow {
-  // ✅ 간단하고 안전한 오늘 날짜 생성
-  const today = new Date();
-  // 시간 정보를 제거하고 순수한 날짜만 유지
-  today.setHours(0, 0, 0, 0);
-  
-  return {
-    id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
-    date: today,
-    vehicleId: '',
-    departure: '',
-    destination: '',
-    unitPrice: '',
-    count: '1',
-    driverName: '',
-    memo: '',
-    isPriceAutoLoaded: false,
-  };
-}
+  function createNewRow(): TripRow {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  // rows 변경 시 localStorage에 저장
+    return {
+      id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+      date: today,
+      vehicleId: '',
+      departure: '',
+      destination: '',
+      unitPrice: '',
+      count: '1',
+      driverName: '',
+      memo: '',
+      isPriceAutoLoaded: false,
+    };
+  }
+
   useEffect(() => {
-    // 빈 행은 저장하지 않음
-    const nonEmptyRows = rows.filter(row => 
+    return () => {
+      smartPriceTimeouts.current.forEach(timeout => clearTimeout(timeout));
+      smartPriceTimeouts.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    const nonEmptyRows = rows.filter(row =>
       row.departure || row.destination || row.unitPrice || row.driverName || row.memo
     );
     setSavedRows(nonEmptyRows);
@@ -99,7 +103,6 @@ function createNewRow(): TripRow {
       setVehicles(vehiclesData);
       setLocations(locationsData);
 
-      // 최근 데이터 추출
       const departures = [...new Set(tripsData.map(t => t.departure).filter(Boolean))].slice(0, 10);
       const destinations = [...new Set(tripsData.map(t => t.destination).filter(Boolean))].slice(0, 10);
       const drivers = [...new Set(tripsData.map(t => t.driverName).filter(Boolean))].slice(0, 10);
@@ -144,182 +147,210 @@ function createNewRow(): TripRow {
     }
   };
 
-  // ✅ 스마트 단가 로딩 함수
-  // ✅ 스마트 단가 로딩 함수 (디버그 정보 추가)
-const loadSmartPrice = async (rowId: string, departure: string, destination: string) => {
-  if (!departure || !destination) {
-    console.log('🚫 Smart pricing skipped: missing departure or destination');
-    return;
-  }
-
-  const row = rows.find(r => r.id === rowId);
-  if (!row || row.unitPrice) {
-    console.log('🚫 Smart pricing skipped: row not found or price already set');
-    return; // 이미 단가가 있으면 스킵
-  }
-
-  console.log('🔍 Starting smart price loading for:', { departure, destination });
-
-  try {
-    setPriceLoadingRows(prev => new Set([...prev, rowId]));
-    
-    const recentPrice = await getRecentUnitPrice(departure, destination);
-    
-    if (recentPrice) {
-      console.log('✅ Setting smart price:', recentPrice);
-      setRows(prevRows => prevRows.map(r => 
-        r.id === rowId 
-          ? { ...r, unitPrice: recentPrice.toString(), isPriceAutoLoaded: true }
-          : r
-      ));
-
-      toast({
-        title: "스마트 단가 적용",
-        description: `${departure} → ${destination}: ${recentPrice.toLocaleString()}원`,
-        duration: 2000,
-      });
-    } else {
-      console.log('🚫 No smart price found');
+  const loadSmartPrice = useCallback(async (rowId: string, departure: string, destination: string) => {
+    if (!departure || !destination) {
+      console.log('🚫 Smart pricing skipped: missing departure or destination');
+      return;
     }
-  } catch (error) {
-    console.error('❌ Smart pricing error:', error);
-  } finally {
-    setPriceLoadingRows(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(rowId);
-      return newSet;
-    });
-  }
-};
 
-  // 출발지/목적지 변경 시 스마트 단가 로딩 체크
-  const handleLocationChange = (rowId: string, field: 'departure' | 'destination', value: string) => {
+    const currentRow = rows.find(r => r.id === rowId);
+    if (!currentRow || currentRow.unitPrice) {
+      console.log('🚫 Smart pricing skipped: row not found or price already set');
+      return;
+    }
+
+    console.log('🔍 Starting smart price loading for:', { rowId, departure, destination });
+
+    const existingTimeout = smartPriceTimeouts.current.get(rowId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        setPriceLoadingRows(prev => new Set([...prev, rowId]));
+
+        const recentPrice = await getRecentUnitPrice(departure, destination);
+
+        if (recentPrice) {
+          console.log('✅ Setting smart price:', recentPrice);
+
+          setRows(prevRows => {
+            const targetRow = prevRows.find(r => r.id === rowId);
+            if (!targetRow || targetRow.unitPrice) {
+              console.log('🚫 Smart pricing cancelled: row changed');
+              return prevRows;
+            }
+
+            return prevRows.map(r =>
+              r.id === rowId
+                ? { ...r, unitPrice: recentPrice.toString(), isPriceAutoLoaded: true }
+                : r
+            );
+          });
+
+          toast({
+            title: "스마트 단가 적용",
+            description: `${departure} → ${destination}: ${recentPrice.toLocaleString()}원`,
+            duration: 2000,
+          });
+        } else {
+          console.log('🚫 No smart price found');
+        }
+      } catch (error) {
+        console.error('❌ Smart pricing error:', error);
+      } finally {
+        setPriceLoadingRows(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(rowId);
+          return newSet;
+        });
+        smartPriceTimeouts.current.delete(rowId);
+      }
+    }, 300);
+
+    smartPriceTimeouts.current.set(rowId, timeoutId);
+  }, [rows, toast]);
+
+  const handleLocationChange = useCallback((rowId: string, field: 'departure' | 'destination', value: string) => {
+    console.log('📍 Location changed called:', { rowId, field, value });
+
+    console.log('🔄 Calling updateRow...');
     updateRow(rowId, field, value);
 
-    const row = rows.find(r => r.id === rowId);
-    if (!row) return;
+    setRows(prevRows => {
+      console.log('🔍 setRows callback called, current rows:', prevRows.length);
 
-    const departure = field === 'departure' ? value : row.departure;
-    const destination = field === 'destination' ? value : row.destination;
+      const row = prevRows.find(r => r.id === rowId);
+      if (!row) {
+        console.log('❌ Row not found:', rowId);
+        return prevRows;
+      }
 
-    // 출발지와 목적지가 모두 입력되었을 때 스마트 단가 로딩
-    if (departure && destination && departure !== destination) {
-      setTimeout(() => loadSmartPrice(rowId, departure, destination), 500);
-    }
-  };
+      console.log('✅ Found row:', { departure: row.departure, destination: row.destination, unitPrice: row.unitPrice });
 
-const saveAllRows = async () => {
-  setLoading(true);
-  let savedCount = 0;
-  const errors: string[] = [];
+      const departure = field === 'departure' ? value : row.departure;
+      const destination = field === 'destination' ? value : row.destination;
 
-  // ✅ 안전한 날짜 포맷 함수 (수정된 버전)
-  const formatDateForSupabase = (dateInput: any): string => {
-    let date: Date;
-    
-    // 이미 Date 객체인 경우
-    if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
-      date = dateInput;
-    }
-    // 문자열인 경우 Date 객체로 변환
-    else if (typeof dateInput === 'string') {
-      date = new Date(dateInput);
-      // 유효하지 않은 날짜인 경우 현재 날짜 사용
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date string, using current date:', dateInput);
+      console.log('🔍 Checking smart price conditions:', {
+        departure,
+        destination,
+        hasPrice: !!row.unitPrice,
+        areDifferent: departure !== destination,
+        bothExist: !!(departure && destination)
+      });
+
+      if (departure && destination && departure !== destination && !row.unitPrice) {
+        console.log('✅ All conditions met - Triggering smart price loading');
+        loadSmartPrice(rowId, departure, destination);
+      } else {
+        console.log('🚫 Conditions not met for smart pricing');
+      }
+
+      return prevRows;
+    });
+  }, [updateRow, loadSmartPrice]);
+
+  const saveAllRows = async () => {
+    setLoading(true);
+    let savedCount = 0;
+    const errors: string[] = [];
+
+    const formatDateForSupabase = (dateInput: any): string => {
+      let date: Date;
+
+      if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+        date = dateInput;
+      } else if (typeof dateInput === 'string') {
+        date = new Date(dateInput);
+        if (isNaN(date.getTime())) {
+          console.warn('Invalid date string, using current date:', dateInput);
+          date = new Date();
+        }
+      } else {
+        console.warn('Invalid date format, using current date:', dateInput);
         date = new Date();
       }
-    }
-    // 그 외의 경우 현재 날짜 사용
-    else {
-      console.warn('Invalid date format, using current date:', dateInput);
-      date = new Date();
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    for (const row of rows) {
+      if (!row.departure && !row.destination && !row.unitPrice) {
+        continue;
+      }
+
+      if (!row.date || !row.vehicleId || !row.departure || !row.destination || !row.unitPrice || !row.count) {
+        errors.push(`${row.departure || '미입력'} → ${row.destination || '미입력'}: 필수 정보가 누락되었습니다.`);
+        continue;
+      }
+
+      const unitPrice = parseFloat(row.unitPrice);
+      const count = parseInt(row.count);
+
+      if (isNaN(unitPrice) || unitPrice < 0) {
+        errors.push(`${row.departure} → ${row.destination}: 올바른 단가를 입력해주세요.`);
+        continue;
+      }
+
+      if (isNaN(count) || count < 1) {
+        errors.push(`${row.departure} → ${row.destination}: 횟수는 1 이상이어야 합니다.`);
+        continue;
+      }
+
+      try {
+        const dateToSave = formatDateForSupabase(row.date);
+
+        console.log('💾 Saving trip with processed date:', {
+          originalDate: row.date,
+          processedDate: dateToSave,
+          dateType: typeof row.date
+        });
+
+        await saveTrip({
+          date: dateToSave,
+          departure: row.departure,
+          destination: row.destination,
+          unitPrice: unitPrice,
+          count: count,
+          vehicleId: row.vehicleId,
+          ...(row.driverName && { driverName: row.driverName }),
+          ...(row.memo && { memo: row.memo }),
+        });
+        savedCount++;
+      } catch (error) {
+        console.error('Save trip error:', error);
+        errors.push(`${row.departure} → ${row.destination}: 저장 중 오류가 발생했습니다.`);
+      }
     }
 
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    setLoading(false);
+
+    if (errors.length > 0) {
+      toast({
+        title: "일부 저장 실패",
+        description: `${savedCount}건 저장 완료, ${errors.length}건 실패\n${errors[0]}`,
+        variant: "destructive",
+      });
+    } else if (savedCount > 0) {
+      toast({
+        title: "저장 완료",
+        description: `${savedCount}건의 운행 기록이 저장되었습니다.`,
+      });
+
+      setRows([createNewRow()]);
+      setSavedRows([]);
+      onTripSaved();
+    } else {
+      toast({
+        title: "저장할 데이터 없음",
+        description: "입력된 운행 기록이 없습니다.",
+      });
+    }
   };
-
-  for (const row of rows) {
-    // 빈 행 건너뛰기
-    if (!row.departure && !row.destination && !row.unitPrice) {
-      continue;
-    }
-
-    // 필수 필드 검증
-    if (!row.date || !row.vehicleId || !row.departure || !row.destination || !row.unitPrice || !row.count) {
-      errors.push(`${row.departure || '미입력'} → ${row.destination || '미입력'}: 필수 정보가 누락되었습니다.`);
-      continue;
-    }
-
-    const unitPrice = parseFloat(row.unitPrice);
-    const count = parseInt(row.count);
-
-    if (isNaN(unitPrice) || unitPrice < 0) {
-      errors.push(`${row.departure} → ${row.destination}: 올바른 단가를 입력해주세요.`);
-      continue;
-    }
-
-    if (isNaN(count) || count < 1) {
-      errors.push(`${row.departure} → ${row.destination}: 횟수는 1 이상이어야 합니다.`);
-      continue;
-    }
-
-    try {
-      // ✅ 새로운 안전한 날짜 변환 방식 사용
-      const dateToSave = formatDateForSupabase(row.date);
-
-      console.log('💾 Saving trip with processed date:', {
-        originalDate: row.date,
-        processedDate: dateToSave,
-        dateType: typeof row.date
-      });
-
-      await saveTrip({
-        date: dateToSave,
-        departure: row.departure,
-        destination: row.destination,
-        unitPrice: unitPrice,
-        count: count,
-        vehicleId: row.vehicleId,
-        ...(row.driverName && { driverName: row.driverName }),
-        ...(row.memo && { memo: row.memo }),
-      });
-      savedCount++;
-    } catch (error) {
-      console.error('Save trip error:', error);
-      errors.push(`${row.departure} → ${row.destination}: 저장 중 오류가 발생했습니다.`);
-    }
-  }
-
-  // 나머지 코드는 동일...
-  setLoading(false);
-
-  if (errors.length > 0) {
-    toast({
-      title: "일부 저장 실패",
-      description: `${savedCount}건 저장 완료, ${errors.length}건 실패\n${errors[0]}`,
-      variant: "destructive",
-    });
-  } else if (savedCount > 0) {
-    toast({
-      title: "저장 완료",
-      description: `${savedCount}건의 운행 기록이 저장되었습니다.`,
-    });
-
-    // 폼 초기화
-    setRows([createNewRow()]);
-    setSavedRows([]); // localStorage도 클리어
-    onTripSaved();
-  } else {
-    toast({
-      title: "저장할 데이터 없음",
-      description: "입력된 운행 기록이 없습니다.",
-    });
-  }
-};
 
   const totalAmount = rows.reduce((sum, row) => {
     const unitPrice = parseFloat(row.unitPrice) || 0;
@@ -351,7 +382,6 @@ const saveAllRows = async () => {
       </CardHeader>
 
       <CardContent className="p-0">
-        {/* 데스크톱 테이블 뷰 */}
         <div className="hidden lg:block">
           <div className="w-full overflow-hidden">
             <table className="w-full table-fixed">
@@ -389,7 +419,6 @@ const saveAllRows = async () => {
           </div>
         </div>
 
-        {/* 태블릿/모바일 카드 뷰 */}
         <div className="lg:hidden space-y-4 p-4">
           {rows.map((row) => (
             <MobileTripCard
@@ -426,7 +455,6 @@ const saveAllRows = async () => {
   );
 };
 
-// 나머지 컴포넌트들
 interface TripRowProps {
   row: TripRow;
   vehicles: Vehicle[];
@@ -443,7 +471,6 @@ interface TripRowProps {
   isPriceLoading: boolean;
 }
 
-// 장소 선택 드롭다운 컴포넌트 (수정)
 interface LocationSelectorProps {
   value: string;
   onChange: (value: string) => void;
@@ -464,28 +491,34 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   const [isCustomInput, setIsCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
 
+  console.log('🏗️ LocationSelector rendered:', { value, placeholder, locationsCount: locations.length, recentCount: recentLocations.length });
+
   useEffect(() => {
-    // 현재 값이 등록된 장소나 최근 사용 장소에 없으면 직접 입력 모드로 설정
     const isRegistered = locations.some(loc => loc.name === value) ||
       recentLocations.includes(value);
     if (value && !isRegistered) {
+      console.log('🔄 Switching to custom input mode:', value);
       setIsCustomInput(true);
       setCustomValue(value);
     }
   }, [value, locations, recentLocations]);
 
   const handleSelectChange = (selectedValue: string) => {
+    console.log('🎯 LocationSelector handleSelectChange called:', { selectedValue, placeholder });
+
     if (selectedValue === 'custom') {
       setIsCustomInput(true);
       setCustomValue(value);
     } else {
       setIsCustomInput(false);
       setCustomValue('');
+      console.log('🚀 Calling onChange from LocationSelector:', selectedValue);
       onChange(selectedValue);
     }
   };
 
   const handleCustomInputChange = (inputValue: string) => {
+    console.log('✏️ Custom input change:', { inputValue, placeholder });
     setCustomValue(inputValue);
     onChange(inputValue);
   };
@@ -495,7 +528,10 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
       <div className="flex gap-1">
         <Input
           value={customValue}
-          onChange={(e) => handleCustomInputChange(e.target.value)}
+          onChange={(e) => {
+            console.log('📝 Direct input change:', { value: e.target.value, placeholder });
+            handleCustomInputChange(e.target.value);
+          }}
           placeholder={placeholder}
           className={className}
         />
@@ -504,6 +540,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           variant="outline"
           size="sm"
           onClick={() => {
+            console.log('🔙 Switching back to select mode');
             setIsCustomInput(false);
             onChange('');
             setCustomValue('');
@@ -522,7 +559,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {/* 즐겨찾기 장소 */}
         {locations.length > 0 && (
           <>
             <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
@@ -545,7 +581,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           </>
         )}
 
-        {/* 최근 사용 장소 */}
         {recentLocations.length > 0 && (
           <>
             <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
@@ -564,7 +599,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           </>
         )}
 
-        {/* 직접 입력 옵션 */}
         <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
           기타
         </div>
@@ -578,8 +612,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     </Select>
   );
 };
+// src/components/TripInput.tsx - LocationSelector 대신 간단한 Input으로 임시 교체
 
-// 데스크톱용 테이블 행 (수정)
 const DesktopTripRow: React.FC<TripRowProps> = ({
   row,
   vehicles,
@@ -599,7 +633,6 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
 
   return (
     <tr className="border-b hover:bg-gray-50">
-      {/* 날짜 */}
       <td className="px-2 py-3">
         <Popover>
           <PopoverTrigger asChild>
@@ -630,7 +663,6 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </Popover>
       </td>
 
-      {/* 차량 */}
       <td className="px-2 py-3">
         <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
           <SelectTrigger className="text-xs h-8">
@@ -654,31 +686,32 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </Select>
       </td>
 
-      {/* 출발지 */}
+      {/* ✅ 임시로 간단한 Input으로 교체 - 출발지 */}
       <td className="px-2 py-3">
-        <LocationSelector
+        <Input
           value={row.departure}
-          onChange={(value) => onLocationChange(row.id, 'departure', value)}
-          locations={locations}
-          recentLocations={recentData.departures}
+          onChange={(e) => {
+            console.log('🖥️ Desktop departure DIRECT INPUT onChange:', { rowId: row.id, value: e.target.value });
+            onLocationChange(row.id, 'departure', e.target.value);
+          }}
           placeholder="출발지"
           className="text-xs h-8"
         />
       </td>
 
-      {/* 목적지 */}
+      {/* ✅ 임시로 간단한 Input으로 교체 - 목적지 */}
       <td className="px-2 py-3">
-        <LocationSelector
+        <Input
           value={row.destination}
-          onChange={(value) => onLocationChange(row.id, 'destination', value)}
-          locations={locations}
-          recentLocations={recentData.destinations}
+          onChange={(e) => {
+            console.log('🖥️ Desktop destination DIRECT INPUT onChange:', { rowId: row.id, value: e.target.value });
+            onLocationChange(row.id, 'destination', e.target.value);
+          }}
           placeholder="목적지"
           className="text-xs h-8"
         />
       </td>
 
-      {/* 단가 */}
       <td className="px-2 py-3">
         <div className="relative">
           <Input
@@ -701,265 +734,253 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
           {row.isPriceAutoLoaded && (
             <div className="absolute right-2 top-2">
               <Zap className="h-3 w-3 text-blue-500" />
-           </div>
-         )}
-       </div>
-     </td>
+            </div>
+          )}
+        </div>
+      </td>
 
-     {/* 횟수 */}
-     <td className="px-2 py-3">
-       <Input
-         type="number"
-         value={row.count}
-         onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
-         placeholder="횟수"
-         className="text-xs h-8"
-         min="1"
-       />
-     </td>
+      <td className="px-2 py-3">
+        <Input
+          type="number"
+          value={row.count}
+          onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
+          placeholder="횟수"
+          className="text-xs h-8"
+          min="1"
+        />
+      </td>
 
-     {/* 총액 */}
-     <td className="px-2 py-3">
-       <div className="font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded text-center text-xs">
-         {totalAmount.toLocaleString()}원
-       </div>
-     </td>
+      <td className="px-2 py-3">
+        <div className="font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded text-center text-xs">
+          {totalAmount.toLocaleString()}원
+        </div>
+      </td>
 
-     {/* 운전자 */}
-     <td className="px-2 py-3">
-       <Input
-         value={row.driverName}
-         onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
-         placeholder="운전자"
-         className="text-xs h-8"
-         list={`drivers-${row.id}`}
-       />
-       <datalist id={`drivers-${row.id}`}>
-         {recentData.drivers.map((driver, idx) => (
-           <option key={idx} value={driver} />
-         ))}
-       </datalist>
-     </td>
+      <td className="px-2 py-3">
+        <Input
+          value={row.driverName}
+          onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
+          placeholder="운전자"
+          className="text-xs h-8"
+          list={`drivers-${row.id}`}
+        />
+        <datalist id={`drivers-${row.id}`}>
+          {recentData.drivers.map((driver, idx) => (
+            <option key={idx} value={driver} />
+          ))}
+        </datalist>
+      </td>
 
-     {/* 메모 */}
-     <td className="px-2 py-3">
-       <Input
-         value={row.memo}
-         onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
-         placeholder="메모"
-         className="text-xs h-8"
-       />
-     </td>
+      <td className="px-2 py-3">
+        <Input
+          value={row.memo}
+          onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
+          placeholder="메모"
+          className="text-xs h-8"
+        />
+      </td>
 
-     {/* 삭제 */}
-     <td className="px-2 py-3">
-       <div className="flex justify-center">
-         <Button
-           variant="outline"
-           size="sm"
-           onClick={() => onRemove(row.id)}
-           className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-16 text-xs border-red-200"
-         >
-           삭제
-         </Button>
-       </div>
-     </td>
-   </tr>
- );
+      <td className="px-2 py-3">
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onRemove(row.id)}
+            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-16 text-xs border-red-200"
+          >
+            삭제
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
 };
-
-// 모바일용 카드 컴포넌트 (수정)
 const MobileTripCard: React.FC<TripRowProps> = ({
- row,
- vehicles,
- locations,
- recentData,
- onUpdate,
- onLocationChange,
- onRemove,
- onVehicleSelect,
- isPriceLoading
+  row,
+  vehicles,
+  locations,
+  recentData,
+  onUpdate,
+  onLocationChange,
+  onRemove,
+  onVehicleSelect,
+  isPriceLoading
 }) => {
- const totalAmount = useMemo(() => {
-   const unitPrice = parseFloat(row.unitPrice) || 0;
-   const count = parseInt(row.count) || 0;
-   return unitPrice * count;
- }, [row.unitPrice, row.count]);
+  const totalAmount = useMemo(() => {
+    const unitPrice = parseFloat(row.unitPrice) || 0;
+    const count = parseInt(row.count) || 0;
+    return unitPrice * count;
+  }, [row.unitPrice, row.count]);
 
- return (
-   <Card className="p-4 space-y-4">
-     <div className="flex justify-between items-center">
-       <Badge variant="outline">운행</Badge>
-       <Button
-         variant="ghost"
-         size="sm"
-         onClick={() => onRemove(row.id)}
-         className="text-red-500 hover:text-red-700 h-8 w-8 p-0"
-       >
-         <Trash2 className="h-4 w-4" />
-       </Button>
-     </div>
+  return (
+    <Card className="p-4 space-y-4">
+      <div className="flex justify-between items-center">
+        <Badge variant="outline">운행</Badge>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(row.id)}
+          className="text-red-500 hover:text-red-700 h-8 w-8 p-0"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
 
-     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-       {/* 날짜 */}
-       <div className="space-y-2">
-         <Label className="text-sm">날짜</Label>
-         <Popover>
-           <PopoverTrigger asChild>
-             <Button
-               variant="outline"
-               className={cn(
-                 "w-full justify-start text-left font-normal",
-                 !row.date && "text-muted-foreground"
-               )}
-             >
-               <CalendarIcon className="mr-2 h-4 w-4" />
-               {row.date ? format(row.date, "MM/dd") : "날짜"}
-             </Button>
-           </PopoverTrigger>
-           <PopoverContent className="w-auto p-0" align="start">
-             <Calendar
-               mode="single"
-               selected={row.date}
-               onSelect={(date) => {
-                 if (date) {
-                   const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                   onUpdate(row.id, 'date', localDate);
-                 }
-               }}
-               initialFocus
-             />
-           </PopoverContent>
-         </Popover>
-       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="text-sm">날짜</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !row.date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {row.date ? format(row.date, "MM/dd") : "날짜"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={row.date}
+                onSelect={(date) => {
+                  if (date) {
+                    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                    onUpdate(row.id, 'date', localDate);
+                  }
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
-       {/* 차량 */}
-       <div className="space-y-2">
-         <Label className="text-sm">차량</Label>
-         <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
-           <SelectTrigger>
-             <SelectValue placeholder="차량 선택" />
-           </SelectTrigger>
-           <SelectContent>
-             {vehicles.map((vehicle) => (
-               <SelectItem key={vehicle.id} value={vehicle.id}>
-                 <div className="flex flex-col">
-                   <span className="font-medium">{vehicle.licensePlate}</span>
-                   <span className="text-sm text-gray-500">{vehicle.name}</span>
-                   {vehicle.defaultUnitPrice && (
-                     <span className="text-xs text-blue-600">
-                       기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
-                     </span>
-                   )}
-                 </div>
-               </SelectItem>
-             ))}
-           </SelectContent>
-         </Select>
-       </div>
+        <div className="space-y-2">
+          <Label className="text-sm">차량</Label>
+          <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="차량 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              {vehicles.map((vehicle) => (
+                <SelectItem key={vehicle.id} value={vehicle.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{vehicle.licensePlate}</span>
+                    <span className="text-sm text-gray-500">{vehicle.name}</span>
+                    {vehicle.defaultUnitPrice && (
+                      <span className="text-xs text-blue-600">
+                        기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
+                      </span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-       {/* 출발지 */}
-       <div className="space-y-2">
-         <Label className="text-sm">출발지</Label>
-         <LocationSelector
-           value={row.departure}
-           onChange={(value) => onLocationChange(row.id, 'departure', value)}
-           locations={locations}
-           recentLocations={recentData.departures}
-           placeholder="출발지"
-         />
-       </div>
+        {/* ✅ 임시로 간단한 Input으로 교체 - 출발지 */}
+        <div className="space-y-2">
+          <Label className="text-sm">출발지</Label>
+          <Input
+            value={row.departure}
+            onChange={(e) => {
+              console.log('📱 Mobile departure DIRECT INPUT onChange:', { rowId: row.id, value: e.target.value });
+              onLocationChange(row.id, 'departure', e.target.value);
+            }}
+            placeholder="출발지"
+          />
+        </div>
 
-       {/* 목적지 */}
-       <div className="space-y-2">
-         <Label className="text-sm">목적지</Label>
-         <LocationSelector
-           value={row.destination}
-           onChange={(value) => onLocationChange(row.id, 'destination', value)}
-           locations={locations}
-           recentLocations={recentData.destinations}
-           placeholder="목적지"
-         />
-       </div>
+        {/* ✅ 임시로 간단한 Input으로 교체 - 목적지 */}
+        <div className="space-y-2">
+          <Label className="text-sm">목적지</Label>
+          <Input
+            value={row.destination}
+            onChange={(e) => {
+              console.log('📱 Mobile destination DIRECT INPUT onChange:', { rowId: row.id, value: e.target.value });
+              onLocationChange(row.id, 'destination', e.target.value);
+            }}
+            placeholder="목적지"
+          />
+        </div>
 
-       {/* 단가 */}
-       <div className="space-y-2">
-         <Label className="text-sm flex items-center gap-2">
-           단가
-           {row.isPriceAutoLoaded && (
-             <Badge className="bg-blue-100 text-blue-800 text-xs">
-               <Zap className="h-3 w-3 mr-1" />
-               자동
-             </Badge>
-           )}
-         </Label>
-         <div className="relative">
-           <Input
-             type="number"
-             value={row.unitPrice}
-             onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
-             placeholder="단가"
-             className={cn(
-               row.isPriceAutoLoaded && "bg-blue-50 border-blue-200"
-             )}
-             min="0"
-           />
-           {isPriceLoading && (
-             <div className="absolute right-3 top-3">
-               <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-             </div>
-           )}
-         </div>
-       </div>
+        <div className="space-y-2">
+          <Label className="text-sm flex items-center gap-2">
+            단가
+            {row.isPriceAutoLoaded && (
+              <Badge className="bg-blue-100 text-blue-800 text-xs">
+                <Zap className="h-3 w-3 mr-1" />
+                자동
+              </Badge>
+            )}
+          </Label>
+          <div className="relative">
+            <Input
+              type="number"
+              value={row.unitPrice}
+              onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
+              placeholder="단가"
+              className={cn(
+                row.isPriceAutoLoaded && "bg-blue-50 border-blue-200"
+              )}
+              min="0"
+            />
+            {isPriceLoading && (
+              <div className="absolute right-3 top-3">
+                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+              </div>
+            )}
+          </div>
+        </div>
 
-       {/* 횟수 */}
-       <div className="space-y-2">
-         <Label className="text-sm">횟수</Label>
-         <Input
-           type="number"
-           value={row.count}
-           onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
-           placeholder="횟수"
-           min="1"
-         />
-       </div>
-     </div>
+        <div className="space-y-2">
+          <Label className="text-sm">횟수</Label>
+          <Input
+            type="number"
+            value={row.count}
+            onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
+            placeholder="횟수"
+            min="1"
+          />
+        </div>
+      </div>
 
-     {/* 총액 */}
-     <div className="bg-blue-50 p-3 rounded-lg">
-       <div className="text-sm text-blue-600 mb-1">총액</div>
-       <div className="text-xl font-bold text-blue-800">
-         {totalAmount.toLocaleString()}원
-       </div>
-     </div>
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <div className="text-sm text-blue-600 mb-1">총액</div>
+        <div className="text-xl font-bold text-blue-800">
+          {totalAmount.toLocaleString()}원
+        </div>
+      </div>
 
-     {/* 운전자 */}
-     <div className="space-y-2">
-       <Label className="text-sm">운전자 (선택)</Label>
-       <Input
-         value={row.driverName}
-         onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
-         placeholder="운전자명"
-         list={`drivers-${row.id}`}
-       />
-       <datalist id={`drivers-${row.id}`}>
-         {recentData.drivers.map((driver, idx) => (
-           <option key={idx} value={driver} />
-         ))}
-       </datalist>
-     </div>
+      <div className="space-y-2">
+        <Label className="text-sm">운전자 (선택)</Label>
+        <Input
+          value={row.driverName}
+          onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
+          placeholder="운전자명"
+          list={`drivers-${row.id}`}
+        />
+        <datalist id={`drivers-${row.id}`}>
+          {recentData.drivers.map((driver, idx) => (
+            <option key={idx} value={driver} />
+          ))}
+        </datalist>
+      </div>
 
-     {/* 메모 */}
-     <div className="space-y-2">
-       <Label className="text-sm">메모 (선택)</Label>
-       <Input
-         value={row.memo}
-         onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
-         placeholder="메모"
-       />
-     </div>
-   </Card>
- );
+      <div className="space-y-2">
+        <Label className="text-sm">메모 (선택)</Label>
+        <Input
+          value={row.memo}
+          onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
+          placeholder="메모"
+        />
+      </div>
+    </Card>
+  );
 };
 
 export default TripInput;
