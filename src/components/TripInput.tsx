@@ -15,9 +15,9 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { saveTrip, getVehicles, getLocations, getTrips } from '@/utils/storage';
 import { calculateTotalAmount, getVehicleStats } from '@/utils/calculations';
-import { getRecentUnitPrice } from '@/utils/smartPricing';
 import { Trip, Vehicle, Location } from '@/types/trip';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { getRecentUnitPrice, clearRoutePriceCache } from '@/utils/smartPricing';
 
 interface TripRow {
   id: string;
@@ -314,6 +314,10 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
           ...(row.driverName && { driverName: row.driverName }),
           ...(row.memo && { memo: row.memo }),
         });
+
+        // ✅ 새로운 데이터 저장 후 해당 경로의 캐시 클리어
+        clearRoutePriceCache(row.departure, row.destination);
+
         savedCount++;
       } catch (error) {
         console.error('Save trip error:', error);
