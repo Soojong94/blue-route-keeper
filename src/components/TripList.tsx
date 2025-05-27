@@ -36,174 +36,218 @@ interface TripListState {
 }
 
 const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
-  // ✅ localStorage를 사용한 상태 유지
-  const [savedState, setSavedState] = useLocalStorage<TripListState>('tripList', {
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    selectedVehicle: 'all',
-    searchQuery: ''
-  });
+ // ✅ 오늘 날짜를 정확하게 가져오는 함수
+ const getTodayString = () => {
+   const today = new Date();
+   const year = today.getFullYear();
+   const month = String(today.getMonth() + 1).padStart(2, '0');
+   const day = String(today.getDate()).padStart(2, '0');
+   return `${year}-${month}-${day}`;
+ };
 
-  // 날짜 상태를 Date 객체로 변환
-  const [startDate, setStartDate] = useState<Date>(() => new Date(savedState.startDate));
-  const [endDate, setEndDate] = useState<Date>(() => new Date(savedState.endDate));
+ const [savedState, setSavedState] = useLocalStorage<TripListState>('tripList', {
+   startDate: getTodayString(),
+   endDate: getTodayString(),
+   selectedVehicle: 'all',
+   searchQuery: ''
+ });
 
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
-  const [searchQuery, setSearchQuery] = useState(savedState.searchQuery);
-  const [selectedVehicle, setSelectedVehicle] = useState<string>(savedState.selectedVehicle);
-  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+ // ✅ 문자열을 Date 객체로 안전하게 변환
+ const [startDate, setStartDate] = useState<Date>(() => {
+   const today = new Date();
+   if (savedState.startDate) {
+     const [year, month, day] = savedState.startDate.split('-').map(Number);
+     const date = new Date(year, month - 1, day); // month는 0부터 시작하므로 -1
+     date.setHours(0, 0, 0, 0);
+     return date;
+   }
+   today.setHours(0, 0, 0, 0);
+   return today;
+ });
+ 
+ const [endDate, setEndDate] = useState<Date>(() => {
+   const today = new Date();
+   if (savedState.endDate) {
+     const [year, month, day] = savedState.endDate.split('-').map(Number);
+     const date = new Date(year, month - 1, day); // month는 0부터 시작하므로 -1
+     date.setHours(0, 0, 0, 0);
+     return date;
+   }
+   today.setHours(0, 0, 0, 0);
+   return today;
+ });
 
-  // 보고서 다이얼로그 상태
-  const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
-  const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+ const [trips, setTrips] = useState<Trip[]>([]);
+ const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+ const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
+ const [searchQuery, setSearchQuery] = useState(savedState.searchQuery);
+ const [selectedVehicle, setSelectedVehicle] = useState<string>(savedState.selectedVehicle);
+ const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+ const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+ const [loading, setLoading] = useState(false);
 
-  const { toast } = useToast();
+ // 보고서 다이얼로그 상태
+ const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
+ const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
 
-  // 상태 변경 시 localStorage 업데이트
-  useEffect(() => {
-    setSavedState({
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-      selectedVehicle,
-      searchQuery
-    });
-  }, [startDate, endDate, selectedVehicle, searchQuery, setSavedState]);
+ const { toast } = useToast();
 
-  useEffect(() => {
-    loadTrips();
-    loadVehicles();
-  }, [startDate, endDate, refreshTrigger]);
+ // 상태 변경 시 localStorage 업데이트
+ useEffect(() => {
+   const formatDate = (date: Date) => {
+     const year = date.getFullYear();
+     const month = String(date.getMonth() + 1).padStart(2, '0');
+     const day = String(date.getDate()).padStart(2, '0');
+     return `${year}-${month}-${day}`;
+   };
 
-  useEffect(() => {
-    applyFilters();
-  }, [trips, searchQuery, selectedVehicle]);
+   setSavedState({
+     startDate: formatDate(startDate),
+     endDate: formatDate(endDate),
+     selectedVehicle,
+     searchQuery
+   });
+ }, [startDate, endDate, selectedVehicle, searchQuery, setSavedState]);
 
-  const loadTrips = async () => {
-    try {
-      setLoading(true);
-      console.log('🔍 Loading trips for date range:', {
-        startDate: startDate.toString(),
-        endDate: endDate.toString(),
-        startDateLocal: format(startDate, 'yyyy-MM-dd'),
-        endDateLocal: format(endDate, 'yyyy-MM-dd')
-      });
+ useEffect(() => {
+   loadTrips();
+   loadVehicles();
+ }, [startDate, endDate, refreshTrigger]);
 
-      const loadedTrips = await getTripsByDateRange(startDate, endDate);
-      console.log('✅ Loaded trips:', loadedTrips.length);
-      setTrips(loadedTrips);
-    } catch (error) {
-      console.error('Error loading trips:', error);
-      toast({
-        title: "로드 실패",
-        description: "운행 기록을 불러오는 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+ useEffect(() => {
+   applyFilters();
+ }, [trips, searchQuery, selectedVehicle]);
 
-  const loadVehicles = async () => {
-    try {
-      const vehiclesData = await getVehicles();
-      setVehicles(vehiclesData);
-    } catch (error) {
-      console.error('Error loading vehicles:', error);
-    }
-  };
+ const loadTrips = async () => {
+   try {
+     setLoading(true);
+     console.log('🔍 Loading trips for date range:', {
+       startDate: startDate.toString(),
+       endDate: endDate.toString(),
+       startDateLocal: format(startDate, 'yyyy-MM-dd'),
+       endDateLocal: format(endDate, 'yyyy-MM-dd')
+     });
 
-  const applyFilters = () => {
-    let filtered = [...trips];
+     const loadedTrips = await getTripsByDateRange(startDate, endDate);
+     console.log('✅ Loaded trips:', loadedTrips.length);
+     setTrips(loadedTrips);
+   } catch (error) {
+     console.error('Error loading trips:', error);
+     toast({
+       title: "로드 실패",
+       description: "운행 기록을 불러오는 중 오류가 발생했습니다.",
+       variant: "destructive",
+     });
+   } finally {
+     setLoading(false);
+   }
+ };
 
-    // 차량 필터
-    if (selectedVehicle !== 'all') {
-      filtered = filtered.filter(trip => trip.vehicleId === selectedVehicle);
-    }
+ const loadVehicles = async () => {
+   try {
+     const vehiclesData = await getVehicles();
+     setVehicles(vehiclesData);
+   } catch (error) {
+     console.error('Error loading vehicles:', error);
+   }
+ };
 
-    // 검색 필터
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(trip =>
-        trip.departure.toLowerCase().includes(query) ||
-        trip.destination.toLowerCase().includes(query) ||
-        (trip.driverName && trip.driverName.toLowerCase().includes(query)) ||
-        (trip.memo && trip.memo.toLowerCase().includes(query))
-      );
-    }
+ const applyFilters = () => {
+   let filtered = [...trips];
 
-    setFilteredTrips(filtered);
-  };
+   // 차량 필터
+   if (selectedVehicle !== 'all') {
+     filtered = filtered.filter(trip => trip.vehicleId === selectedVehicle);
+   }
 
-  const handleEdit = (trip: Trip) => {
-    setEditingTrip({ ...trip });
-    setIsEditDialogOpen(true);
-  };
+   // 검색 필터
+   if (searchQuery) {
+     const query = searchQuery.toLowerCase();
+     filtered = filtered.filter(trip =>
+       trip.departure.toLowerCase().includes(query) ||
+       trip.destination.toLowerCase().includes(query) ||
+       (trip.driverName && trip.driverName.toLowerCase().includes(query)) ||
+       (trip.memo && trip.memo.toLowerCase().includes(query))
+     );
+   }
 
-  const handleSaveEdit = async () => {
-    if (!editingTrip) return;
+   setFilteredTrips(filtered);
+ };
 
-    try {
-      const updated = await updateTrip(editingTrip.id, {
-        date: editingTrip.date,
-        departure: editingTrip.departure,
-        destination: editingTrip.destination,
-        unitPrice: editingTrip.unitPrice,
-        count: editingTrip.count,
-        vehicleId: editingTrip.vehicleId,
-        driverName: editingTrip.driverName,
-        memo: editingTrip.memo,
-      });
+ const handleEdit = (trip: Trip) => {
+   setEditingTrip({ ...trip });
+   setIsEditDialogOpen(true);
+ };
 
-      if (updated) {
-        toast({
-          title: "수정 완료",
-          description: "운행 기록이 수정되었습니다.",
-        });
-        setIsEditDialogOpen(false);
-        await loadTrips();
-      }
-    } catch (error) {
-      console.error('Update trip error:', error);
-      toast({
-        title: "수정 실패",
-        description: "운행 기록 수정 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    }
-  };
+ const handleSaveEdit = async () => {
+   if (!editingTrip) return;
 
-  const handleDelete = async (id: string) => {
-    if (confirm('정말로 이 운행 기록을 삭제하시겠습니까?')) {
-      try {
-        await deleteTrip(id);
-        toast({
-          title: "삭제 완료",
-          description: "운행 기록이 삭제되었습니다.",
-        });
-        await loadTrips();
-      } catch (error) {
-        console.error('Delete trip error:', error);
-        toast({
-          title: "삭제 실패",
-          description: "운행 기록 삭제 중 오류가 발생했습니다.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
+   try {
+     const updated = await updateTrip(editingTrip.id, {
+       date: editingTrip.date,
+       departure: editingTrip.departure,
+       destination: editingTrip.destination,
+       unitPrice: editingTrip.unitPrice,
+       count: editingTrip.count,
+       vehicleId: editingTrip.vehicleId,
+       driverName: editingTrip.driverName,
+       memo: editingTrip.memo,
+     });
 
-  const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
-  const dailyReportData = useMemo(() => generateDailyReport(filteredTrips, vehicles), [filteredTrips, vehicles]);
-  const monthlyReportData = useMemo(() => generateMonthlyReport(filteredTrips), [filteredTrips]);
+     if (updated) {
+       toast({
+         title: "수정 완료",
+         description: "운행 기록이 수정되었습니다.",
+       });
+       setIsEditDialogOpen(false);
+       await loadTrips();
+     }
+   } catch (error) {
+     console.error('Update trip error:', error);
+     toast({
+       title: "수정 실패",
+       description: "운행 기록 수정 중 오류가 발생했습니다.",
+       variant: "destructive",
+     });
+   }
+ };
 
-  const getVehicleName = (vehicleId: string) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
-    return vehicle ? `${vehicle.licensePlate} (${vehicle.name})` : '알 수 없음';
-  };
+ const handleDelete = async (id: string) => {
+   if (confirm('정말로 이 운행 기록을 삭제하시겠습니까?')) {
+     try {
+       await deleteTrip(id);
+       toast({
+         title: "삭제 완료",
+         description: "운행 기록이 삭제되었습니다.",
+       });
+       await loadTrips();
+     } catch (error) {
+       console.error('Delete trip error:', error);
+       toast({
+         title: "삭제 실패",
+         description: "운행 기록 삭제 중 오류가 발생했습니다.",
+         variant: "destructive",
+       });
+     }
+   }
+ };
+
+ const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
+ const dailyReportData = useMemo(() => {
+  console.log('📊 Generating daily report with trips:', filteredTrips.length);
+  return generateDailyReport(filteredTrips, vehicles);
+}, [filteredTrips, vehicles]);
+
+const monthlyReportData = useMemo(() => {
+  console.log('📊 Generating monthly report with trips:', filteredTrips.length);
+  return generateMonthlyReport(filteredTrips);
+}, [filteredTrips]);
+
+ const getVehicleName = (vehicleId: string) => {
+   const vehicle = vehicles.find(v => v.id === vehicleId);
+   return vehicle ? `${vehicle.licensePlate} (${vehicle.name})` : '알 수 없음';
+ };
+
 
   return (
     <div className="space-y-6">
@@ -325,7 +369,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              onClick={() => setIsDailyReportOpen(true)}
+              onClick={() => {
+                console.log('🔍 Daily report data:', dailyReportData);
+                setIsDailyReportOpen(true);
+              }}
               className="flex items-center gap-2"
               disabled={filteredTrips.length === 0}
             >
@@ -334,7 +381,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setIsMonthlyReportOpen(true)}
+              onClick={() => {
+                console.log('🔍 Monthly report data:', monthlyReportData);
+                setIsMonthlyReportOpen(true);
+              }}
               className="flex items-center gap-2"
               disabled={filteredTrips.length === 0}
             >

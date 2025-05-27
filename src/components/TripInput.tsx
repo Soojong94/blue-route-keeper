@@ -55,20 +55,25 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
   const { toast } = useToast();
 
-  function createNewRow(): TripRow {
-    return {
-      id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
-      date: new Date(),
-      vehicleId: '',
-      departure: '',
-      destination: '',
-      unitPrice: '',
-      count: '1',
-      driverName: '',
-      memo: '',
-      isPriceAutoLoaded: false,
-    };
-  }
+function createNewRow(): TripRow {
+  // ✅ 간단하고 안전한 오늘 날짜 생성
+  const today = new Date();
+  // 시간 정보를 제거하고 순수한 날짜만 유지
+  today.setHours(0, 0, 0, 0);
+  
+  return {
+    id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+    date: today,
+    vehicleId: '',
+    departure: '',
+    destination: '',
+    unitPrice: '',
+    count: '1',
+    driverName: '',
+    memo: '',
+    isPriceAutoLoaded: false,
+  };
+}
 
   // rows 변경 시 localStorage에 저장
   useEffect(() => {
@@ -140,40 +145,52 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
   };
 
   // ✅ 스마트 단가 로딩 함수
-  const loadSmartPrice = async (rowId: string, departure: string, destination: string) => {
-    if (!departure || !destination) return;
+  // ✅ 스마트 단가 로딩 함수 (디버그 정보 추가)
+const loadSmartPrice = async (rowId: string, departure: string, destination: string) => {
+  if (!departure || !destination) {
+    console.log('🚫 Smart pricing skipped: missing departure or destination');
+    return;
+  }
 
-    const row = rows.find(r => r.id === rowId);
-    if (!row || row.unitPrice) return; // 이미 단가가 있으면 스킵
+  const row = rows.find(r => r.id === rowId);
+  if (!row || row.unitPrice) {
+    console.log('🚫 Smart pricing skipped: row not found or price already set');
+    return; // 이미 단가가 있으면 스킵
+  }
 
-    try {
-      setPriceLoadingRows(prev => new Set([...prev, rowId]));
-      
-      const recentPrice = await getRecentUnitPrice(departure, destination);
-      
-      if (recentPrice) {
-        setRows(prevRows => prevRows.map(r => 
-          r.id === rowId 
-            ? { ...r, unitPrice: recentPrice.toString(), isPriceAutoLoaded: true }
-            : r
-        ));
+  console.log('🔍 Starting smart price loading for:', { departure, destination });
 
-        toast({
-          title: "스마트 단가 적용",
-          description: `${departure} → ${destination}: ${recentPrice.toLocaleString()}원`,
-          duration: 2000,
-        });
-      }
-    } catch (error) {
-      console.log('스마트 단가 로딩 실패:', error);
-    } finally {
-      setPriceLoadingRows(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(rowId);
-        return newSet;
+  try {
+    setPriceLoadingRows(prev => new Set([...prev, rowId]));
+    
+    const recentPrice = await getRecentUnitPrice(departure, destination);
+    
+    if (recentPrice) {
+      console.log('✅ Setting smart price:', recentPrice);
+      setRows(prevRows => prevRows.map(r => 
+        r.id === rowId 
+          ? { ...r, unitPrice: recentPrice.toString(), isPriceAutoLoaded: true }
+          : r
+      ));
+
+      toast({
+        title: "스마트 단가 적용",
+        description: `${departure} → ${destination}: ${recentPrice.toLocaleString()}원`,
+        duration: 2000,
       });
+    } else {
+      console.log('🚫 No smart price found');
     }
-  };
+  } catch (error) {
+    console.error('❌ Smart pricing error:', error);
+  } finally {
+    setPriceLoadingRows(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(rowId);
+      return newSet;
+    });
+  }
+};
 
   // 출발지/목적지 변경 시 스마트 단가 로딩 체크
   const handleLocationChange = (rowId: string, field: 'departure' | 'destination', value: string) => {
@@ -191,96 +208,118 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     }
   };
 
-  const saveAllRows = async () => {
-    setLoading(true);
-    let savedCount = 0;
-    const errors: string[] = [];
+const saveAllRows = async () => {
+  setLoading(true);
+  let savedCount = 0;
+  const errors: string[] = [];
 
-    // ✅ 안정적인 날짜 포맷 함수
-    const formatDateForSupabase = (date: Date): string => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    for (const row of rows) {
-      // 빈 행 건너뛰기
-      if (!row.departure && !row.destination && !row.unitPrice) {
-        continue;
-      }
-
-      // 필수 필드 검증
-      if (!row.date || !row.vehicleId || !row.departure || !row.destination || !row.unitPrice || !row.count) {
-        errors.push(`${row.departure || '미입력'} → ${row.destination || '미입력'}: 필수 정보가 누락되었습니다.`);
-        continue;
-      }
-
-      const unitPrice = parseFloat(row.unitPrice);
-      const count = parseInt(row.count);
-
-      if (isNaN(unitPrice) || unitPrice < 0) {
-        errors.push(`${row.departure} → ${row.destination}: 올바른 단가를 입력해주세요.`);
-        continue;
-      }
-
-      if (isNaN(count) || count < 1) {
-        errors.push(`${row.departure} → ${row.destination}: 횟수는 1 이상이어야 합니다.`);
-        continue;
-      }
-
-      try {
-        // ✅ 새로운 날짜 변환 방식 사용
-        const dateToSave = formatDateForSupabase(row.date);
-
-        console.log('💾 Saving trip with processed date:', {
-          originalDate: row.date,
-          processedDate: dateToSave,
-          dateToString: row.date.toString()
-        });
-
-        await saveTrip({
-          date: dateToSave,
-          departure: row.departure,
-          destination: row.destination,
-          unitPrice: unitPrice,
-          count: count,
-          vehicleId: row.vehicleId,
-          ...(row.driverName && { driverName: row.driverName }),
-          ...(row.memo && { memo: row.memo }),
-        });
-        savedCount++;
-      } catch (error) {
-        console.error('Save trip error:', error);
-        errors.push(`${row.departure} → ${row.destination}: 저장 중 오류가 발생했습니다.`);
+  // ✅ 안전한 날짜 포맷 함수 (수정된 버전)
+  const formatDateForSupabase = (dateInput: any): string => {
+    let date: Date;
+    
+    // 이미 Date 객체인 경우
+    if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+      date = dateInput;
+    }
+    // 문자열인 경우 Date 객체로 변환
+    else if (typeof dateInput === 'string') {
+      date = new Date(dateInput);
+      // 유효하지 않은 날짜인 경우 현재 날짜 사용
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date string, using current date:', dateInput);
+        date = new Date();
       }
     }
-
-    setLoading(false);
-
-    if (errors.length > 0) {
-      toast({
-        title: "일부 저장 실패",
-        description: `${savedCount}건 저장 완료, ${errors.length}건 실패\n${errors[0]}`,
-        variant: "destructive",
-      });
-    } else if (savedCount > 0) {
-      toast({
-        title: "저장 완료",
-        description: `${savedCount}건의 운행 기록이 저장되었습니다.`,
-      });
-
-      // 폼 초기화
-      setRows([createNewRow()]);
-      setSavedRows([]); // localStorage도 클리어
-      onTripSaved();
-    } else {
-      toast({
-        title: "저장할 데이터 없음",
-        description: "입력된 운행 기록이 없습니다.",
-      });
+    // 그 외의 경우 현재 날짜 사용
+    else {
+      console.warn('Invalid date format, using current date:', dateInput);
+      date = new Date();
     }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
+
+  for (const row of rows) {
+    // 빈 행 건너뛰기
+    if (!row.departure && !row.destination && !row.unitPrice) {
+      continue;
+    }
+
+    // 필수 필드 검증
+    if (!row.date || !row.vehicleId || !row.departure || !row.destination || !row.unitPrice || !row.count) {
+      errors.push(`${row.departure || '미입력'} → ${row.destination || '미입력'}: 필수 정보가 누락되었습니다.`);
+      continue;
+    }
+
+    const unitPrice = parseFloat(row.unitPrice);
+    const count = parseInt(row.count);
+
+    if (isNaN(unitPrice) || unitPrice < 0) {
+      errors.push(`${row.departure} → ${row.destination}: 올바른 단가를 입력해주세요.`);
+      continue;
+    }
+
+    if (isNaN(count) || count < 1) {
+      errors.push(`${row.departure} → ${row.destination}: 횟수는 1 이상이어야 합니다.`);
+      continue;
+    }
+
+    try {
+      // ✅ 새로운 안전한 날짜 변환 방식 사용
+      const dateToSave = formatDateForSupabase(row.date);
+
+      console.log('💾 Saving trip with processed date:', {
+        originalDate: row.date,
+        processedDate: dateToSave,
+        dateType: typeof row.date
+      });
+
+      await saveTrip({
+        date: dateToSave,
+        departure: row.departure,
+        destination: row.destination,
+        unitPrice: unitPrice,
+        count: count,
+        vehicleId: row.vehicleId,
+        ...(row.driverName && { driverName: row.driverName }),
+        ...(row.memo && { memo: row.memo }),
+      });
+      savedCount++;
+    } catch (error) {
+      console.error('Save trip error:', error);
+      errors.push(`${row.departure} → ${row.destination}: 저장 중 오류가 발생했습니다.`);
+    }
+  }
+
+  // 나머지 코드는 동일...
+  setLoading(false);
+
+  if (errors.length > 0) {
+    toast({
+      title: "일부 저장 실패",
+      description: `${savedCount}건 저장 완료, ${errors.length}건 실패\n${errors[0]}`,
+      variant: "destructive",
+    });
+  } else if (savedCount > 0) {
+    toast({
+      title: "저장 완료",
+      description: `${savedCount}건의 운행 기록이 저장되었습니다.`,
+    });
+
+    // 폼 초기화
+    setRows([createNewRow()]);
+    setSavedRows([]); // localStorage도 클리어
+    onTripSaved();
+  } else {
+    toast({
+      title: "저장할 데이터 없음",
+      description: "입력된 운행 기록이 없습니다.",
+    });
+  }
+};
 
   const totalAmount = rows.reduce((sum, row) => {
     const unitPrice = parseFloat(row.unitPrice) || 0;
