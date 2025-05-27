@@ -12,39 +12,66 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car } from 'lucide-react';
+import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car, FileText, Calendar as CalendarReport } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getTrips, getTripsByDateRange, getVehicles, deleteTrip, updateTrip } from '@/utils/storage';
 import { getPeriodStats } from '@/utils/calculations';
+import { generateDailyReport, generateMonthlyReport } from '@/utils/reportUtils';
 import { Trip, Vehicle, PeriodStats } from '@/types/trip';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import DailyReport from '@/components/reports/DailyReport';
+import MonthlyReport from '@/components/reports/MonthlyReport';
+import ReportDialog from '@/components/reports/ReportDialog';
 
 interface TripListProps {
   refreshTrigger: number;
 }
 
+interface TripListState {
+  startDate: string;
+  endDate: string;
+  selectedVehicle: string;
+  searchQuery: string;
+}
+
 const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
-  // ✅ 초기값을 오늘 날짜로 정확히 설정 (시간 부분 제거)
-  const [startDate, setStartDate] = useState<Date>(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  // ✅ localStorage를 사용한 상태 유지
+  const [savedState, setSavedState] = useLocalStorage<TripListState>('tripList', {
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    selectedVehicle: 'all',
+    searchQuery: ''
   });
 
-  const [endDate, setEndDate] = useState<Date>(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  });
+  // 날짜 상태를 Date 객체로 변환
+  const [startDate, setStartDate] = useState<Date>(() => new Date(savedState.startDate));
+  const [endDate, setEndDate] = useState<Date>(() => new Date(savedState.endDate));
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedVehicle, setSelectedVehicle] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState(savedState.searchQuery);
+  const [selectedVehicle, setSelectedVehicle] = useState<string>(savedState.selectedVehicle);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // 보고서 다이얼로그 상태
+  const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
+  const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+
   const { toast } = useToast();
+
+  // 상태 변경 시 localStorage 업데이트
+  useEffect(() => {
+    setSavedState({
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      selectedVehicle,
+      searchQuery
+    });
+  }, [startDate, endDate, selectedVehicle, searchQuery, setSavedState]);
 
   useEffect(() => {
     loadTrips();
@@ -170,6 +197,8 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   };
 
   const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
+  const dailyReportData = useMemo(() => generateDailyReport(filteredTrips, vehicles), [filteredTrips, vehicles]);
+  const monthlyReportData = useMemo(() => generateMonthlyReport(filteredTrips), [filteredTrips]);
 
   const getVehicleName = (vehicleId: string) => {
     const vehicle = vehicles.find(v => v.id === vehicleId);
@@ -211,29 +240,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                     selected={startDate}
                     onSelect={(date) => {
                       if (date) {
-                        console.log('🔍 Start date selected:', {
-                          original: date,
-                          toString: date.toString(),
-                          getDate: date.getDate(),
-                          getMonth: date.getMonth(),
-                          getFullYear: date.getFullYear()
-                        });
-
-                        // ✅ 로컬 날짜로 정확히 설정 (시간 부분 제거)
                         const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-                        console.log('✅ Created local date:', {
-                          localDate: localDate,
-                          toString: localDate.toString(),
-                          formatted: format(localDate, 'yyyy-MM-dd')
-                        });
-
                         setStartDate(localDate);
-
-                        // 시작일이 종료일보다 뒤에 있으면 종료일을 시작일로 설정
                         if (localDate > endDate) {
-                          const endLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                          setEndDate(endLocalDate);
+                          setEndDate(localDate);
                         }
                       }
                     }}
@@ -258,36 +268,17 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {endDate ? format(endDate, "yyyy-MM-dd") : "종료일"}
                   </Button>
-                </PopoverTrigger>
+                </PopoverTrigger> 
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={endDate}
                     onSelect={(date) => {
                       if (date) {
-                        console.log('🔍 End date selected:', {
-                          original: date,
-                          toString: date.toString(),
-                          getDate: date.getDate(),
-                          getMonth: date.getMonth(),
-                          getFullYear: date.getFullYear()
-                        });
-
-                        // ✅ 로컬 날짜로 정확히 설정 (시간 부분 제거)
                         const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-                        console.log('✅ Created local date:', {
-                          localDate: localDate,
-                          toString: localDate.toString(),
-                          formatted: format(localDate, 'yyyy-MM-dd')
-                        });
-
                         setEndDate(localDate);
-
-                        // 종료일이 시작일보다 앞에 있으면 시작일을 종료일로 설정
                         if (localDate < startDate) {
-                          const startLocalDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                          setStartDate(startLocalDate);
+                          setStartDate(localDate);
                         }
                       }
                     }}
@@ -328,6 +319,28 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 />
               </div>
             </div>
+          </div>
+
+          {/* 보고서 버튼 */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsDailyReportOpen(true)}
+              className="flex items-center gap-2"
+              disabled={filteredTrips.length === 0}
+            >
+              <FileText className="h-4 w-4" />
+              일간 보고서
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsMonthlyReportOpen(true)}
+              className="flex items-center gap-2"
+              disabled={filteredTrips.length === 0}
+            >
+              <CalendarReport className="h-4 w-4" />
+              월간 보고서
+            </Button>
           </div>
 
           {/* 통계 요약 */}
@@ -416,7 +429,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         </CardContent>
       </Card>
 
-      {/* 운행 기록 테이블 */}
+      {/* 운행 기록 테이블 - 기존과 동일하므로 생략 */}
       <Card>
         <CardHeader>
           <CardTitle>
@@ -521,7 +534,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 </Table>
               </div>
 
-              {/* 모바일 카드 뷰 */}
+              {/* 모바일 카드 뷰 - 기존과 동일하므로 생략 */}
               <div className="lg:hidden space-y-4">
                 {filteredTrips.map((trip) => (
                   <Card key={trip.id} className="p-4">
@@ -612,7 +625,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         </CardContent>
       </Card>
 
-      {/* 수정 다이얼로그 */}
+      {/* 수정 다이얼로그 - 기존과 동일하므로 생략 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -651,88 +664,105 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>출발지</Label>
-                  <Input
-                    value={editingTrip.departure}
-                    onChange={(e) => setEditingTrip({ ...editingTrip, departure: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>목적지</Label>
-                  <Input
-                    value={editingTrip.destination}
-                    onChange={(e) => setEditingTrip({ ...editingTrip, destination: e.target.value })}
-                  />
-                </div>
-              </div>
+                 <Label>출발지</Label>
+                 <Input
+                   value={editingTrip.departure}
+                   onChange={(e) => setEditingTrip({ ...editingTrip, departure: e.target.value })}
+                 />
+               </div>
+               <div className="space-y-2">
+                 <Label>목적지</Label>
+                 <Input
+                   value={editingTrip.destination}
+                   onChange={(e) => setEditingTrip({ ...editingTrip, destination: e.target.value })}
+                 />
+               </div>
+             </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>단가</Label>
-                  <Input
-                    type="number"
-                    value={editingTrip.unitPrice}
-                    onChange={(e) => setEditingTrip({
-                      ...editingTrip,
-                      unitPrice: parseInt(e.target.value) || 0
-                    })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>횟수</Label>
-                  <Input
-                    type="number"
-                    value={editingTrip.count}
-                    onChange={(e) => setEditingTrip({
-                      ...editingTrip,
-                      count: parseInt(e.target.value) || 1
-                    })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>총액</Label>
-                  <div className="px-3 py-2 bg-blue-50 rounded border font-semibold text-blue-800 text-sm">
-                    {(editingTrip.unitPrice * editingTrip.count).toLocaleString()}원
-                  </div>
-                </div>
-              </div>
+             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+               <div className="space-y-2">
+                 <Label>단가</Label>
+                 <Input
+                   type="number"
+                   value={editingTrip.unitPrice}
+                   onChange={(e) => setEditingTrip({
+                     ...editingTrip,
+                     unitPrice: parseInt(e.target.value) || 0
+                   })}
+                 />
+               </div>
+               <div className="space-y-2">
+                 <Label>횟수</Label>
+                 <Input
+                   type="number"
+                   value={editingTrip.count}
+                   onChange={(e) => setEditingTrip({
+                     ...editingTrip,
+                     count: parseInt(e.target.value) || 1
+                   })}
+                 />
+               </div>
+               <div className="space-y-2">
+                 <Label>총액</Label>
+                 <div className="px-3 py-2 bg-blue-50 rounded border font-semibold text-blue-800 text-sm">
+                   {(editingTrip.unitPrice * editingTrip.count).toLocaleString()}원
+                 </div>
+               </div>
+             </div>
 
-              <div className="space-y-2">
-                <Label>운전자 (선택)</Label>
-                <Input
-                  value={editingTrip.driverName || ''}
-                  onChange={(e) => setEditingTrip({ ...editingTrip, driverName: e.target.value })}
-                  placeholder="운전자명"
-                />
-              </div>
+             <div className="space-y-2">
+               <Label>운전자 (선택)</Label>
+               <Input
+                 value={editingTrip.driverName || ''}
+                 onChange={(e) => setEditingTrip({ ...editingTrip, driverName: e.target.value })}
+                 placeholder="운전자명"
+               />
+             </div>
 
-              <div className="space-y-2">
-                <Label>메모 (선택)</Label>
-                <Input
-                  value={editingTrip.memo || ''}
-                  onChange={(e) => setEditingTrip({ ...editingTrip, memo: e.target.value })}
-                  placeholder="메모"
-                />
-              </div>
+             <div className="space-y-2">
+               <Label>메모 (선택)</Label>
+               <Input
+                 value={editingTrip.memo || ''}
+                 onChange={(e) => setEditingTrip({ ...editingTrip, memo: e.target.value })}
+                 placeholder="메모"
+               />
+             </div>
 
-              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditDialogOpen(false)}
-                  className="w-full sm:w-auto"
-                >
-                  취소
-                </Button>
-                <Button onClick={handleSaveEdit} className="w-full sm:w-auto">
-                  저장
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+               <Button
+                 variant="outline"
+                 onClick={() => setIsEditDialogOpen(false)}
+                 className="w-full sm:w-auto"
+               >
+                 취소
+               </Button>
+               <Button onClick={handleSaveEdit} className="w-full sm:w-auto">
+                 저장
+               </Button>
+             </div>
+           </div>
+         )}
+       </DialogContent>
+     </Dialog>
+
+     {/* 보고서 다이얼로그들 */}
+     <ReportDialog
+       open={isDailyReportOpen}
+       onOpenChange={setIsDailyReportOpen}
+       title="일간 운행 보고서"
+     >
+       <DailyReport data={dailyReportData} />
+     </ReportDialog>
+
+     <ReportDialog
+       open={isMonthlyReportOpen}
+       onOpenChange={setIsMonthlyReportOpen}
+       title="월간 운행 보고서"
+     >
+       <MonthlyReport data={monthlyReportData} />
+     </ReportDialog>
+   </div>
+ );
 };
 
 export default TripList;

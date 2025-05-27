@@ -47,17 +47,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-    if (error) {
-      console.error('Error signing in with Google:', error);
-    }
-  };
+const signInWithGoogle = async () => {
+  // 환경 변수가 있으면 사용, 없으면 현재 origin 사용
+  const redirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin;
+  
+  console.log('🔐 Auth redirect URL:', redirectUrl);
+  console.log('🌍 Current environment:', import.meta.env.MODE);
+  
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: redirectUrl,
+    },
+  });
+  
+  if (error) {
+    console.error('Error signing in with Google:', error);
+  }
+};
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();

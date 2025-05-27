@@ -7,14 +7,19 @@ import VehicleManagement from '@/components/VehicleManagement';
 import LocationManagement from '@/components/LocationManagement';
 import UserProfile from '@/components/UserProfile';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState('input');
+  const [activeTab, setActiveTab] = useLocalStorage('activeTab', 'input');
   const { user } = useAuth();
 
   const handleTripSaved = () => {
     setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
   };
 
   return (
@@ -38,7 +43,7 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           {/* 데스크톱 탭 네비게이션 */}
           <div className="hidden md:block mb-8">
             <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">

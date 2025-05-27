@@ -240,12 +240,12 @@ const VehicleManagement: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">차량명 (필수)</Label>
+              <Label htmlFor="name">성명(필수)</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="예: 아반떼, 소나타"
+                
               />
             </div>
 

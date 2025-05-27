@@ -10,12 +10,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Car, MapPin, Calculator, Plus, Trash2, ChevronDown } from 'lucide-react';
+import { CalendarIcon, Car, MapPin, Calculator, Plus, Trash2, ChevronDown, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { saveTrip, getVehicles, getLocations, getTrips } from '@/utils/storage';
 import { calculateTotalAmount, getVehicleStats } from '@/utils/calculations';
+import { getRecentUnitPrice } from '@/utils/smartPricing';
 import { Trip, Vehicle, Location } from '@/types/trip';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface TripRow {
   id: string;
@@ -27,6 +29,7 @@ interface TripRow {
   count: string;
   driverName: string;
   memo: string;
+  isPriceAutoLoaded?: boolean; // 자동으로 로딩된 단가인지 표시
 }
 
 interface TripInputProps {
@@ -34,7 +37,12 @@ interface TripInputProps {
 }
 
 const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
-  const [rows, setRows] = useState<TripRow[]>([createNewRow()]);
+  // ✅ localStorage를 사용한 상태 유지
+  const [savedRows, setSavedRows] = useLocalStorage<TripRow[]>('tripInputRows', []);
+  const [rows, setRows] = useState<TripRow[]>(() => 
+    savedRows.length > 0 ? savedRows : [createNewRow()]
+  );
+  
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [recentData, setRecentData] = useState<{
@@ -43,6 +51,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     drivers: string[];
   }>({ departures: [], destinations: [], drivers: [] });
   const [loading, setLoading] = useState(false);
+  const [priceLoadingRows, setPriceLoadingRows] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
 
@@ -57,8 +66,18 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       count: '1',
       driverName: '',
       memo: '',
+      isPriceAutoLoaded: false,
     };
   }
+
+  // rows 변경 시 localStorage에 저장
+  useEffect(() => {
+    // 빈 행은 저장하지 않음
+    const nonEmptyRows = rows.filter(row => 
+      row.departure || row.destination || row.unitPrice || row.driverName || row.memo
+    );
+    setSavedRows(nonEmptyRows);
+  }, [rows, setSavedRows]);
 
   useEffect(() => {
     loadInitialData();
@@ -107,7 +126,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
   const updateRow = (id: string, field: keyof TripRow, value: any) => {
     setRows(rows.map(row =>
-      row.id === id ? { ...row, [field]: value } : row
+      row.id === id ? { ...row, [field]: value, isPriceAutoLoaded: field === 'unitPrice' ? false : row.isPriceAutoLoaded } : row
     ));
   };
 
@@ -117,6 +136,58 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     const vehicle = vehicles.find(v => v.id === vehicleId);
     if (vehicle?.defaultUnitPrice) {
       updateRow(rowId, 'unitPrice', vehicle.defaultUnitPrice.toString());
+    }
+  };
+
+  // ✅ 스마트 단가 로딩 함수
+  const loadSmartPrice = async (rowId: string, departure: string, destination: string) => {
+    if (!departure || !destination) return;
+
+    const row = rows.find(r => r.id === rowId);
+    if (!row || row.unitPrice) return; // 이미 단가가 있으면 스킵
+
+    try {
+      setPriceLoadingRows(prev => new Set([...prev, rowId]));
+      
+      const recentPrice = await getRecentUnitPrice(departure, destination);
+      
+      if (recentPrice) {
+        setRows(prevRows => prevRows.map(r => 
+          r.id === rowId 
+            ? { ...r, unitPrice: recentPrice.toString(), isPriceAutoLoaded: true }
+            : r
+        ));
+
+        toast({
+          title: "스마트 단가 적용",
+          description: `${departure} → ${destination}: ${recentPrice.toLocaleString()}원`,
+          duration: 2000,
+        });
+      }
+    } catch (error) {
+      console.log('스마트 단가 로딩 실패:', error);
+    } finally {
+      setPriceLoadingRows(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(rowId);
+        return newSet;
+      });
+    }
+  };
+
+  // 출발지/목적지 변경 시 스마트 단가 로딩 체크
+  const handleLocationChange = (rowId: string, field: 'departure' | 'destination', value: string) => {
+    updateRow(rowId, field, value);
+
+    const row = rows.find(r => r.id === rowId);
+    if (!row) return;
+
+    const departure = field === 'departure' ? value : row.departure;
+    const destination = field === 'destination' ? value : row.destination;
+
+    // 출발지와 목적지가 모두 입력되었을 때 스마트 단가 로딩
+    if (departure && destination && departure !== destination) {
+      setTimeout(() => loadSmartPrice(rowId, departure, destination), 500);
     }
   };
 
@@ -201,6 +272,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
       // 폼 초기화
       setRows([createNewRow()]);
+      setSavedRows([]); // localStorage도 클리어
       onTripSaved();
     } else {
       toast({
@@ -267,8 +339,10 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
                     locations={locations}
                     recentData={recentData}
                     onUpdate={updateRow}
+                    onLocationChange={handleLocationChange}
                     onRemove={removeRow}
                     onVehicleSelect={handleVehicleSelect}
+                    isPriceLoading={priceLoadingRows.has(row.id)}
                   />
                 ))}
               </tbody>
@@ -286,8 +360,10 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
               locations={locations}
               recentData={recentData}
               onUpdate={updateRow}
+              onLocationChange={handleLocationChange}
               onRemove={removeRow}
               onVehicleSelect={handleVehicleSelect}
+              isPriceLoading={priceLoadingRows.has(row.id)}
             />
           ))}
         </div>
@@ -322,11 +398,13 @@ interface TripRowProps {
     drivers: string[];
   };
   onUpdate: (id: string, field: keyof TripRow, value: any) => void;
+  onLocationChange: (id: string, field: 'departure' | 'destination', value: string) => void;
   onRemove: (id: string) => void;
   onVehicleSelect: (rowId: string, vehicleId: string) => void;
+  isPriceLoading: boolean;
 }
 
-// 장소 선택 드롭다운 컴포넌트
+// 장소 선택 드롭다운 컴포넌트 (수정)
 interface LocationSelectorProps {
   value: string;
   onChange: (value: string) => void;
@@ -462,15 +540,17 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   );
 };
 
-// 데스크톱용 테이블 행
+// 데스크톱용 테이블 행 (수정)
 const DesktopTripRow: React.FC<TripRowProps> = ({
   row,
   vehicles,
   locations,
   recentData,
   onUpdate,
+  onLocationChange,
   onRemove,
-  onVehicleSelect
+  onVehicleSelect,
+  isPriceLoading
 }) => {
   const totalAmount = useMemo(() => {
     const unitPrice = parseFloat(row.unitPrice) || 0;
@@ -501,23 +581,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
               selected={row.date}
               onSelect={(date) => {
                 if (date) {
-                  console.log('🔍 Desktop row date selected:', {
-                    original: date,
-                    toString: date.toString(),
-                    getDate: date.getDate(),
-                    getMonth: date.getMonth(),
-                    getFullYear: date.getFullYear()
-                  });
-
-                  // ✅ 로컬 날짜로 정확히 설정
                   const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-                  console.log('✅ Desktop row created local date:', {
-                    localDate: localDate,
-                    toString: localDate.toString(),
-                    formatted: format(localDate, 'yyyy-MM-dd')
-                  });
-
                   onUpdate(row.id, 'date', localDate);
                 }
               }}
@@ -555,7 +619,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
       <td className="px-2 py-3">
         <LocationSelector
           value={row.departure}
-          onChange={(value) => onUpdate(row.id, 'departure', value)}
+          onChange={(value) => onLocationChange(row.id, 'departure', value)}
           locations={locations}
           recentLocations={recentData.departures}
           placeholder="출발지"
@@ -567,7 +631,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
       <td className="px-2 py-3">
         <LocationSelector
           value={row.destination}
-          onChange={(value) => onUpdate(row.id, 'destination', value)}
+          onChange={(value) => onLocationChange(row.id, 'destination', value)}
           locations={locations}
           recentLocations={recentData.destinations}
           placeholder="목적지"
@@ -577,267 +641,286 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
 
       {/* 단가 */}
       <td className="px-2 py-3">
-        <Input
-          type="number"
-          value={row.unitPrice}
-          onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
-          placeholder="단가"
-          className="text-xs h-8 w-full"
-          min="0"
-          step="1000"
-        />
-      </td>
-
-      {/* 횟수 */}
-      <td className="px-2 py-3">
-        <Input
-          type="number"
-          value={row.count}
-          onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
-          placeholder="횟수"
-          className="text-xs h-8"
-          min="1"
-        />
-      </td>
-
-      {/* 총액 */}
-      <td className="px-2 py-3">
-        <div className="font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded text-center text-xs">
-          {totalAmount.toLocaleString()}원
-        </div>
-      </td>
-
-      {/* 운전자 */}
-      <td className="px-2 py-3">
-        <Input
-          value={row.driverName}
-          onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
-          placeholder="운전자"
-          className="text-xs h-8"
-          list={`drivers-${row.id}`}
-        />
-        <datalist id={`drivers-${row.id}`}>
-          {recentData.drivers.map((driver, idx) => (
-            <option key={idx} value={driver} />
-          ))}
-        </datalist>
-      </td>
-
-      {/* 메모 */}
-      <td className="px-2 py-3">
-        <Input
-          value={row.memo}
-          onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
-          placeholder="메모"
-          className="text-xs h-8"
-        />
-      </td>
-
-      {/* 삭제 */}
-      <td className="px-2 py-3">
-        <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onRemove(row.id)}
-            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-16 text-xs border-red-200"
-          >
-            삭제
-          </Button>
-        </div>
-      </td>
-    </tr>
-  );
-};
-
-// 모바일용 카드 컴포넌트
-const MobileTripCard: React.FC<TripRowProps> = ({
-  row,
-  vehicles,
-  locations,
-  recentData,
-  onUpdate,
-  onRemove,
-  onVehicleSelect
-}) => {
-  const totalAmount = useMemo(() => {
-    const unitPrice = parseFloat(row.unitPrice) || 0;
-    const count = parseInt(row.count) || 0;
-    return unitPrice * count;
-  }, [row.unitPrice, row.count]);
-
-  return (
-    <Card className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <Badge variant="outline">운행</Badge>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onRemove(row.id)}
-          className="text-red-500 hover:text-red-700 h-8 w-8 p-0"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* 날짜 */}
-        <div className="space-y-2">
-          <Label className="text-sm">날짜</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !row.date && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {row.date ? format(row.date, "MM/dd") : "날짜"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={row.date}
-                onSelect={(date) => {
-                  if (date) {
-                    console.log('🔍 Mobile card date selected:', {
-                      original: date,
-                      toString: date.toString(),
-                      getDate: date.getDate(),
-                      getMonth: date.getMonth(),
-                      getFullYear: date.getFullYear()
-                    });
-
-                    // ✅ 로컬 날짜로 정확히 설정
-                    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-                    console.log('✅ Mobile card created local date:', {
-                      localDate: localDate,
-                      toString: localDate.toString(),
-                      formatted: format(localDate, 'yyyy-MM-dd')
-                    });
-
-                    onUpdate(row.id, 'date', localDate);
-                  }
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* 차량 */}
-        <div className="space-y-2">
-          <Label className="text-sm">차량</Label>
-          <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="차량 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              {vehicles.map((vehicle) => (
-                <SelectItem key={vehicle.id} value={vehicle.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{vehicle.licensePlate}</span>
-                    <span className="text-sm text-gray-500">{vehicle.name}</span>
-                    {vehicle.defaultUnitPrice && (
-                      <span className="text-xs text-blue-600">
-                        기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
-                      </span>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* 출발지 */}
-        <div className="space-y-2">
-          <Label className="text-sm">출발지</Label>
-          <LocationSelector
-            value={row.departure}
-            onChange={(value) => onUpdate(row.id, 'departure', value)}
-            locations={locations}
-            recentLocations={recentData.departures}
-            placeholder="출발지"
-          />
-        </div>
-
-        {/* 목적지 */}
-        <div className="space-y-2">
-          <Label className="text-sm">목적지</Label>
-          <LocationSelector
-            value={row.destination}
-            onChange={(value) => onUpdate(row.id, 'destination', value)}
-            locations={locations}
-            recentLocations={recentData.destinations}
-            placeholder="목적지"
-          />
-        </div>
-
-        {/* 단가 */}
-        <div className="space-y-2">
-          <Label className="text-sm">단가</Label>
+        <div className="relative">
           <Input
             type="number"
             value={row.unitPrice}
             onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
             placeholder="단가"
+            className={cn(
+              "text-xs h-8 w-full pr-8",
+              row.isPriceAutoLoaded && "bg-blue-50 border-blue-200"
+            )}
             min="0"
+            step="1000"
           />
-        </div>
+          {isPriceLoading && (
+            <div className="absolute right-2 top-2">
+              <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+            </div>
+          )}
+          {row.isPriceAutoLoaded && (
+            <div className="absolute right-2 top-2">
+              <Zap className="h-3 w-3 text-blue-500" />
+           </div>
+         )}
+       </div>
+     </td>
 
-        {/* 횟수 */}
-        <div className="space-y-2">
-          <Label className="text-sm">횟수</Label>
-          <Input
-            type="number"
-            value={row.count}
-            onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
-            placeholder="횟수"
-            min="1"
-          />
-        </div>
-      </div>
+     {/* 횟수 */}
+     <td className="px-2 py-3">
+       <Input
+         type="number"
+         value={row.count}
+         onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
+         placeholder="횟수"
+         className="text-xs h-8"
+         min="1"
+       />
+     </td>
 
-      {/* 총액 */}
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <div className="text-sm text-blue-600 mb-1">총액</div>
-        <div className="text-xl font-bold text-blue-800">
-          {totalAmount.toLocaleString()}원
-        </div>
-      </div>
+     {/* 총액 */}
+     <td className="px-2 py-3">
+       <div className="font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded text-center text-xs">
+         {totalAmount.toLocaleString()}원
+       </div>
+     </td>
 
-      {/* 운전자 */}
-      <div className="space-y-2">
-        <Label className="text-sm">운전자 (선택)</Label>
-        <Input
-          value={row.driverName}
-          onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
-          placeholder="운전자명"
-          list={`drivers-${row.id}`}
-        />
-        <datalist id={`drivers-${row.id}`}>
-          {recentData.drivers.map((driver, idx) => (
-            <option key={idx} value={driver} />
-          ))}
-        </datalist>
-      </div>
+     {/* 운전자 */}
+     <td className="px-2 py-3">
+       <Input
+         value={row.driverName}
+         onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
+         placeholder="운전자"
+         className="text-xs h-8"
+         list={`drivers-${row.id}`}
+       />
+       <datalist id={`drivers-${row.id}`}>
+         {recentData.drivers.map((driver, idx) => (
+           <option key={idx} value={driver} />
+         ))}
+       </datalist>
+     </td>
 
-      {/* 메모 */}
-      <div className="space-y-2">
-        <Label className="text-sm">메모 (선택)</Label>
-        <Input
-          value={row.memo}
-          onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
-          placeholder="메모"
-        />
-      </div>
-    </Card>
-  );
+     {/* 메모 */}
+     <td className="px-2 py-3">
+       <Input
+         value={row.memo}
+         onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
+         placeholder="메모"
+         className="text-xs h-8"
+       />
+     </td>
+
+     {/* 삭제 */}
+     <td className="px-2 py-3">
+       <div className="flex justify-center">
+         <Button
+           variant="outline"
+           size="sm"
+           onClick={() => onRemove(row.id)}
+           className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-16 text-xs border-red-200"
+         >
+           삭제
+         </Button>
+       </div>
+     </td>
+   </tr>
+ );
+};
+
+// 모바일용 카드 컴포넌트 (수정)
+const MobileTripCard: React.FC<TripRowProps> = ({
+ row,
+ vehicles,
+ locations,
+ recentData,
+ onUpdate,
+ onLocationChange,
+ onRemove,
+ onVehicleSelect,
+ isPriceLoading
+}) => {
+ const totalAmount = useMemo(() => {
+   const unitPrice = parseFloat(row.unitPrice) || 0;
+   const count = parseInt(row.count) || 0;
+   return unitPrice * count;
+ }, [row.unitPrice, row.count]);
+
+ return (
+   <Card className="p-4 space-y-4">
+     <div className="flex justify-between items-center">
+       <Badge variant="outline">운행</Badge>
+       <Button
+         variant="ghost"
+         size="sm"
+         onClick={() => onRemove(row.id)}
+         className="text-red-500 hover:text-red-700 h-8 w-8 p-0"
+       >
+         <Trash2 className="h-4 w-4" />
+       </Button>
+     </div>
+
+     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+       {/* 날짜 */}
+       <div className="space-y-2">
+         <Label className="text-sm">날짜</Label>
+         <Popover>
+           <PopoverTrigger asChild>
+             <Button
+               variant="outline"
+               className={cn(
+                 "w-full justify-start text-left font-normal",
+                 !row.date && "text-muted-foreground"
+               )}
+             >
+               <CalendarIcon className="mr-2 h-4 w-4" />
+               {row.date ? format(row.date, "MM/dd") : "날짜"}
+             </Button>
+           </PopoverTrigger>
+           <PopoverContent className="w-auto p-0" align="start">
+             <Calendar
+               mode="single"
+               selected={row.date}
+               onSelect={(date) => {
+                 if (date) {
+                   const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                   onUpdate(row.id, 'date', localDate);
+                 }
+               }}
+               initialFocus
+             />
+           </PopoverContent>
+         </Popover>
+       </div>
+
+       {/* 차량 */}
+       <div className="space-y-2">
+         <Label className="text-sm">차량</Label>
+         <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
+           <SelectTrigger>
+             <SelectValue placeholder="차량 선택" />
+           </SelectTrigger>
+           <SelectContent>
+             {vehicles.map((vehicle) => (
+               <SelectItem key={vehicle.id} value={vehicle.id}>
+                 <div className="flex flex-col">
+                   <span className="font-medium">{vehicle.licensePlate}</span>
+                   <span className="text-sm text-gray-500">{vehicle.name}</span>
+                   {vehicle.defaultUnitPrice && (
+                     <span className="text-xs text-blue-600">
+                       기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
+                     </span>
+                   )}
+                 </div>
+               </SelectItem>
+             ))}
+           </SelectContent>
+         </Select>
+       </div>
+
+       {/* 출발지 */}
+       <div className="space-y-2">
+         <Label className="text-sm">출발지</Label>
+         <LocationSelector
+           value={row.departure}
+           onChange={(value) => onLocationChange(row.id, 'departure', value)}
+           locations={locations}
+           recentLocations={recentData.departures}
+           placeholder="출발지"
+         />
+       </div>
+
+       {/* 목적지 */}
+       <div className="space-y-2">
+         <Label className="text-sm">목적지</Label>
+         <LocationSelector
+           value={row.destination}
+           onChange={(value) => onLocationChange(row.id, 'destination', value)}
+           locations={locations}
+           recentLocations={recentData.destinations}
+           placeholder="목적지"
+         />
+       </div>
+
+       {/* 단가 */}
+       <div className="space-y-2">
+         <Label className="text-sm flex items-center gap-2">
+           단가
+           {row.isPriceAutoLoaded && (
+             <Badge className="bg-blue-100 text-blue-800 text-xs">
+               <Zap className="h-3 w-3 mr-1" />
+               자동
+             </Badge>
+           )}
+         </Label>
+         <div className="relative">
+           <Input
+             type="number"
+             value={row.unitPrice}
+             onChange={(e) => onUpdate(row.id, 'unitPrice', e.target.value)}
+             placeholder="단가"
+             className={cn(
+               row.isPriceAutoLoaded && "bg-blue-50 border-blue-200"
+             )}
+             min="0"
+           />
+           {isPriceLoading && (
+             <div className="absolute right-3 top-3">
+               <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+             </div>
+           )}
+         </div>
+       </div>
+
+       {/* 횟수 */}
+       <div className="space-y-2">
+         <Label className="text-sm">횟수</Label>
+         <Input
+           type="number"
+           value={row.count}
+           onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
+           placeholder="횟수"
+           min="1"
+         />
+       </div>
+     </div>
+
+     {/* 총액 */}
+     <div className="bg-blue-50 p-3 rounded-lg">
+       <div className="text-sm text-blue-600 mb-1">총액</div>
+       <div className="text-xl font-bold text-blue-800">
+         {totalAmount.toLocaleString()}원
+       </div>
+     </div>
+
+     {/* 운전자 */}
+     <div className="space-y-2">
+       <Label className="text-sm">운전자 (선택)</Label>
+       <Input
+         value={row.driverName}
+         onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
+         placeholder="운전자명"
+         list={`drivers-${row.id}`}
+       />
+       <datalist id={`drivers-${row.id}`}>
+         {recentData.drivers.map((driver, idx) => (
+           <option key={idx} value={driver} />
+         ))}
+       </datalist>
+     </div>
+
+     {/* 메모 */}
+     <div className="space-y-2">
+       <Label className="text-sm">메모 (선택)</Label>
+       <Input
+         value={row.memo}
+         onChange={(e) => onUpdate(row.id, 'memo', e.target.value)}
+         placeholder="메모"
+       />
+     </div>
+   </Card>
+ );
 };
 
 export default TripInput;
