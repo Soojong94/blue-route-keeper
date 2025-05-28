@@ -14,10 +14,11 @@ export interface Trip {
   updatedAt?: string;             // 수정일시
 }
 
+// src/types/trip.ts 수정
 export interface Vehicle {
   id: string;
-  name: string;                   // 차량명
-  licensePlate: string;           // 번호판
+  name?: string;                   // 선택사항으로 변경 (? 추가)
+  licensePlate: string;           // 번호판은 필수 유지
   defaultUnitPrice?: number;      // 기본 단가 설정
   createdAt: string;
 }

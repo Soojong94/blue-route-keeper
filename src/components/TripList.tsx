@@ -1,4 +1,4 @@
-// src/components/TripList.tsx
+// src/components/TripList.tsx 수정
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car, FileText, Calendar as CalendarReport } from 'lucide-react';
+import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car, FileText, Calendar as CalendarReport, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getTrips, getTripsByDateRange, getVehicles, deleteTrip, updateTrip } from '@/utils/storage';
@@ -23,6 +23,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import DailyReport from '@/components/reports/DailyReport';
 import MonthlyReport from '@/components/reports/MonthlyReport';
 import ReportDialog from '@/components/reports/ReportDialog';
+import VehicleFilterInput from '@/components/VehicleFilterInput';
 
 interface TripListProps {
   refreshTrigger: number;
@@ -33,10 +34,10 @@ interface TripListState {
   endDate: string;
   selectedVehicle: string;
   searchQuery: string;
+  showDetailedList: boolean; // 상세보기 상태 추가
 }
 
 const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
-  // ✅ 오늘 날짜를 정확하게 가져오는 함수
   const getTodayString = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -49,10 +50,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     startDate: getTodayString(),
     endDate: getTodayString(),
     selectedVehicle: 'all',
-    searchQuery: ''
+    searchQuery: '',
+    showDetailedList: false // 기본값은 간략히 보기
   });
 
-  // ✅ 문자열을 Date 객체로 안전하게 변환
   const [startDate, setStartDate] = useState<Date>(() => {
     const today = new Date();
     if (savedState.startDate) {
@@ -65,6 +66,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     return today;
   });
 
+  // TripList.tsx 수정 계속
   const [endDate, setEndDate] = useState<Date>(() => {
     const today = new Date();
     if (savedState.endDate) {
@@ -82,6 +84,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
   const [searchQuery, setSearchQuery] = useState(savedState.searchQuery);
   const [selectedVehicle, setSelectedVehicle] = useState<string>(savedState.selectedVehicle);
+  const [showDetailedList, setShowDetailedList] = useState<boolean>(savedState.showDetailedList);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -105,9 +108,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       startDate: formatDate(startDate),
       endDate: formatDate(endDate),
       selectedVehicle,
-      searchQuery
+      searchQuery,
+      showDetailedList
     });
-  }, [startDate, endDate, selectedVehicle, searchQuery, setSavedState]);
+  }, [startDate, endDate, selectedVehicle, searchQuery, showDetailedList, setSavedState]);
 
   useEffect(() => {
     loadTrips();
@@ -225,9 +229,11 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   };
 
   const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
+
+  // 일간 보고서 데이터 생성 시 시작일과 종료일 전달
   const dailyReportData = useMemo(() => {
-    return generateDailyReport(filteredTrips, vehicles);
-  }, [filteredTrips, vehicles]);
+    return generateDailyReport(filteredTrips, vehicles, startDate, endDate);
+  }, [filteredTrips, vehicles, startDate, endDate]);
 
   const monthlyReportData = useMemo(() => {
     return generateMonthlyReport(filteredTrips);
@@ -235,7 +241,8 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
 
   const getVehicleName = (vehicleId: string) => {
     const vehicle = vehicles.find(v => v.id === vehicleId);
-    return vehicle ? `${vehicle.licensePlate} (${vehicle.name})` : '알 수 없음';
+    if (!vehicle) return '알 수 없음';
+    return vehicle.name ? `${vehicle.licensePlate} (${vehicle.name})` : vehicle.licensePlate;
   };
 
   // 차량별 운행 통계 계산
@@ -353,22 +360,15 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
               </Popover>
             </div>
 
-            {/* 차량 필터 */}
+            {/* 차량 필터 - 새로운 VehicleFilterInput 사용 */}
             <div className="space-y-2">
               <Label>차량</Label>
-              <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
-                <SelectTrigger>
-                  <SelectValue placeholder="전체 차량" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체 차량</SelectItem>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.licensePlate} ({vehicle.name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <VehicleFilterInput
+                value={selectedVehicle}
+                onChange={setSelectedVehicle}
+                vehicles={vehicles}
+                placeholder="차량번호 입력 (예: 12 입력시 1234 추천)"
+              />
             </div>
 
             {/* 검색 */}
@@ -386,7 +386,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
             </div>
           </div>
 
-          {/* 기본 통계 - 총 운행과 총 금액만 표시 */}
+          {/* 기본 통계 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center gap-2">
@@ -411,32 +411,54 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
             </div>
           </div>
 
-          {/* 보고서 버튼 */}
-          <div className="flex flex-wrap gap-2">
+          {/* 보고서 및 상세보기 버튼 */}
+          <div className="flex flex-wrap gap-2 justify-between">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsDailyReportOpen(true)}
+                className="flex items-center gap-2"
+                disabled={filteredTrips.length === 0}
+              >
+                <FileText className="h-4 w-4" />
+                일간 보고서
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsMonthlyReportOpen(true)}
+                className="flex items-center gap-2"
+                disabled={filteredTrips.length === 0}
+              >
+                <CalendarReport className="h-4 w-4" />
+                월간 보고서
+              </Button>
+            </div>
+
+            {/* 상세보기/간략히 보기 버튼 */}
             <Button
-              variant="outline"
-              onClick={() => setIsDailyReportOpen(true)}
+              variant={showDetailedList ? "secondary" : "default"}
+              onClick={() => setShowDetailedList(!showDetailedList)}
               className="flex items-center gap-2"
               disabled={filteredTrips.length === 0}
             >
-              <FileText className="h-4 w-4" />
-              일간 보고서
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setIsMonthlyReportOpen(true)}
-              className="flex items-center gap-2"
-              disabled={filteredTrips.length === 0}
-            >
-              <CalendarReport className="h-4 w-4" />
-              월간 보고서
+              {showDetailedList ? (
+                <>
+                  <EyeOff className="h-4 w-4" />
+                  간략히 보기
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4" />
+                  상세보기 ({filteredTrips.length}건)
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* 차량별 운행 요약 */}
-      {vehicleStats.length > 0 && (
+      {/* 차량별 운행 요약 - 상세보기가 아닐 때만 표시 */}
+      {!showDetailedList && vehicleStats.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -479,201 +501,203 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         </Card>
       )}
 
-      {/* 운행 기록 테이블 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            운행 기록 목록 ({filteredTrips.length}건)
-            {loading && <span className="text-sm font-normal text-gray-500 ml-2">로딩 중...</span>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredTrips.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {loading ? '데이터를 불러오는 중입니다...' : '조건에 맞는 운행 기록이 없습니다.'}
-            </div>
-          ) : (
-            <>
-              {/* 데스크톱 테이블 */}
-              <div className="hidden lg:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>운행일</TableHead>
-                      <TableHead>차량</TableHead>
-                      <TableHead>경로</TableHead>
-                      <TableHead className="text-center">횟수</TableHead>
-                      <TableHead className="text-right">단가</TableHead>
-                      <TableHead className="text-right">총액</TableHead>
-                      <TableHead>운전자</TableHead>
-                      <TableHead>저장일시</TableHead>
-                      <TableHead className="text-center">관리</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTrips.map((trip) => (
-                      <TableRow key={trip.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">
-                          {format(new Date(trip.date), 'MM/dd', { locale: ko })}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="font-medium">{getVehicleName(trip.vehicleId)}</div>
+      {/* 운행 기록 상세 테이블 - 상세보기일 때만 표시 */}
+      {showDetailedList && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              운행 기록 목록 ({filteredTrips.length}건)
+              {loading && <span className="text-sm font-normal text-gray-500 ml-2">로딩 중...</span>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {filteredTrips.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {loading ? '데이터를 불러오는 중입니다...' : '조건에 맞는 운행 기록이 없습니다.'}
+              </div>
+            ) : (
+              <>
+                {/* 데스크톱 테이블 */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>운행일</TableHead>
+                        <TableHead>차량</TableHead>
+                        <TableHead>경로</TableHead>
+                        <TableHead className="text-center">횟수</TableHead>
+                        <TableHead className="text-right">단가</TableHead>
+                        <TableHead className="text-right">총액</TableHead>
+                        <TableHead>운전자</TableHead>
+                        <TableHead>저장일시</TableHead>
+                        <TableHead className="text-center">관리</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTrips.map((trip) => (
+                        <TableRow key={trip.id} className="hover:bg-gray-50">
+                          <TableCell className="font-medium">
+                            {format(new Date(trip.date), 'MM/dd', { locale: ko })}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <div className="font-medium">{getVehicleName(trip.vehicleId)}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                                {trip.departure}
+                              </Badge>
+                              <ArrowRight className="h-4 w-4 text-gray-400" />
+                              <Badge variant="outline" className="bg-green-50 text-green-700">
+                                {trip.destination}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-medium">
+                            {trip.count}회
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {trip.unitPrice.toLocaleString()}원
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-blue-600">
+                            {trip.totalAmount.toLocaleString()}원
+                          </TableCell>
+                          <TableCell>
+                            {trip.driverName ? (
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                                {trip.driverName}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-400 text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
+                            {trip.updatedAt && (
+                              <div className="text-xs text-blue-500">
+                                (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(trip)}
+                                className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(trip.id)}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* 모바일 카드 뷰 */}
+                <div className="lg:hidden space-y-4">
+                  {filteredTrips.map((trip) => (
+                    <Card key={trip.id} className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="space-y-1">
+                          <div className="font-medium text-sm">
+                            {format(new Date(trip.date), 'MM/dd', { locale: ko })} |
+                            <span className="text-blue-600 ml-1">{getVehicleName(trip.vehicleId)}</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
                               {trip.departure}
                             </Badge>
-                            <ArrowRight className="h-4 w-4 text-gray-400" />
-                            <Badge variant="outline" className="bg-green-50 text-green-700">
+                            <ArrowRight className="h-3 w-3 text-gray-400" />
+                            <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
                               {trip.destination}
                             </Badge>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-center font-medium">
-                          {trip.count}회
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {trip.unitPrice.toLocaleString()}원
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-blue-600">
-                          {trip.totalAmount.toLocaleString()}원
-                        </TableCell>
-                        <TableCell>
-                          {trip.driverName ? (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                              {trip.driverName}
-                            </Badge>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
-                          {trip.updatedAt && (
-                            <div className="text-xs text-blue-500">
-                              (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(trip)}
+                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(trip.id)}
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">횟수:</span>
+                          <span className="font-medium ml-1">{trip.count}회</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">단가:</span>
+                          <span className="font-medium ml-1">{trip.unitPrice.toLocaleString()}원</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 p-2 bg-blue-50 rounded flex justify-between items-center">
+                        <span className="text-sm text-blue-600">총액</span>
+                        <span className="font-bold text-blue-800">{trip.totalAmount.toLocaleString()}원</span>
+                      </div>
+
+                      {(trip.driverName || trip.memo) && (
+                        <div className="mt-3 space-y-1 text-sm">
+                          {trip.driverName && (
+                            <div>
+                              <span className="text-gray-500">운전자:</span>
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 ml-2">
+                                {trip.driverName}
+                              </Badge>
                             </div>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(trip)}
-                              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(trip.id)}
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* 모바일 카드 뷰 */}
-              <div className="lg:hidden space-y-4">
-                {filteredTrips.map((trip) => (
-                  <Card key={trip.id} className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="space-y-1">
-                        <div className="font-medium text-sm">
-                          {format(new Date(trip.date), 'MM/dd', { locale: ko })} |
-                          <span className="text-blue-600 ml-1">{getVehicleName(trip.vehicleId)}</span>
+                          {trip.memo && (
+                            <div>
+                              <span className="text-gray-500">메모:</span>
+                              <span className="ml-1">{trip.memo}</span>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                            {trip.departure}
-                          </Badge>
-                          <ArrowRight className="h-3 w-3 text-gray-400" />
-                          <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
-                            {trip.destination}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(trip)}
-                          className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(trip.id)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">횟수:</span>
-                        <span className="font-medium ml-1">{trip.count}회</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">단가:</span>
-                        <span className="font-medium ml-1">{trip.unitPrice.toLocaleString()}원</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 p-2 bg-blue-50 rounded flex justify-between items-center">
-                      <span className="text-sm text-blue-600">총액</span>
-                      <span className="font-bold text-blue-800">{trip.totalAmount.toLocaleString()}원</span>
-                    </div>
-
-                    {(trip.driverName || trip.memo) && (
-                      <div className="mt-3 space-y-1 text-sm">
-                        {trip.driverName && (
-                          <div>
-                            <span className="text-gray-500">운전자:</span>
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 ml-2">
-                              {trip.driverName}
-                            </Badge>
-                          </div>
-                        )}
-                        {trip.memo && (
-                          <div>
-                            <span className="text-gray-500">메모:</span>
-                            <span className="ml-1">{trip.memo}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="mt-3 text-xs text-gray-500">
-                      저장: {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
-                      {trip.updatedAt && (
-                        <span className="text-blue-500 ml-2">
-                          (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
-                        </span>
                       )}
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+
+                      <div className="mt-3 text-xs text-gray-500">
+                        저장: {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
+                        {trip.updatedAt && (
+                          <span className="text-blue-500 ml-2">
+                            (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
+                          </span>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* 수정 다이얼로그 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -704,7 +728,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                     <SelectContent>
                       {vehicles.map((vehicle) => (
                         <SelectItem key={vehicle.id} value={vehicle.id}>
-                          {vehicle.licensePlate} ({vehicle.name})
+                          {getVehicleName(vehicle.id)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -783,7 +807,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                   variant="outline"
                   onClick={() => setIsEditDialogOpen(false)}
                   className="w-full sm:w-auto"
-                >
+                >// TripList.tsx 수정 계속
                   취소
                 </Button>
                 <Button onClick={handleSaveEdit} className="w-full sm:w-auto">

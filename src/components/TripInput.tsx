@@ -1,4 +1,4 @@
-// src/components/TripInput.tsx
+// src/components/TripInput.tsx 수정
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,12 @@ import { ko } from 'date-fns/locale';
 import { CalendarIcon, Car, MapPin, Calculator, Plus, Trash2, ChevronDown, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { saveTrip, getVehicles, getLocations, getTrips } from '@/utils/storage';
+import { saveTrip, getVehicles, getLocations, getTrips, saveVehicle, findVehicleByLicensePlate } from '@/utils/storage';
 import { calculateTotalAmount, getVehicleStats } from '@/utils/calculations';
 import { Trip, Vehicle, Location } from '@/types/trip';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { getRecentUnitPrice, clearRoutePriceCache } from '@/utils/smartPricing';
+import VehicleInput from '@/components/VehicleInput';
 
 interface TripRow {
   id: string;
@@ -62,11 +63,11 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
     return {
       id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
-      date: today,
+      date: today, // 오늘 날짜 기본값
       vehicleId: '',
       departure: '',
       destination: '',
-      unitPrice: '1', // 기본값을 1원으로 설정
+      unitPrice: '1',
       count: '1',
       driverName: '',
       memo: '',
@@ -138,6 +139,30 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     ));
   };
 
+  // 새 차량 생성 함수
+  const handleNewVehicle = async (licensePlate: string): Promise<string> => {
+    try {
+      const newVehicle = await saveVehicle({
+        licensePlate: licensePlate,
+        // name은 선택사항이므로 제공하지 않음
+      });
+
+      // 차량 목록 새로고침
+      const updatedVehicles = await getVehicles();
+      setVehicles(updatedVehicles);
+
+      toast({
+        title: "새 차량 등록",
+        description: `차량번호 ${licensePlate}가 자동으로 등록되었습니다.`,
+      });
+
+      return newVehicle.id;
+    } catch (error) {
+      console.error('Error creating new vehicle:', error);
+      throw error;
+    }
+  };
+
   const handleVehicleSelect = (rowId: string, vehicleId: string) => {
     updateRow(rowId, 'vehicleId', vehicleId);
 
@@ -157,13 +182,12 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       return;
     }
 
-    // 기본값 1원이거나 자동 로딩된 단가인 경우에만 스마트 단가 적용
     const canLoadSmartPrice =
-      currentRow.unitPrice === '1' || // 기본값
-      currentRow.isPriceAutoLoaded === true; // 이전에 자동 로딩된 단가
+      currentRow.unitPrice === '1' ||
+      currentRow.isPriceAutoLoaded === true;
 
     if (!canLoadSmartPrice) {
-      return; // 사용자가 직접 입력한 단가는 보호
+      return;
     }
 
     const existingTimeout = smartPriceTimeouts.current.get(rowId);
@@ -184,7 +208,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
               return prevRows;
             }
 
-            // 다시 한번 확인: 기본값이거나 자동 로딩된 단가만 변경
             const canUpdate =
               targetRow.unitPrice === '1' ||
               targetRow.isPriceAutoLoaded === true;
@@ -218,6 +241,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       }
     }, 500);
 
+    // TripInput.tsx 수정 계속
     smartPriceTimeouts.current.set(rowId, timeoutId);
   }, [rows, toast]);
 
@@ -225,7 +249,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     console.log('🔥 handleLocationChange called:', { rowId, field, value });
     updateRow(rowId, field, value);
 
-    // setTimeout 대신 setRows의 콜백을 활용
     setRows(prevRows => {
       const updatedRows = prevRows.map(row =>
         row.id === rowId ? { ...row, [field]: value } : row
@@ -240,7 +263,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
         if (departure && destination && departure !== destination) {
           console.log('🔥 Calling loadSmartPrice');
-          // 즉시 실행하지 말고 다음 tick에서 실행
           setTimeout(() => {
             loadSmartPrice(rowId, departure, destination);
           }, 100);
@@ -277,12 +299,10 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     };
 
     for (const row of rows) {
-      // 빈 행 스킵
       if (!row.departure && !row.destination && (!row.unitPrice || row.unitPrice === '1')) {
         continue;
       }
 
-      // 필수 정보 검증
       if (!row.date || !row.vehicleId || !row.departure || !row.destination || !row.unitPrice || !row.count) {
         errors.push(`${row.departure || '미입력'} → ${row.destination || '미입력'}: 필수 정보가 누락되었습니다.`);
         continue;
@@ -315,9 +335,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
           ...(row.memo && { memo: row.memo }),
         });
 
-        // ✅ 새로운 데이터 저장 후 해당 경로의 캐시 클리어
         clearRoutePriceCache(row.departure, row.destination);
-
         savedCount++;
       } catch (error) {
         console.error('Save trip error:', error);
@@ -410,6 +428,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
                     onRemove={removeRow}
                     onVehicleSelect={handleVehicleSelect}
                     isPriceLoading={priceLoadingRows.has(row.id)}
+                    onNewVehicle={handleNewVehicle}
                   />
                 ))}
               </tbody>
@@ -430,6 +449,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
               onRemove={removeRow}
               onVehicleSelect={handleVehicleSelect}
               isPriceLoading={priceLoadingRows.has(row.id)}
+              onNewVehicle={handleNewVehicle}
             />
           ))}
         </div>
@@ -467,6 +487,7 @@ interface TripRowProps {
   onRemove: (id: string) => void;
   onVehicleSelect: (rowId: string, vehicleId: string) => void;
   isPriceLoading: boolean;
+  onNewVehicle: (licensePlate: string) => Promise<string>;
 }
 
 interface LocationSelectorProps {
@@ -505,7 +526,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = React.memo(({
     } else {
       setIsCustomInput(false);
       setCustomValue('');
-      console.log('🔥 LocationSelector calling onChange:', selectedValue); // 임시 로그
+      console.log('🔥 LocationSelector calling onChange:', selectedValue);
       onChange(selectedValue);
     }
   };
@@ -610,7 +631,8 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
   onLocationChange,
   onRemove,
   onVehicleSelect,
-  isPriceLoading
+  isPriceLoading,
+  onNewVehicle
 }) => {
   const totalAmount = useMemo(() => {
     const unitPrice = parseFloat(row.unitPrice) || 0;
@@ -651,26 +673,14 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
       </td>
 
       <td className="px-2 py-3">
-        <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="차량 선택" />
-          </SelectTrigger>
-          <SelectContent>
-            {vehicles.map((vehicle) => (
-              <SelectItem key={vehicle.id} value={vehicle.id}>
-                <div className="flex flex-col">
-                  <span className="font-medium">{vehicle.licensePlate}</span>
-                  <span className="text-sm text-gray-500">{vehicle.name}</span>
-                  {vehicle.defaultUnitPrice && (
-                    <span className="text-xs text-blue-600">
-                      기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
-                    </span>
-                  )}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <VehicleInput
+          value={row.vehicleId}
+          onChange={(vehicleId) => onVehicleSelect(row.id, vehicleId)}
+          vehicles={vehicles}
+          onNewVehicle={onNewVehicle}
+          placeholder="차량번호"
+          className="text-xs h-8"
+        />
       </td>
 
       <td className="px-2 py-3">
@@ -788,7 +798,8 @@ const MobileTripCard: React.FC<TripRowProps> = ({
   onLocationChange,
   onRemove,
   onVehicleSelect,
-  isPriceLoading
+  isPriceLoading,
+  onNewVehicle
 }) => {
   const totalAmount = useMemo(() => {
     const unitPrice = parseFloat(row.unitPrice) || 0;
@@ -844,26 +855,13 @@ const MobileTripCard: React.FC<TripRowProps> = ({
 
         <div className="space-y-2">
           <Label className="text-sm">차량</Label>
-          <Select value={row.vehicleId} onValueChange={(value) => onVehicleSelect(row.id, value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="차량 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              {vehicles.map((vehicle) => (
-                <SelectItem key={vehicle.id} value={vehicle.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{vehicle.licensePlate}</span>
-                    <span className="text-sm text-gray-500">{vehicle.name}</span>
-                    {vehicle.defaultUnitPrice && (
-                      <span className="text-xs text-blue-600">
-                        기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
-                      </span>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <VehicleInput
+            value={row.vehicleId}
+            onChange={(vehicleId) => onVehicleSelect(row.id, vehicleId)}
+            vehicles={vehicles}
+            onNewVehicle={onNewVehicle}
+            placeholder="차량번호"
+          />
         </div>
 
         <div className="space-y-2">

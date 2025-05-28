@@ -1,4 +1,4 @@
-// src/components/VehicleManagement.tsx
+// src/components/VehicleManagement.tsx 수정
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,8 @@ const VehicleManagement: React.FC = () => {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
     licensePlate: '',
+    name: '',
     defaultUnitPrice: '',
   });
 
@@ -49,10 +49,10 @@ const VehicleManagement: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.licensePlate) {
+    if (!formData.licensePlate) {
       toast({
         title: "입력 오류",
-        description: "차량명과 번호판은 필수 입력항목입니다.",
+        description: "차량번호는 필수 입력항목입니다.",
         variant: "destructive",
       });
       return;
@@ -62,8 +62,8 @@ const VehicleManagement: React.FC = () => {
 
     try {
       const vehicleData = {
-        name: formData.name,
         licensePlate: formData.licensePlate,
+        ...(formData.name && { name: formData.name }), // name이 있을 때만 포함
         defaultUnitPrice: formData.defaultUnitPrice ? parseInt(formData.defaultUnitPrice) : undefined,
       };
 
@@ -99,8 +99,8 @@ const VehicleManagement: React.FC = () => {
   const handleEdit = (vehicle: Vehicle) => {
     setEditingVehicle(vehicle);
     setFormData({
-      name: vehicle.name,
       licensePlate: vehicle.licensePlate,
+      name: vehicle.name || '',
       defaultUnitPrice: vehicle.defaultUnitPrice?.toString() || '',
     });
     setIsDialogOpen(true);
@@ -128,8 +128,8 @@ const VehicleManagement: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      name: '',
       licensePlate: '',
+      name: '',
       defaultUnitPrice: '',
     });
     setEditingVehicle(null);
@@ -140,7 +140,6 @@ const VehicleManagement: React.FC = () => {
     setIsDialogOpen(true);
   };
 
-  // VehicleManagement.tsx에서 getVehicleStatsData 함수 수정
   const getVehicleStatsData = async (vehicleId: string) => {
     try {
       const [trips, vehicles] = await Promise.all([getTrips(), getVehicles()]);
@@ -180,7 +179,7 @@ const VehicleManagement: React.FC = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>번호판</TableHead>
-                      <TableHead>차량명</TableHead>
+                      <TableHead>성명 (선택)</TableHead>
                       <TableHead>기본 단가</TableHead>
                       <TableHead>총 운행</TableHead>
                       <TableHead>총 금액</TableHead>
@@ -236,17 +235,21 @@ const VehicleManagement: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
                 placeholder="예: 12가3456"
                 className="text-lg font-semibold"
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">성명(필수)</Label>
+              <Label htmlFor="name">성명 (선택)</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                
+                placeholder="예: 홍길동 (선택사항)"
               />
+              <p className="text-sm text-gray-500">
+                성명은 선택사항입니다. 비워두셔도 됩니다.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -312,7 +315,13 @@ const VehicleTableRow: React.FC<{
           {vehicle.licensePlate}
         </Badge>
       </TableCell>
-      <TableCell className="font-medium">{vehicle.name}</TableCell>
+      <TableCell>
+        {vehicle.name ? (
+          <span className="font-medium">{vehicle.name}</span>
+        ) : (
+          <span className="text-gray-400 italic">미입력</span>
+        )}
+      </TableCell>
       <TableCell>
         {vehicle.defaultUnitPrice ? (
           <span className="text-green-600 font-medium">
@@ -381,7 +390,11 @@ const VehicleCard: React.FC<{
           <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-lg px-3 py-1 mb-2">
             {vehicle.licensePlate}
           </Badge>
-          <h3 className="font-medium text-lg">{vehicle.name}</h3>
+          {vehicle.name ? (
+            <h3 className="font-medium text-lg">{vehicle.name}</h3>
+          ) : (
+            <h3 className="font-medium text-lg text-gray-400 italic">성명 미입력</h3>
+          )}
         </div>
         <div className="flex gap-2">
           <Button

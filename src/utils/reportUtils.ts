@@ -1,3 +1,4 @@
+// src/utils/reportUtils.ts 수정
 import { Trip, Vehicle } from '@/types/trip';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -25,7 +26,12 @@ export interface MonthlyReportData {
   }[];
 }
 
-export const generateDailyReport = (trips: Trip[], vehicles: Vehicle[]): DailyReportData => {
+export const generateDailyReport = (
+  trips: Trip[], 
+  vehicles: Vehicle[], 
+  startDate: Date, 
+  endDate: Date
+): DailyReportData => {
   if (trips.length === 0) {
     return {
       date: '',
@@ -34,7 +40,7 @@ export const generateDailyReport = (trips: Trip[], vehicles: Vehicle[]): DailyRe
   }
 
   // 차량 정보 매핑
-  const vehicleMap = new Map(vehicles.map(v => [v.id, `${v.licensePlate} (${v.name})`]));
+  const vehicleMap = new Map(vehicles.map(v => [v.id, `${v.licensePlate}${v.name ? ` (${v.name})` : ''}`]));
 
   // 출발지별로 그룹핑
   const departureGroups = new Map<string, Map<string, { vehicle: string; count: number }>>();
@@ -59,9 +65,15 @@ export const generateDailyReport = (trips: Trip[], vehicles: Vehicle[]): DailyRe
     }
   });
 
+  // 날짜 범위 계산
+  const isSameDate = format(startDate, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd');
+  const dateString = isSameDate 
+    ? format(startDate, 'yyyy년 MM월 dd일', { locale: ko })
+    : `${format(startDate, 'yyyy년 MM월 dd일', { locale: ko })}~${format(endDate, 'dd일', { locale: ko })}`;
+
   // 데이터 변환
   const result: DailyReportData = {
-    date: trips.length > 0 ? format(new Date(trips[0].date), 'yyyy년 MM월 dd일', { locale: ko }) : '',
+    date: dateString,
     departureGroups: Array.from(departureGroups.entries()).map(([departure, destinations]) => ({
       departure,
       destinations: Array.from(destinations.entries()).map(([key, data]) => {

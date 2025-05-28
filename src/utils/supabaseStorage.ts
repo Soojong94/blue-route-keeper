@@ -183,14 +183,14 @@ export const deleteSupabaseTrip = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-// Supabase CRUD operations for vehicles
+// src/utils/supabaseStorage.ts 수정
 export const saveSupabaseVehicle = async (vehicle: Omit<Vehicle, 'id' | 'createdAt'>): Promise<Vehicle> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
   const newVehicle = {
     user_id: user.id,
-    name: vehicle.name,
+    name: vehicle.name || null, // name이 없으면 null로 저장
     license_plate: vehicle.licensePlate,
     default_unit_price: vehicle.defaultUnitPrice,
   };
@@ -210,6 +210,57 @@ export const saveSupabaseVehicle = async (vehicle: Omit<Vehicle, 'id' | 'created
     defaultUnitPrice: data.default_unit_price,
     createdAt: data.created_at,
   };
+};
+
+// 차량 번호로 기존 차량 찾기 함수 추가
+export const findVehicleByLicensePlate = async (licensePlate: string): Promise<Vehicle | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('license_plate', licensePlate)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') { // No rows found
+      return null;
+    }
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    licensePlate: data.license_plate,
+    defaultUnitPrice: data.default_unit_price,
+    createdAt: data.created_at,
+  };
+};
+
+// 차량 번호 부분 검색 함수 추가
+export const searchVehiclesByLicensePlate = async (searchTerm: string): Promise<Vehicle[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('*')
+    .eq('user_id', user.id)
+    .ilike('license_plate', `%${searchTerm}%`)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  return data.map(vehicle => ({
+    id: vehicle.id,
+    name: vehicle.name,
+    licensePlate: vehicle.license_plate,
+    defaultUnitPrice: vehicle.default_unit_price,
+    createdAt: vehicle.created_at,
+  }));
 };
 
 export const getSupabaseVehicles = async (): Promise<Vehicle[]> => {

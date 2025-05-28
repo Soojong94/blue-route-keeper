@@ -14,6 +14,8 @@ import {
   getSupabaseLocations,
   updateSupabaseLocation,
   deleteSupabaseLocation,
+  findVehicleByLicensePlate as findSupabaseVehicleByLicensePlate,
+  searchVehiclesByLicensePlate as searchSupabaseVehiclesByLicensePlate,
 } from './supabaseStorage';
 
 // Trip 관련
@@ -28,6 +30,10 @@ export const saveVehicle = saveSupabaseVehicle;
 export const getVehicles = getSupabaseVehicles;
 export const updateVehicle = updateSupabaseVehicle;
 export const deleteVehicle = deleteSupabaseVehicle;
+
+// Vehicle 검색 관련
+export const findVehicleByLicensePlate = findSupabaseVehicleByLicensePlate;
+export const searchVehiclesByLicensePlate = searchSupabaseVehiclesByLicensePlate;
 
 // Location 관련
 export const saveLocation = saveSupabaseLocation;
