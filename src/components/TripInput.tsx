@@ -12,7 +12,7 @@ import { ko } from 'date-fns/locale';
 import { CalendarIcon, Car, Calculator, Plus, Trash2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { saveTrip, getVehicles, getLocations, saveVehicle, findVehicleByLicensePlate } from '@/utils/storage';
+import { saveTrip, getVehicles, getLocations, ensureVehicleExists, ensureLocationExists, findVehicleByLicensePlate, saveVehicle } from '@/utils/storage';
 import { Trip, Vehicle, Location } from '@/types/trip';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { getRecentUnitPrice, clearRoutePriceCache } from '@/utils/smartPricing';
@@ -28,6 +28,7 @@ import {
   getRecentLocations,
   getRecentDrivers
 } from '@/utils/smartSearch';
+
 
 interface TripRow {
   id: string;
@@ -396,7 +397,17 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       }
 
       try {
+        // 1. 차량 자동 생성 또는 찾기
         const vehicleId = await ensureVehicleExists(row.licensePlate);
+
+        // 2. 출발지 자동 생성 또는 찾기
+        await ensureLocationExists(row.departure);
+
+        // 3. 목적지 자동 생성 또는 찾기 (출발지와 다른 경우에만)
+        if (row.destination !== row.departure) {
+          await ensureLocationExists(row.destination);
+        }
+
         const dateToSave = formatDateForSupabase(row.date);
 
         await saveTrip({
@@ -427,9 +438,12 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
         variant: "destructive",
       });
     } else if (savedCount > 0) {
+      // 새로 생성된 장소들이 있을 수 있으므로 장소 목록 새로고침
+      await loadInitialData();
+
       toast({
         title: "저장 완료",
-        description: `${savedCount}건의 운행 기록이 저장되었습니다.`,
+        description: `${savedCount}건의 운행 기록이 저장되었습니다.\n새로운 장소가 자동으로 등록되었습니다.`,
       });
 
       setRows([createNewRow()]);

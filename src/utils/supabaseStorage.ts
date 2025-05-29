@@ -183,14 +183,14 @@ export const deleteSupabaseTrip = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-// src/utils/supabaseStorage.ts 수정
+// Vehicle operations
 export const saveSupabaseVehicle = async (vehicle: Omit<Vehicle, 'id' | 'createdAt'>): Promise<Vehicle> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
   const newVehicle = {
     user_id: user.id,
-    name: vehicle.name || null, // name이 없으면 null로 저장
+    name: vehicle.name || null,
     license_plate: vehicle.licensePlate,
     default_unit_price: vehicle.defaultUnitPrice,
   };
@@ -212,8 +212,7 @@ export const saveSupabaseVehicle = async (vehicle: Omit<Vehicle, 'id' | 'created
   };
 };
 
-// 차량 번호로 기존 차량 찾기 함수 추가
-export const findVehicleByLicensePlate = async (licensePlate: string): Promise<Vehicle | null> => {
+export const findSupabaseVehicleByLicensePlate = async (licensePlate: string): Promise<Vehicle | null> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
@@ -240,8 +239,7 @@ export const findVehicleByLicensePlate = async (licensePlate: string): Promise<V
   };
 };
 
-// 차량 번호 부분 검색 함수 추가
-export const searchVehiclesByLicensePlate = async (searchTerm: string): Promise<Vehicle[]> => {
+export const searchSupabaseVehiclesByLicensePlate = async (searchTerm: string): Promise<Vehicle[]> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
@@ -314,7 +312,7 @@ export const deleteSupabaseVehicle = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-// Supabase CRUD operations for locations
+// Location operations
 export const saveSupabaseLocation = async (location: Omit<Location, 'id' | 'createdAt'>): Promise<Location> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
@@ -339,6 +337,60 @@ export const saveSupabaseLocation = async (location: Omit<Location, 'id' | 'crea
     category: data.category as 'company' | 'client' | 'personal' | 'other',
     createdAt: data.created_at,
   };
+};
+
+export const findSupabaseLocationByName = async (name: string): Promise<Location | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const { data, error } = await supabase
+    .from('locations')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('name', name)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') { // No rows found
+      return null;
+    }
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    category: data.category as 'company' | 'client' | 'personal' | 'other',
+    createdAt: data.created_at,
+  };
+};
+
+export const ensureSupabaseLocationExists = async (name: string): Promise<string> => {
+  if (!name.trim()) {
+    throw new Error('장소명이 없습니다.');
+  }
+
+  // 먼저 기존 장소 찾기
+  let existingLocation = await findSupabaseLocationByName(name);
+
+  if (existingLocation) {
+    return existingLocation.id;
+  }
+
+  // 없으면 새로 생성 (기본 카테고리는 'other')
+  try {
+    const newLocation = await saveSupabaseLocation({
+      name: name,
+      category: 'other', // 기본값으로 '기타'로 설정
+    });
+
+    console.log(`✅ 새 장소 '${name}' 자동 등록 완료`);
+    
+    return newLocation.id;
+  } catch (error) {
+    console.error('Error creating new location:', error);
+    throw new Error(`장소 ${name} 생성 중 오류가 발생했습니다.`);
+  }
 };
 
 export const getSupabaseLocations = async (): Promise<Location[]> => {
