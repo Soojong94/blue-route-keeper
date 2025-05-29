@@ -1,16 +1,15 @@
-// src/components/TripInput.tsx 수정
+// src/components/TripInput.tsx 완전 수정
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Car, MapPin, Calculator, Plus, Trash2, ChevronDown, Zap } from 'lucide-react';
+import { CalendarIcon, Car, Calculator, Plus, Trash2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { saveTrip, getVehicles, getLocations, getTrips, saveVehicle, findVehicleByLicensePlate } from '@/utils/storage';
@@ -18,12 +17,24 @@ import { calculateTotalAmount, getVehicleStats } from '@/utils/calculations';
 import { Trip, Vehicle, Location } from '@/types/trip';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { getRecentUnitPrice, clearRoutePriceCache } from '@/utils/smartPricing';
+import SmartInput, { SearchResult } from '@/components/SmartInput';
+import {
+  searchVehicles,
+  searchLocations,
+  searchDrivers,
+  addRecentVehicle,
+  addRecentLocation,
+  addRecentDriver,
+  getRecentVehicles,
+  getRecentLocations,
+  getRecentDrivers
+} from '@/utils/smartSearch';
 
 interface TripRow {
   id: string;
   date: Date;
   vehicleId: string;
-  licensePlate: string; // 차량번호를 별도로 저장
+  licensePlate: string;
   departure: string;
   destination: string;
   unitPrice: string;
@@ -45,11 +56,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [recentData, setRecentData] = useState<{
-    departures: string[];
-    destinations: string[];
-    drivers: string[];
-  }>({ departures: [], destinations: [], drivers: [] });
   const [loading, setLoading] = useState(false);
   const [priceLoadingRows, setPriceLoadingRows] = useState<Set<string>>(new Set());
 
@@ -65,7 +71,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       id: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
       date: today,
       vehicleId: '',
-      licensePlate: '', // 초기값은 빈 문자열
+      licensePlate: '',
       departure: '',
       destination: '',
       unitPrice: '1',
@@ -75,6 +81,44 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       isPriceAutoLoaded: false,
     };
   }
+
+  // 즐겨찾기 항목들을 SearchResult 형태로 변환
+  const getFavoriteVehicles = useMemo((): SearchResult[] => {
+    return vehicles.map(vehicle => ({
+      id: `fav-vehicle-${vehicle.id}`,
+      value: vehicle.licensePlate,
+      label: `${vehicle.licensePlate}${vehicle.name ? ` (${vehicle.name})` : ''}`,
+      type: 'favorite',
+      category: 'vehicle',
+      metadata: {
+        vehicleId: vehicle.id,
+        vehicle,
+        category: vehicle.defaultUnitPrice ? `${vehicle.defaultUnitPrice.toLocaleString()}원` : undefined
+      }
+    }));
+  }, [vehicles]);
+
+  const getFavoriteLocations = useMemo((): SearchResult[] => {
+    const categoryLabels = {
+      company: '회사',
+      client: '고객사',
+      personal: '개인',
+      other: '기타'
+    };
+
+    return locations.map(location => ({
+      id: `fav-location-${location.id}`,
+      value: location.name,
+      label: location.name,
+      type: 'favorite',
+      category: 'location',
+      metadata: {
+        locationId: location.id,
+        location,
+        category: categoryLabels[location.category as keyof typeof categoryLabels]
+      }
+    }));
+  }, [locations]);
 
   useEffect(() => {
     return () => {
@@ -96,24 +140,13 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
   const loadInitialData = async () => {
     try {
-      const [vehiclesData, locationsData, tripsData] = await Promise.all([
+      const [vehiclesData, locationsData] = await Promise.all([
         getVehicles(),
-        getLocations(),
-        getTrips()
+        getLocations()
       ]);
 
       setVehicles(vehiclesData);
       setLocations(locationsData);
-
-      const departures = [...new Set(tripsData.map(t => t.departure).filter(Boolean))].slice(0, 10);
-      const destinations = [...new Set(tripsData.map(t => t.destination).filter(Boolean))].slice(0, 10);
-      const drivers = [...new Set(tripsData.map(t => t.driverName).filter(Boolean))].slice(0, 10);
-
-      setRecentData({
-        departures: departures as string[],
-        destinations: destinations as string[],
-        drivers: drivers as string[]
-      });
     } catch (error) {
       console.error('Error loading initial data:', error);
       toast({
@@ -162,7 +195,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     try {
       const newVehicle = await saveVehicle({
         licensePlate: licensePlate,
-        // name은 제공하지 않음 (선택사항)
       });
 
       // 차량 목록 새로고침
@@ -181,31 +213,57 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     }
   };
 
-  const handleVehicleSelect = (rowId: string, vehicleId: string) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
-    if (vehicle) {
-      updateRow(rowId, 'vehicleId', vehicleId);
-      updateRow(rowId, 'licensePlate', vehicle.licensePlate);
-
-      if (vehicle.defaultUnitPrice) {
-        updateRow(rowId, 'unitPrice', vehicle.defaultUnitPrice.toString());
-      }
-    }
-  };
-
-  const handleLicensePlateChange = (rowId: string, licensePlate: string) => {
+  // 차량 선택 처리
+  const handleVehicleSelect = (rowId: string, result: SearchResult) => {
+    const licensePlate = result.value;
     updateRow(rowId, 'licensePlate', licensePlate);
 
-    // 기존 차량 중에 일치하는 것이 있는지 확인
-    const existingVehicle = vehicles.find(v => v.licensePlate === licensePlate);
-    if (existingVehicle) {
-      updateRow(rowId, 'vehicleId', existingVehicle.id);
-      if (existingVehicle.defaultUnitPrice) {
-        updateRow(rowId, 'unitPrice', existingVehicle.defaultUnitPrice.toString());
+    if (result.metadata?.vehicleId) {
+      updateRow(rowId, 'vehicleId', result.metadata.vehicleId);
+      const vehicle = result.metadata.vehicle;
+      if (vehicle?.defaultUnitPrice) {
+        updateRow(rowId, 'unitPrice', vehicle.defaultUnitPrice.toString());
       }
     } else {
-      updateRow(rowId, 'vehicleId', ''); // 기존 vehicleId 초기화
+      updateRow(rowId, 'vehicleId', '');
     }
+
+    addRecentVehicle(licensePlate);
+  };
+
+  // 장소 선택 처리
+  const handleLocationSelect = (rowId: string, field: 'departure' | 'destination', result: SearchResult) => {
+    const location = result.value;
+    updateRow(rowId, field, location);
+    addRecentLocation(location);
+
+    // 스마트 가격 로딩 로직
+    setRows(prevRows => {
+      const updatedRows = prevRows.map(row =>
+        row.id === rowId ? { ...row, [field]: location } : row
+      );
+
+      const currentRow = updatedRows.find(r => r.id === rowId);
+      if (currentRow) {
+        const departure = field === 'departure' ? location : currentRow.departure;
+        const destination = field === 'destination' ? location : currentRow.destination;
+
+        if (departure && destination && departure !== destination) {
+          setTimeout(() => {
+            loadSmartPrice(rowId, departure, destination);
+          }, 100);
+        }
+      }
+
+      return updatedRows;
+    });
+  };
+
+  // 운전자 선택 처리
+  const handleDriverSelect = (rowId: string, result: SearchResult) => {
+    const driver = result.value;
+    updateRow(rowId, 'driverName', driver);
+    addRecentDriver(driver);
   };
 
   const loadSmartPrice = useCallback(async (rowId: string, departure: string, destination: string) => {
@@ -280,30 +338,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     smartPriceTimeouts.current.set(rowId, timeoutId);
   }, [rows, toast]);
 
-  const handleLocationChange = useCallback((rowId: string, field: 'departure' | 'destination', value: string) => {
-    updateRow(rowId, field, value);
-
-    setRows(prevRows => {
-      const updatedRows = prevRows.map(row =>
-        row.id === rowId ? { ...row, [field]: value } : row
-      );
-
-      const currentRow = updatedRows.find(r => r.id === rowId);
-      if (currentRow) {
-        const departure = field === 'departure' ? value : currentRow.departure;
-        const destination = field === 'destination' ? value : currentRow.destination;
-
-        if (departure && destination && departure !== destination) {
-          setTimeout(() => {
-            loadSmartPrice(rowId, departure, destination);
-          }, 100);
-        }
-      }
-
-      return updatedRows;
-    });
-  }, [updateRow, loadSmartPrice]);
-
   const saveAllRows = async () => {
     setLoading(true);
     let savedCount = 0;
@@ -353,9 +387,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       }
 
       try {
-        // ✅ 여기서 차량 존재 여부 확인 및 생성
         const vehicleId = await ensureVehicleExists(row.licensePlate);
-
         const dateToSave = formatDateForSupabase(row.date);
 
         await saveTrip({
@@ -454,13 +486,12 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
                   <DesktopTripRow
                     key={row.id}
                     row={row}
-                    vehicles={vehicles}
-                    locations={locations}
-                    recentData={recentData}
+                    favoriteVehicles={getFavoriteVehicles}
+                    favoriteLocations={getFavoriteLocations}
                     onUpdate={updateRow}
-                    onLocationChange={handleLocationChange}
-                    onLicensePlateChange={handleLicensePlateChange}
                     onVehicleSelect={handleVehicleSelect}
+                    onLocationSelect={handleLocationSelect}
+                    onDriverSelect={handleDriverSelect}
                     onRemove={removeRow}
                     isPriceLoading={priceLoadingRows.has(row.id)}
                   />
@@ -475,13 +506,12 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
             <MobileTripCard
               key={row.id}
               row={row}
-              vehicles={vehicles}
-              locations={locations}
-              recentData={recentData}
+              favoriteVehicles={getFavoriteVehicles}
+              favoriteLocations={getFavoriteLocations}
               onUpdate={updateRow}
-              onLocationChange={handleLocationChange}
-              onLicensePlateChange={handleLicensePlateChange}
               onVehicleSelect={handleVehicleSelect}
+              onLocationSelect={handleLocationSelect}
+              onDriverSelect={handleDriverSelect}
               onRemove={removeRow}
               isPriceLoading={priceLoadingRows.has(row.id)}
             />
@@ -509,263 +539,24 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
 interface TripRowProps {
   row: TripRow;
-  vehicles: Vehicle[];
-  locations: Location[];
-  recentData: {
-    departures: string[];
-    destinations: string[];
-    drivers: string[];
-  };
+  favoriteVehicles: SearchResult[];
+  favoriteLocations: SearchResult[];
   onUpdate: (id: string, field: keyof TripRow, value: any) => void;
-  onLocationChange: (id: string, field: 'departure' | 'destination', value: string) => void;
-  onLicensePlateChange: (id: string, licensePlate: string) => void;
-  onVehicleSelect: (rowId: string, vehicleId: string) => void;
+  onVehicleSelect: (rowId: string, result: SearchResult) => void;
+  onLocationSelect: (rowId: string, field: 'departure' | 'destination', result: SearchResult) => void;
+  onDriverSelect: (rowId: string, result: SearchResult) => void;
   onRemove: (id: string) => void;
   isPriceLoading: boolean;
 }
 
-interface LocationSelectorProps {
-  value: string;
-  onChange: (value: string) => void;
-  locations: Location[];
-  recentLocations: string[];
-  placeholder: string;
-  className?: string;
-}
-
-const LocationSelector: React.FC<LocationSelectorProps> = React.memo(({
-  value,
-  onChange,
-  locations,
-  recentLocations,
-  placeholder,
-  className
-}) => {
-  const [isCustomInput, setIsCustomInput] = useState(false);
-  const [customValue, setCustomValue] = useState('');
-
-  useEffect(() => {
-    const isRegistered = locations.some(loc => loc.name === value) ||
-      recentLocations.includes(value);
-    if (value && !isRegistered) {
-      setIsCustomInput(true);
-      setCustomValue(value);
-    }
-  }, [value, locations, recentLocations]);
-
-  const handleSelectChange = (selectedValue: string) => {
-    if (selectedValue === 'custom') {
-      setIsCustomInput(true);
-      setCustomValue(value);
-    } else {
-      setIsCustomInput(false);
-      setCustomValue('');
-      onChange(selectedValue);
-    }
-  };
-
-  const handleCustomInputChange = (inputValue: string) => {
-    setCustomValue(inputValue);
-    onChange(inputValue);
-  };
-
-  if (isCustomInput) {
-    return (
-      <div className="flex gap-1">
-        <Input
-          value={customValue}
-          onChange={(e) => handleCustomInputChange(e.target.value)}
-          placeholder={placeholder}
-          className={className}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setIsCustomInput(false);
-            onChange('');
-            setCustomValue('');
-          }}
-          className="px-2 text-xs"
-        >
-          선택
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <Select value={value} onValueChange={handleSelectChange}>
-      <SelectTrigger className={className}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent className="z-[9999]"> {/* ✅ z-index 추가 */}
-        {locations.length > 0 && (
-          <>
-            <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
-              즐겨찾기 장소
-            </div>
-            {locations.map((location) => (
-              <SelectItem key={location.id} value={location.name}>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3 w-3 text-gray-400" />
-                  <span>{location.name}</span>
-                  <Badge variant="outline" className="text-xs ml-auto">
-                    {location.category === 'company' && '회사'}
-                    {location.category === 'client' && '고객사'}
-                    {location.category === 'personal' && '개인'}
-                    {location.category === 'other' && '기타'}
-                  </Badge>
-                </div>
-              </SelectItem>
-            ))}
-          </>
-        )}
-
-        {recentLocations.length > 0 && (
-          <>
-            <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
-              최근 사용
-            </div>
-            {recentLocations
-              .filter(recent => !locations.some(loc => loc.name === recent))
-              .map((recent, idx) => (
-                <SelectItem key={`recent-${idx}`} value={recent}>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-3 w-3 text-gray-400" />
-                    <span>{recent}</span>
-                  </div>
-                </SelectItem>
-              ))}
-          </>
-        )}
-
-        <div className="px-2 py-1.5 text-xs font-medium text-gray-500 bg-gray-50">
-          기타
-        </div>
-        <SelectItem value="custom">
-          <div className="flex items-center gap-2">
-            <Plus className="h-3 w-3 text-blue-500" />
-            <span className="text-blue-600">직접 입력</span>
-          </div>
-        </SelectItem>
-      </SelectContent>
-    </Select>
-  );
-});
-
-// ✅ 새로운 VehicleInputWithDropdown 컴포넌트
-interface VehicleInputWithDropdownProps {
-  value: string;
-  licensePlate: string;
-  onChange: (licensePlate: string) => void;
-  onVehicleSelect: (vehicleId: string) => void;
-  vehicles: Vehicle[];
-  placeholder?: string;
-  className?: string;
-}
-
-const VehicleInputWithDropdown: React.FC<VehicleInputWithDropdownProps> = ({
-  value,
-  licensePlate,
-  onChange,
-  onVehicleSelect,
-  vehicles,
-  placeholder = "차량번호",
-  className
-}) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const filteredVehicles = vehicles.filter(vehicle =>
-    vehicle.licensePlate.toLowerCase().includes(licensePlate.toLowerCase())
-  );
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <div className="flex">
-        <Input
-          value={licensePlate}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className={cn("pr-10", className)}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="ml-1 px-2"
-        >
-          <ChevronDown className={cn("h-4 w-4 transition-transform", isDropdownOpen && "rotate-180")} />
-        </Button>
-      </div>
-
-      {isDropdownOpen && (
-        <div className="absolute z-[9999] w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto"> {/* ✅ z-index 추가 */}
-          {filteredVehicles.length > 0 ? (
-            filteredVehicles.map((vehicle) => (
-              <div
-                key={vehicle.id}
-                onClick={() => {
-                  onVehicleSelect(vehicle.id);
-                  setIsDropdownOpen(false);
-                }}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-              >
-                <Car className="h-4 w-4 text-gray-400" />
-                <div className="flex-1">
-                  <div className="font-medium">{vehicle.licensePlate}</div>
-                  {vehicle.name && (
-                    <div className="text-sm text-gray-500">{vehicle.name}</div>
-                  )}
-                  {vehicle.defaultUnitPrice && (
-                    <div className="text-xs text-blue-600">
-                      기본단가: {vehicle.defaultUnitPrice.toLocaleString()}원
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="p-3 text-gray-500 text-center">
-              <div className="text-sm">
-                {licensePlate ? `"${licensePlate}" 검색 결과 없음` : '등록된 차량이 없습니다'}
-              </div>
-              <div className="text-xs text-gray-400 mt-1">
-                일괄 저장 시 자동으로 등록됩니다
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
 const DesktopTripRow: React.FC<TripRowProps> = ({
   row,
-  vehicles,
-  locations,
-  recentData,
+  favoriteVehicles,
+  favoriteLocations,
   onUpdate,
-  onLocationChange,
-  onLicensePlateChange,
   onVehicleSelect,
+  onLocationSelect,
+  onDriverSelect,
   onRemove,
   isPriceLoading
 }) => {
@@ -791,7 +582,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
               {row.date ? format(row.date, "MM/dd") : "날짜"}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 z-[9999]" align="start"> {/* ✅ z-index 추가 */}
+          <PopoverContent className="w-auto p-0 z-[9999]" align="start">
             <Calendar
               mode="single"
               selected={row.date}
@@ -808,36 +599,44 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
       </td>
 
       <td className="px-2 py-3">
-        <VehicleInputWithDropdown
-          value={row.vehicleId}
-          licensePlate={row.licensePlate}
-          onChange={(licensePlate) => onLicensePlateChange(row.id, licensePlate)}
-          onVehicleSelect={(vehicleId) => onVehicleSelect(row.id, vehicleId)}
-          vehicles={vehicles}
+        <SmartInput
+          value={row.licensePlate}
+          onChange={(value) => onUpdate(row.id, 'licensePlate', value)}
+          onSelect={(result) => onVehicleSelect(row.id, result)}
           placeholder="차량번호"
           className="text-xs h-8"
+          searchFunction={searchVehicles}
+          recentItems={getRecentVehicles()}
+          favoriteItems={favoriteVehicles}
+          debounceMs={300}
         />
       </td>
 
       <td className="px-2 py-3">
-        <LocationSelector
+        <SmartInput
           value={row.departure}
-          onChange={(value) => onLocationChange(row.id, 'departure', value)}
-          locations={locations}
-          recentLocations={recentData.departures}
+          onChange={(value) => onUpdate(row.id, 'departure', value)}
+          onSelect={(result) => onLocationSelect(row.id, 'departure', result)}
           placeholder="출발지"
           className="text-xs h-8"
+          searchFunction={searchLocations}
+          recentItems={getRecentLocations()}
+          favoriteItems={favoriteLocations}
+          debounceMs={300}
         />
       </td>
 
       <td className="px-2 py-3">
-        <LocationSelector
+        <SmartInput
           value={row.destination}
-          onChange={(value) => onLocationChange(row.id, 'destination', value)}
-          locations={locations}
-          recentLocations={recentData.destinations}
+          onChange={(value) => onUpdate(row.id, 'destination', value)}
+          onSelect={(result) => onLocationSelect(row.id, 'destination', result)}
           placeholder="목적지"
           className="text-xs h-8"
+          searchFunction={searchLocations}
+          recentItems={getRecentLocations()}
+          favoriteItems={favoriteLocations}
+          debounceMs={300}
         />
       </td>
 
@@ -886,18 +685,17 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
       </td>
 
       <td className="px-2 py-3">
-        <Input
+        <SmartInput
           value={row.driverName}
-          onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
+          onChange={(value) => onUpdate(row.id, 'driverName', value)}
+          onSelect={(result) => onDriverSelect(row.id, result)}
           placeholder="운전자"
           className="text-xs h-8"
-          list={`drivers-${row.id}`}
+          searchFunction={searchDrivers}
+          recentItems={getRecentDrivers()}
+          favoriteItems={[]}
+          debounceMs={300}
         />
-        <datalist id={`drivers-${row.id}`}>
-          {recentData.drivers.map((driver, idx) => (
-            <option key={idx} value={driver} />
-          ))}
-        </datalist>
       </td>
 
       <td className="px-2 py-3">
@@ -927,13 +725,12 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
 
 const MobileTripCard: React.FC<TripRowProps> = ({
   row,
-  vehicles,
-  locations,
-  recentData,
+  favoriteVehicles,
+  favoriteLocations,
   onUpdate,
-  onLocationChange,
-  onLicensePlateChange,
   onVehicleSelect,
+  onLocationSelect,
+  onDriverSelect,
   onRemove,
   isPriceLoading
 }) => {
@@ -973,7 +770,7 @@ const MobileTripCard: React.FC<TripRowProps> = ({
                 {row.date ? format(row.date, "MM/dd") : "날짜"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[9999]" align="start"> {/* ✅ z-index 추가 */}
+            <PopoverContent className="w-auto p-0 z-[9999]" align="start">
               <Calendar
                 mode="single"
                 selected={row.date}
@@ -991,35 +788,43 @@ const MobileTripCard: React.FC<TripRowProps> = ({
 
         <div className="space-y-2">
           <Label className="text-sm">차량번호</Label>
-          <VehicleInputWithDropdown
-            value={row.vehicleId}
-            licensePlate={row.licensePlate}
-            onChange={(licensePlate) => onLicensePlateChange(row.id, licensePlate)}
-            onVehicleSelect={(vehicleId) => onVehicleSelect(row.id, vehicleId)}
-            vehicles={vehicles}
+          <SmartInput
+            value={row.licensePlate}
+            onChange={(value) => onUpdate(row.id, 'licensePlate', value)}
+            onSelect={(result) => onVehicleSelect(row.id, result)}
             placeholder="차량번호"
+            searchFunction={searchVehicles}
+            recentItems={getRecentVehicles()}
+            favoriteItems={favoriteVehicles}
+            debounceMs={300}
           />
         </div>
 
         <div className="space-y-2">
           <Label className="text-sm">출발지</Label>
-          <LocationSelector
+          <SmartInput
             value={row.departure}
-            onChange={(value) => onLocationChange(row.id, 'departure', value)}
-            locations={locations}
-            recentLocations={recentData.departures}
+            onChange={(value) => onUpdate(row.id, 'departure', value)}
+            onSelect={(result) => onLocationSelect(row.id, 'departure', result)}
             placeholder="출발지"
+            searchFunction={searchLocations}
+            recentItems={getRecentLocations()}
+            favoriteItems={favoriteLocations}
+            debounceMs={300}
           />
         </div>
 
         <div className="space-y-2">
           <Label className="text-sm">목적지</Label>
-          <LocationSelector
+          <SmartInput
             value={row.destination}
-            onChange={(value) => onLocationChange(row.id, 'destination', value)}
-            locations={locations}
-            recentLocations={recentData.destinations}
+            onChange={(value) => onUpdate(row.id, 'destination', value)}
+            onSelect={(result) => onLocationSelect(row.id, 'destination', result)}
             placeholder="목적지"
+            searchFunction={searchLocations}
+            recentItems={getRecentLocations()}
+            favoriteItems={favoriteLocations}
+            debounceMs={300}
           />
         </div>
 
@@ -1073,17 +878,16 @@ const MobileTripCard: React.FC<TripRowProps> = ({
 
       <div className="space-y-2">
         <Label className="text-sm">운전자 (선택)</Label>
-        <Input
+        <SmartInput
           value={row.driverName}
-          onChange={(e) => onUpdate(row.id, 'driverName', e.target.value)}
+          onChange={(value) => onUpdate(row.id, 'driverName', value)}
+          onSelect={(result) => onDriverSelect(row.id, result)}
           placeholder="운전자명"
-          list={`drivers-${row.id}`}
+          searchFunction={searchDrivers}
+          recentItems={getRecentDrivers()}
+          favoriteItems={[]}
+          debounceMs={300}
         />
-        <datalist id={`drivers-${row.id}`}>
-          {recentData.drivers.map((driver, idx) => (
-            <option key={idx} value={driver} />
-          ))}
-        </datalist>
       </div>
 
       <div className="space-y-2">

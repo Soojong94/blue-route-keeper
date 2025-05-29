@@ -1,4 +1,4 @@
-// src/components/VehicleManagement.tsx 수정
+// src/components/VehicleManagement.tsx 일부 수정
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,12 +14,16 @@ import { useToast } from '@/hooks/use-toast';
 import { getVehicles, saveVehicle, updateVehicle, deleteVehicle, getTrips } from '@/utils/storage';
 import { getVehicleStats } from '@/utils/calculations';
 import { Vehicle } from '@/types/trip';
+import SmartInput, { SearchResult } from '@/components/SmartInput';
+import { searchVehicles, addRecentVehicle, getRecentVehicles } from '@/utils/smartSearch';
 
 const VehicleManagement: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [formData, setFormData] = useState({
     licensePlate: '',
     name: '',
@@ -31,6 +35,41 @@ const VehicleManagement: React.FC = () => {
   useEffect(() => {
     loadVehicles();
   }, []);
+
+  useEffect(() => {
+    // 검색 필터링
+    if (searchQuery) {
+      const filtered = vehicles.filter(vehicle =>
+        vehicle.licensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (vehicle.name && vehicle.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+      setFilteredVehicles(filtered);
+    } else {
+      setFilteredVehicles(vehicles);
+    }
+  }, [vehicles, searchQuery]);
+
+  // 즐겨찾기 차량 목록 (전체 차량 목록)
+  const getFavoriteVehicles = (): SearchResult[] => {
+    return vehicles.map(vehicle => ({
+      id: `fav-vehicle-${vehicle.id}`,
+      value: vehicle.licensePlate,
+      label: `${vehicle.licensePlate}${vehicle.name ? ` (${vehicle.name})` : ''}`,
+      type: 'favorite',
+      category: 'vehicle',
+      metadata: {
+        vehicleId: vehicle.id,
+        vehicle,
+        category: vehicle.defaultUnitPrice ? `${vehicle.defaultUnitPrice.toLocaleString()}원` : undefined
+      }
+    }));
+  };
+
+  // 검색어 선택 처리
+  const handleSearchSelect = (result: SearchResult) => {
+    setSearchQuery(result.value);
+    addRecentVehicle(result.value);
+  };
 
   const loadVehicles = async () => {
     try {
@@ -63,7 +102,7 @@ const VehicleManagement: React.FC = () => {
     try {
       const vehicleData = {
         licensePlate: formData.licensePlate,
-        ...(formData.name && { name: formData.name }), // name이 있을 때만 포함
+        ...(formData.name && { name: formData.name }),
         defaultUnitPrice: formData.defaultUnitPrice ? parseInt(formData.defaultUnitPrice) : undefined,
       };
 
@@ -160,16 +199,30 @@ const VehicleManagement: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="flex justify-end mb-4">
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+            {/* 검색 */}
+            <div className="flex-1 max-w-md">
+              <SmartInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSelect={handleSearchSelect}
+                placeholder="차량번호 또는 이름으로 검색..."
+                searchFunction={searchVehicles}
+                recentItems={getRecentVehicles()}
+                favoriteItems={getFavoriteVehicles()}
+                debounceMs={300}
+              />
+            </div>
+
             <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="mr-2 h-4 w-4" />
               차량 등록
             </Button>
           </div>
 
-          {vehicles.length === 0 ? (
+          {filteredVehicles.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              등록된 차량이 없습니다. 차량을 등록해주세요.
+              {searchQuery ? '검색 결과가 없습니다.' : '등록된 차량이 없습니다. 차량을 등록해주세요.'}
             </div>
           ) : (
             <>
@@ -188,7 +241,7 @@ const VehicleManagement: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vehicles.map((vehicle) => (
+                    {filteredVehicles.map((vehicle) => (
                       <VehicleTableRow
                         key={vehicle.id}
                         vehicle={vehicle}
@@ -203,7 +256,7 @@ const VehicleManagement: React.FC = () => {
 
               {/* 모바일 카드 뷰 */}
               <div className="md:hidden space-y-4">
-                {vehicles.map((vehicle) => (
+                {filteredVehicles.map((vehicle) => (
                   <VehicleCard
                     key={vehicle.id}
                     vehicle={vehicle}
@@ -291,7 +344,7 @@ const VehicleManagement: React.FC = () => {
   );
 };
 
-// 테이블 행 컴포넌트
+// 기존 VehicleTableRow, VehicleCard 컴포넌트들은 그대로 유지
 const VehicleTableRow: React.FC<{
   vehicle: Vehicle;
   onEdit: (vehicle: Vehicle) => void;
@@ -366,7 +419,6 @@ const VehicleTableRow: React.FC<{
   );
 };
 
-// 모바일 카드 컴포넌트
 const VehicleCard: React.FC<{
   vehicle: Vehicle;
   onEdit: (vehicle: Vehicle) => void;

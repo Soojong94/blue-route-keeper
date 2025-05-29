@@ -1,4 +1,4 @@
-// src/components/TripList.tsx 수정
+// src/components/TripList.tsx 수정된 부분
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,15 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import DailyReport from '@/components/reports/DailyReport';
 import MonthlyReport from '@/components/reports/MonthlyReport';
 import ReportDialog from '@/components/reports/ReportDialog';
-import VehicleFilterInput from '@/components/VehicleFilterInput';
+import SmartInput, { SearchResult } from '@/components/SmartInput';
+import {
+  searchVehicles,
+  searchGeneral,
+  addRecentVehicle,
+  addRecentGeneral,
+  getRecentVehicles,
+  getRecentGeneral
+} from '@/utils/smartSearch';
 
 interface TripListProps {
   refreshTrigger: number;
@@ -34,7 +42,7 @@ interface TripListState {
   endDate: string;
   selectedVehicle: string;
   searchQuery: string;
-  showDetailedList: boolean; // 상세보기 상태 추가
+  showDetailedList: boolean;
 }
 
 const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
@@ -51,7 +59,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     endDate: getTodayString(),
     selectedVehicle: 'all',
     searchQuery: '',
-    showDetailedList: false // 기본값은 간략히 보기
+    showDetailedList: false
   });
 
   const [startDate, setStartDate] = useState<Date>(() => {
@@ -66,7 +74,6 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     return today;
   });
 
-  // TripList.tsx 수정 계속
   const [endDate, setEndDate] = useState<Date>(() => {
     const today = new Date();
     if (savedState.endDate) {
@@ -94,6 +101,22 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
 
   const { toast } = useToast();
+
+  // 즐겨찾기 차량 목록을 SearchResult 형태로 변환
+  const getFavoriteVehicles = useMemo((): SearchResult[] => {
+    return vehicles.map(vehicle => ({
+      id: `fav-vehicle-${vehicle.id}`,
+      value: vehicle.licensePlate,
+      label: `${vehicle.licensePlate}${vehicle.name ? ` (${vehicle.name})` : ''}`,
+      type: 'favorite',
+      category: 'vehicle',
+      metadata: {
+        vehicleId: vehicle.id,
+        vehicle,
+        category: vehicle.defaultUnitPrice ? `${vehicle.defaultUnitPrice.toLocaleString()}원` : undefined
+      }
+    }));
+  }, [vehicles]);
 
   // 상태 변경 시 localStorage 업데이트
   useEffect(() => {
@@ -170,6 +193,23 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     setFilteredTrips(filtered);
   };
 
+  // 차량 선택 처리
+  const handleVehicleSelect = (result: SearchResult) => {
+    if (result.metadata?.vehicleId) {
+      setSelectedVehicle(result.metadata.vehicleId);
+      addRecentVehicle(result.value);
+    } else {
+      // 전체 선택하거나 새로운 차량
+      setSelectedVehicle('all');
+    }
+  };
+
+  // 검색어 선택 처리
+  const handleSearchSelect = (result: SearchResult) => {
+    setSearchQuery(result.value);
+    addRecentGeneral(result.value);
+  };
+
   const handleEdit = (trip: Trip) => {
     setEditingTrip({ ...trip });
     setIsEditDialogOpen(true);
@@ -230,7 +270,6 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
 
   const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
 
-  // 일간 보고서 데이터 생성 시 시작일과 종료일 전달
   const dailyReportData = useMemo(() => {
     return generateDailyReport(filteredTrips, vehicles, startDate, endDate);
   }, [filteredTrips, vehicles, startDate, endDate]);
@@ -264,7 +303,6 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       vehicleStat.totalTrips += trip.count;
       vehicleStat.totalAmount += trip.totalAmount;
 
-      // 경로별 통계
       const routeKey = `${trip.departure} → ${trip.destination}`;
       if (!vehicleStat.routes.has(routeKey)) {
         vehicleStat.routes.set(routeKey, { count: 0, amount: 0 });
@@ -360,29 +398,54 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
               </Popover>
             </div>
 
-            {/* 차량 필터 - 새로운 VehicleFilterInput 사용 */}
+            {/* 차량 필터 - SmartInput 사용 */}
             <div className="space-y-2">
               <Label>차량</Label>
-              <VehicleFilterInput
-                value={selectedVehicle}
-                onChange={setSelectedVehicle}
-                vehicles={vehicles}
-                placeholder="차량번호 입력 (예: 12 입력시 1234 추천)"
-              />
-            </div>
-
-            {/* 검색 */}
-            <div className="space-y-2">
-              <Label>검색</Label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="출발지, 목적지, 운전자, 메모 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
+              <div className="flex gap-1">
+                <Button
+                  variant={selectedVehicle === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedVehicle('all')}
+                  className="shrink-0"
+                >
+                  전체
+                </Button>
+                <SmartInput
+                  value={selectedVehicle === 'all' ? '' : vehicles.find(v => v.id === selectedVehicle)?.licensePlate || ''}
+                  onChange={(value) => {
+                    if (!value) {
+                      setSelectedVehicle('all');
+                    } else {
+                      // 입력값으로 실시간 필터링은 하지 않고, 선택 시에만 적용
+                      const vehicle = vehicles.find(v => v.licensePlate === value);
+                      if (vehicle) {
+                        setSelectedVehicle(vehicle.id);
+                      }
+                    }
+                  }}
+                  onSelect={handleVehicleSelect}
+                  placeholder="차량번호 입력"
+                  searchFunction={searchVehicles}
+                  recentItems={getRecentVehicles()}
+                  favoriteItems={getFavoriteVehicles}
+                  debounceMs={300}
                 />
               </div>
+            </div>
+
+            {/* 검색 - SmartInput 사용 */}
+            <div className="space-y-2">
+              <Label>검색</Label>
+              <SmartInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSelect={handleSearchSelect}
+                placeholder="출발지, 목적지, 운전자, 메모 검색..."
+                searchFunction={searchGeneral}
+                recentItems={getRecentGeneral()}
+                favoriteItems={[]}
+                debounceMs={300}
+              />
             </div>
           </div>
 
@@ -807,7 +870,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                   variant="outline"
                   onClick={() => setIsEditDialogOpen(false)}
                   className="w-full sm:w-auto"
-                >// TripList.tsx 수정 계속
+                >
                   취소
                 </Button>
                 <Button onClick={handleSaveEdit} className="w-full sm:w-auto">

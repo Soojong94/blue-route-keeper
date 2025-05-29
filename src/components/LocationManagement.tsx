@@ -1,4 +1,4 @@
-// src/components/LocationManagement.tsx
+// src/components/LocationManagement.tsx 일부 수정
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,12 +14,16 @@ import { ko } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { getLocations, saveLocation, updateLocation, deleteLocation } from '@/utils/storage';
 import { Location } from '@/types/trip';
+import SmartInput, { SearchResult } from '@/components/SmartInput';
+import { searchLocations, addRecentLocation, getRecentLocations } from '@/utils/smartSearch';
 
 const LocationManagement: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredLocations, setFilteredLocations] = useState<Location[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     category: 'company' as 'company' | 'client' | 'personal' | 'other',
@@ -30,6 +34,47 @@ const LocationManagement: React.FC = () => {
   useEffect(() => {
     loadLocations();
   }, []);
+
+  useEffect(() => {
+    // 검색 필터링
+    if (searchQuery) {
+      const filtered = locations.filter(location =>
+        location.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredLocations(filtered);
+    } else {
+      setFilteredLocations(locations);
+    }
+  }, [locations, searchQuery]);
+
+  // 즐겨찾기 장소 목록
+  const getFavoriteLocations = (): SearchResult[] => {
+    const categoryLabels = {
+      company: '회사',
+      client: '고객사',
+      personal: '개인',
+      other: '기타'
+    };
+
+    return locations.map(location => ({
+      id: `fav-location-${location.id}`,
+      value: location.name,
+      label: location.name,
+      type: 'favorite',
+      category: 'location',
+      metadata: {
+        locationId: location.id,
+        location,
+        category: categoryLabels[location.category as keyof typeof categoryLabels]
+      }
+    }));
+  };
+
+  // 검색어 선택 처리
+  const handleSearchSelect = (result: SearchResult) => {
+    setSearchQuery(result.value);
+    addRecentLocation(result.value);
+  };
 
   const loadLocations = async () => {
     try {
@@ -161,16 +206,30 @@ const LocationManagement: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="flex justify-end mb-4">
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+            {/* 검색 */}
+            <div className="flex-1 max-w-md">
+              <SmartInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSelect={handleSearchSelect}
+                placeholder="장소명으로 검색..."
+                searchFunction={searchLocations}
+                recentItems={getRecentLocations()}
+                favoriteItems={getFavoriteLocations()}
+                debounceMs={300}
+              />
+            </div>
+
             <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="mr-2 h-4 w-4" />
               장소 등록
             </Button>
           </div>
 
-          {locations.length === 0 ? (
+          {filteredLocations.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              등록된 장소가 없습니다. 자주 사용하는 장소를 등록해주세요.
+              {searchQuery ? '검색 결과가 없습니다.' : '등록된 장소가 없습니다. 자주 사용하는 장소를 등록해주세요.'}
             </div>
           ) : (
             <>
@@ -186,7 +245,7 @@ const LocationManagement: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {locations.map((location) => (
+                    {filteredLocations.map((location) => (
                       <TableRow key={location.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{location.name}</TableCell>
                         <TableCell>{getCategoryBadge(location.category)}</TableCell>
@@ -221,7 +280,7 @@ const LocationManagement: React.FC = () => {
 
               {/* 모바일 카드 뷰 */}
               <div className="md:hidden space-y-4">
-                {locations.map((location) => (
+                {filteredLocations.map((location) => (
                   <Card key={location.id} className="p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>

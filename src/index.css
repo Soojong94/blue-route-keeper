@@ -17,6 +17,185 @@
   z-index: 9999 !important;
 }
 
+/* 🆕 통일된 입력 컴포넌트 드롭다운 최상위 보장 */
+.unified-dropdown {
+  z-index: 99999 !important;
+  position: absolute !important;
+}
+
+/* 🆕 모든 드롭다운이 다른 요소에 가려지지 않도록 */
+[data-unified-dropdown="true"] {
+  z-index: 99999 !important;
+  position: relative;
+}
+
+/* 🆕 모든 Radix UI 컴포넌트들 최상위로 */
+[data-radix-popper-content-wrapper] {
+  z-index: 99999 !important;
+}
+
+[data-radix-select-content] {
+  z-index: 99999 !important;
+}
+
+[data-radix-popover-content] {
+  z-index: 99999 !important;
+}
+
+[data-radix-dialog-overlay] {
+  z-index: 50000 !important;
+}
+
+[data-radix-dialog-content] {
+  z-index: 50001 !important;
+}
+
+/* 🆕 Calendar 컴포넌트도 최상위로 */
+[data-radix-calendar] {
+  z-index: 99999 !important;
+}
+
+/* 🆕 Tooltip도 최상위로 */
+[data-radix-tooltip-content] {
+  z-index: 99999 !important;
+}
+
+/* 🆕 DropdownMenu도 최상위로 */
+[data-radix-dropdown-menu-content] {
+  z-index: 99999 !important;
+}
+
+/* 🆕 통일된 입력 컴포넌트 스타일링 */
+.unified-input-container {
+  position: relative;
+}
+
+.unified-input-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* 🆕 스크롤바 스타일링 */
+.unified-input-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.unified-input-dropdown::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.unified-input-dropdown::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.unified-input-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 🆕 드롭다운 옵션 호버 효과 */
+.unified-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.15s ease;
+}
+
+.unified-dropdown-option:last-child {
+  border-bottom: none;
+}
+
+.unified-dropdown-option:hover {
+  background-color: #f8fafc;
+}
+
+.unified-dropdown-option:active {
+  background-color: #f1f5f9;
+}
+
+/* 🆕 카테고리 헤더 스타일 */
+.unified-dropdown-category {
+  position: sticky;
+  top: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  z-index: 1;
+}
+
+/* 🆕 빈 상태 스타일 */
+.unified-dropdown-empty {
+  padding: 16px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.unified-dropdown-empty-primary {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.unified-dropdown-empty-secondary {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* 🆕 로딩 스피너 */
+.unified-input-loading {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.unified-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 🆕 스마트 가격 표시 */
+.smart-price-indicator {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #3b82f6;
+  z-index: 10;
+}
+
+.smart-price-input {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
 /* 인쇄용 스타일 추가 */
 @media print {
   .no-print {
@@ -71,6 +250,11 @@
 
   .max-h-\[90vh\] {
     max-height: none !important;
+  }
+
+  /* 🆕 인쇄 시 드롭다운 숨기기 */
+  .unified-input-dropdown {
+    display: none !important;
   }
 }
 
