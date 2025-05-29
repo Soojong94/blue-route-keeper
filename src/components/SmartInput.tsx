@@ -1,11 +1,10 @@
-// src/components/SmartInput.tsx
+// src/components/SmartInput.tsx - 완전히 새로운 접근법
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, Search, MapPin, Car, Clock, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { createPortal } from 'react-dom';
 
 export interface SearchResult {
   id: string;
@@ -45,20 +44,14 @@ const SmartInput: React.FC<SmartInputProps> = ({
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [dropdownPosition, setDropdownPosition] = useState({
-    top: 0,
-    left: 0,
-    width: 0
-  });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // 즐겨찾기를 최근 사용 항목보다 우선으로 정렬하는 함수
+  // Portal 대신 relative positioning 사용
   const sortResults = useCallback((results: SearchResult[]): SearchResult[] => {
-    // 최근 사용한 항목들을 맨 위로
     const recentResults = results.filter(r => r.type === 'recent');
     const exactResults = results.filter(r => r.type === 'exact');
     const favoriteResults = results.filter(r => r.type === 'favorite');
@@ -67,39 +60,6 @@ const SmartInput: React.FC<SmartInputProps> = ({
     return [...recentResults, ...exactResults, ...favoriteResults, ...searchResultsOnly];
   }, []);
 
-  // 드롭다운 위치 계산 - Portal에서 정확한 위치 계산
-  const updateDropdownPosition = useCallback(() => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-
-      setDropdownPosition({
-        top: rect.bottom + scrollY,
-        left: rect.left + scrollX,
-        width: rect.width
-      });
-    }
-  }, []);
-
-  // 검색 결과를 그룹화하고 정렬
-  const organizeResults = useCallback(() => {
-    const sortedResults = sortResults(searchResults);
-    const exactMatches = sortedResults.filter(r => r.type === 'exact');
-    const favorites = sortedResults.filter(r => r.type === 'favorite');
-    const recent = sortedResults.filter(r => r.type === 'recent');
-    const searchMatches = sortedResults.filter(r => r.type === 'search');
-
-    return {
-      exact: exactMatches,
-      favorites,
-      recent,
-      search: searchMatches,
-      all: sortedResults
-    };
-  }, [searchResults, sortResults]);
-
-  // 디바운스된 검색 함수
   const debouncedSearch = useCallback(async (query: string) => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
@@ -107,7 +67,6 @@ const SmartInput: React.FC<SmartInputProps> = ({
 
     debounceTimeoutRef.current = setTimeout(async () => {
       if (!query.trim()) {
-        // 빈 검색어일 때는 최근 사용과 즐겨찾기만 표시
         const results: SearchResult[] = [
           ...recentItems.map((item, index) => ({
             id: `recent-${index}`,
@@ -135,25 +94,21 @@ const SmartInput: React.FC<SmartInputProps> = ({
     }, debounceMs);
   }, [searchFunction, favoriteItems, recentItems, debounceMs, sortResults]);
 
-  // 입력값 변경 처리
   const handleInputChange = useCallback((newValue: string) => {
     onChange(newValue);
     setSelectedIndex(-1);
     debouncedSearch(newValue);
   }, [onChange, debouncedSearch]);
 
-  // 드롭다운 열기/닫기
   const toggleDropdown = useCallback(() => {
     if (!isOpen) {
       setIsOpen(true);
-      updateDropdownPosition();
       debouncedSearch(value);
     } else {
       setIsOpen(false);
     }
-  }, [isOpen, updateDropdownPosition, debouncedSearch, value]);
+  }, [isOpen, debouncedSearch, value]);
 
-  // 항목 선택 처리
   const handleSelect = useCallback((result: SearchResult) => {
     onChange(result.value);
     onSelect?.(result);
@@ -161,7 +116,6 @@ const SmartInput: React.FC<SmartInputProps> = ({
     setSelectedIndex(-1);
   }, [onChange, onSelect]);
 
-  // 키보드 내비게이션
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const organized = organizeResults();
     const results = organized.all;
@@ -174,7 +128,6 @@ const SmartInput: React.FC<SmartInputProps> = ({
         );
         if (!isOpen) {
           setIsOpen(true);
-          updateDropdownPosition();
         }
         break;
 
@@ -196,16 +149,14 @@ const SmartInput: React.FC<SmartInputProps> = ({
         inputRef.current?.blur();
         break;
     }
-  }, [organizeResults, isOpen, updateDropdownPosition, selectedIndex, handleSelect]);
+  }, [isOpen, selectedIndex, handleSelect]);
 
   // 외부 클릭 감지
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
+        !containerRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
         setSelectedIndex(-1);
@@ -216,7 +167,6 @@ const SmartInput: React.FC<SmartInputProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {
     return () => {
       if (debounceTimeoutRef.current) {
@@ -225,21 +175,21 @@ const SmartInput: React.FC<SmartInputProps> = ({
     };
   }, []);
 
-  // 스크롤/리사이즈 시 드롭다운 위치 업데이트
-  useEffect(() => {
-    if (isOpen) {
-      const handleScroll = () => updateDropdownPosition();
-      const handleResize = () => updateDropdownPosition();
+  const organizeResults = useCallback(() => {
+    const sortedResults = sortResults(searchResults);
+    const exactMatches = sortedResults.filter(r => r.type === 'exact');
+    const favorites = sortedResults.filter(r => r.type === 'favorite');
+    const recent = sortedResults.filter(r => r.type === 'recent');
+    const searchMatches = sortedResults.filter(r => r.type === 'search');
 
-      window.addEventListener('scroll', handleScroll, true);
-      window.addEventListener('resize', handleResize);
-
-      return () => {
-        window.removeEventListener('scroll', handleScroll, true);
-        window.removeEventListener('resize', handleResize);
-      };
-    }
-  }, [isOpen, updateDropdownPosition]);
+    return {
+      exact: exactMatches,
+      favorites,
+      recent,
+      search: searchMatches,
+      all: sortedResults
+    };
+  }, [searchResults, sortResults]);
 
   const getResultIcon = (result: SearchResult) => {
     switch (result.type) {
@@ -274,49 +224,44 @@ const SmartInput: React.FC<SmartInputProps> = ({
   const organized = organizeResults();
 
   return (
-    <>
-      <div className="relative" ref={containerRef}>
-        <div className="flex">
-          <Input
-            ref={inputRef}
-            value={value}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => {
-              setIsOpen(true);
-              updateDropdownPosition();
-              if (!value) debouncedSearch('');
-            }}
-            placeholder={placeholder}
-            className={cn("pr-10", className)}
-            disabled={disabled}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={toggleDropdown}
-            disabled={disabled}
-            className="ml-1 px-2"
-          >
-            <ChevronDown className={cn(
-              "h-4 w-4 transition-transform",
-              isOpen && "rotate-180"
-            )} />
-          </Button>
-        </div>
+    <div className="relative w-full" ref={containerRef}>
+      <div className="flex">
+        <Input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setIsOpen(true);
+            if (!value) debouncedSearch('');
+          }}
+          placeholder={placeholder}
+          className={cn("pr-10", className)}
+          disabled={disabled}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={toggleDropdown}
+          disabled={disabled}
+          className="ml-1 px-2"
+        >
+          <ChevronDown className={cn(
+            "h-4 w-4 transition-transform",
+            isOpen && "rotate-180"
+          )} />
+        </Button>
       </div>
 
-      {isOpen && createPortal(
+      {/* Portal 대신 절대 위치 사용 - z-index 최대한 높게 설정 */}
+      {isOpen && (
         <div
           ref={dropdownRef}
-          className="fixed bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto"
+          className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto"
           style={{
-            top: dropdownPosition.top,
-            left: dropdownPosition.left,
-            width: dropdownPosition.width,
-            minWidth: dropdownPosition.width,
-            zIndex: 99999 // 최상위 z-index 보장
+            zIndex: 99999999, // 매우 높은 z-index
+            position: 'absolute'
           }}
         >
           {isLoading ? (
@@ -326,10 +271,10 @@ const SmartInput: React.FC<SmartInputProps> = ({
             </div>
           ) : (
             <>
-              {/* 최근 사용 (최우선) */}
+              {/* 최근 사용 */}
               {organized.recent.length > 0 && (
                 <div>
-                  <div className="px-3 py-2 text-xs font-medium text-orange-600 bg-orange-50 border-b">
+                  <div className="px-3 py-2 text-xs font-medium text-orange-600 bg-orange-50 border-b sticky top-0">
                     최근 사용 (우선)
                   </div>
                   {organized.recent.map((result, index) => {
@@ -359,7 +304,7 @@ const SmartInput: React.FC<SmartInputProps> = ({
               {/* 정확히 일치 */}
               {organized.exact.length > 0 && (
                 <div>
-                  <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b">
+                  <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b sticky top-0">
                     정확히 일치
                   </div>
                   {organized.exact.map((result, index) => {
@@ -387,7 +332,7 @@ const SmartInput: React.FC<SmartInputProps> = ({
               {/* 즐겨찾기 */}
               {organized.favorites.length > 0 && (
                 <div>
-                  <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b">
+                  <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b sticky top-0">
                     즐겨찾기
                   </div>
                   {organized.favorites.map((result, index) => {
@@ -419,7 +364,7 @@ const SmartInput: React.FC<SmartInputProps> = ({
               {/* 검색 결과 */}
               {organized.search.length > 0 && (
                 <div>
-                  <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b">
+                  <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b sticky top-0">
                     검색 결과
                   </div>
                   {organized.search.map((result, index) => {
@@ -458,10 +403,9 @@ const SmartInput: React.FC<SmartInputProps> = ({
               )}
             </>
           )}
-        </div>,
-        document.body
+        </div>
       )}
-    </>
+    </div>
   );
 };
 
