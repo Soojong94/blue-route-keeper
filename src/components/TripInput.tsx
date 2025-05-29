@@ -1,4 +1,4 @@
-// src/components/TripInput.tsx 완전 수정
+// src/components/TripInput.tsx
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,7 @@ import { ko } from 'date-fns/locale';
 import { CalendarIcon, Car, Calculator, Plus, Trash2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { saveTrip, getVehicles, getLocations, getTrips, saveVehicle, findVehicleByLicensePlate } from '@/utils/storage';
-import { calculateTotalAmount, getVehicleStats } from '@/utils/calculations';
+import { saveTrip, getVehicles, getLocations, saveVehicle, findVehicleByLicensePlate } from '@/utils/storage';
 import { Trip, Vehicle, Location } from '@/types/trip';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { getRecentUnitPrice, clearRoutePriceCache } from '@/utils/smartPricing';
@@ -60,6 +59,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
   const [priceLoadingRows, setPriceLoadingRows] = useState<Set<string>>(new Set());
 
   const smartPriceTimeouts = useRef(new Map<string, NodeJS.Timeout>());
+  const isInitialMount = useRef(true);
 
   const { toast } = useToast();
 
@@ -82,8 +82,8 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     };
   }
 
-  // 즐겨찾기 항목들을 SearchResult 형태로 변환
-  const getFavoriteVehicles = useMemo((): SearchResult[] => {
+  // 즐겨찾기 항목들을 SearchResult 형태로 변환 (useCallback으로 메모이제이션)
+  const getFavoriteVehicles = useCallback((): SearchResult[] => {
     return vehicles.map(vehicle => ({
       id: `fav-vehicle-${vehicle.id}`,
       value: vehicle.licensePlate,
@@ -98,7 +98,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     }));
   }, [vehicles]);
 
-  const getFavoriteLocations = useMemo((): SearchResult[] => {
+  const getFavoriteLocations = useCallback((): SearchResult[] => {
     const categoryLabels = {
       company: '회사',
       client: '고객사',
@@ -120,6 +120,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     }));
   }, [locations]);
 
+  // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {
     return () => {
       smartPriceTimeouts.current.forEach(timeout => clearTimeout(timeout));
@@ -127,13 +128,25 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     };
   }, []);
 
+  // 행 변경 시 localStorage 저장 (무한 루프 방지)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     const nonEmptyRows = rows.filter(row =>
       row.departure || row.destination || (row.unitPrice && row.unitPrice !== '1') || row.driverName || row.memo || row.licensePlate
     );
-    setSavedRows(nonEmptyRows);
-  }, [rows, setSavedRows]);
 
+    // 실제 변경이 있을 때만 저장
+    const hasChanges = JSON.stringify(nonEmptyRows) !== JSON.stringify(savedRows);
+    if (hasChanges) {
+      setSavedRows(nonEmptyRows);
+    }
+  }, [rows]); // savedRows 의존성 제거
+
+  // 초기 데이터 로드
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -157,23 +170,27 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     }
   };
 
-  const addRow = () => {
-    setRows([...rows, createNewRow()]);
-  };
+  const addRow = useCallback(() => {
+    setRows(prev => [...prev, createNewRow()]);
+  }, []);
 
-  const removeRow = (id: string) => {
-    if (rows.length > 1) {
-      setRows(rows.filter(row => row.id !== id));
-    }
-  };
+  const removeRow = useCallback((id: string) => {
+    setRows(prev => prev.length > 1 ? prev.filter(row => row.id !== id) : prev);
+  }, []);
 
-  const updateRow = (id: string, field: keyof TripRow, value: any) => {
-    setRows(prevRows => prevRows.map(row =>
-      row.id === id ? { ...row, [field]: value, isPriceAutoLoaded: field === 'unitPrice' ? false : row.isPriceAutoLoaded } : row
+  const updateRow = useCallback((id: string, field: keyof TripRow, value: any) => {
+    setRows(prev => prev.map(row =>
+      row.id === id
+        ? {
+          ...row,
+          [field]: value,
+          isPriceAutoLoaded: field === 'unitPrice' ? false : row.isPriceAutoLoaded
+        }
+        : row
     ));
-  };
+  }, []);
 
-  // 차량번호로 기존 차량 찾기 또는 새 차량 생성 (일괄 저장 시점에서 호출)
+  // 차량번호로 기존 차량 찾기 또는 새 차량 생성
   const ensureVehicleExists = async (licensePlate: string): Promise<string> => {
     if (!licensePlate.trim()) {
       throw new Error('차량번호가 없습니다.');
@@ -214,7 +231,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
   };
 
   // 차량 선택 처리
-  const handleVehicleSelect = (rowId: string, result: SearchResult) => {
+  const handleVehicleSelect = useCallback((rowId: string, result: SearchResult) => {
     const licensePlate = result.value;
     updateRow(rowId, 'licensePlate', licensePlate);
 
@@ -229,42 +246,34 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     }
 
     addRecentVehicle(licensePlate);
-  };
+  }, [updateRow]);
 
   // 장소 선택 처리
-  const handleLocationSelect = (rowId: string, field: 'departure' | 'destination', result: SearchResult) => {
+  const handleLocationSelect = useCallback((rowId: string, field: 'departure' | 'destination', result: SearchResult) => {
     const location = result.value;
     updateRow(rowId, field, location);
     addRecentLocation(location);
 
-    // 스마트 가격 로딩 로직
-    setRows(prevRows => {
-      const updatedRows = prevRows.map(row =>
-        row.id === rowId ? { ...row, [field]: location } : row
-      );
-
-      const currentRow = updatedRows.find(r => r.id === rowId);
+    // 스마트 가격 로딩 로직 (setTimeout으로 다른 상태 업데이트와 분리)
+    setTimeout(() => {
+      const currentRow = rows.find(r => r.id === rowId);
       if (currentRow) {
         const departure = field === 'departure' ? location : currentRow.departure;
         const destination = field === 'destination' ? location : currentRow.destination;
 
         if (departure && destination && departure !== destination) {
-          setTimeout(() => {
-            loadSmartPrice(rowId, departure, destination);
-          }, 100);
+          loadSmartPrice(rowId, departure, destination);
         }
       }
-
-      return updatedRows;
-    });
-  };
+    }, 100);
+  }, [updateRow, rows]);
 
   // 운전자 선택 처리
-  const handleDriverSelect = (rowId: string, result: SearchResult) => {
+  const handleDriverSelect = useCallback((rowId: string, result: SearchResult) => {
     const driver = result.value;
     updateRow(rowId, 'driverName', driver);
     addRecentDriver(driver);
-  };
+  }, [updateRow]);
 
   const loadSmartPrice = useCallback(async (rowId: string, departure: string, destination: string) => {
     if (!departure || !destination || departure === destination) {
@@ -434,11 +443,13 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     }
   };
 
-  const totalAmount = rows.reduce((sum, row) => {
-    const unitPrice = parseFloat(row.unitPrice) || 0;
-    const count = parseInt(row.count) || 0;
-    return sum + (unitPrice * count);
-  }, 0);
+  const totalAmount = useMemo(() => {
+    return rows.reduce((sum, row) => {
+      const unitPrice = parseFloat(row.unitPrice) || 0;
+      const count = parseInt(row.count) || 0;
+      return sum + (unitPrice * count);
+    }, 0);
+  }, [rows]);
 
   return (
     <Card className="w-full">
@@ -465,7 +476,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
       <CardContent className="p-0">
         <div className="hidden lg:block">
-          <div className="w-full overflow-hidden">
+          <div className="w-full">
             <table className="w-full table-fixed">
               <thead className="bg-gray-50">
                 <tr>
@@ -482,12 +493,12 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, index) => (
+                {rows.map((row) => (
                   <DesktopTripRow
                     key={row.id}
                     row={row}
-                    favoriteVehicles={getFavoriteVehicles}
-                    favoriteLocations={getFavoriteLocations}
+                    favoriteVehicles={getFavoriteVehicles()}
+                    favoriteLocations={getFavoriteLocations()}
                     onUpdate={updateRow}
                     onVehicleSelect={handleVehicleSelect}
                     onLocationSelect={handleLocationSelect}
@@ -506,8 +517,8 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
             <MobileTripCard
               key={row.id}
               row={row}
-              favoriteVehicles={getFavoriteVehicles}
-              favoriteLocations={getFavoriteLocations}
+              favoriteVehicles={getFavoriteVehicles()}
+              favoriteLocations={getFavoriteLocations()}
               onUpdate={updateRow}
               onVehicleSelect={handleVehicleSelect}
               onLocationSelect={handleLocationSelect}
@@ -568,7 +579,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
 
   return (
     <tr className="border-b hover:bg-gray-50">
-      <td className="px-2 py-3">
+      <td className="px-2 py-3 relative">
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -582,7 +593,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
               {row.date ? format(row.date, "MM/dd") : "날짜"}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+          <PopoverContent className="w-auto p-0" align="start">
             <Calendar
               mode="single"
               selected={row.date}
@@ -598,7 +609,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </Popover>
       </td>
 
-      <td className="px-2 py-3">
+      <td className="px-2 py-3 relative">
         <SmartInput
           value={row.licensePlate}
           onChange={(value) => onUpdate(row.id, 'licensePlate', value)}
@@ -612,7 +623,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         />
       </td>
 
-      <td className="px-2 py-3">
+      <td className="px-2 py-3 relative">
         <SmartInput
           value={row.departure}
           onChange={(value) => onUpdate(row.id, 'departure', value)}
@@ -626,7 +637,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         />
       </td>
 
-      <td className="px-2 py-3">
+      <td className="px-2 py-3 relative">
         <SmartInput
           value={row.destination}
           onChange={(value) => onUpdate(row.id, 'destination', value)}
@@ -659,7 +670,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
               <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
             </div>
           )}
-          {row.isPriceAutoLoaded && (
+          {row.isPriceAutoLoaded && !isPriceLoading && (
             <div className="absolute right-2 top-2">
               <Zap className="h-3 w-3 text-blue-500" />
             </div>
@@ -684,7 +695,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
         </div>
       </td>
 
-      <td className="px-2 py-3">
+      <td className="px-2 py-3 relative">
         <SmartInput
           value={row.driverName}
           onChange={(value) => onUpdate(row.id, 'driverName', value)}
@@ -770,7 +781,7 @@ const MobileTripCard: React.FC<TripRowProps> = ({
                 {row.date ? format(row.date, "MM/dd") : "날짜"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+            <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
                 selected={row.date}

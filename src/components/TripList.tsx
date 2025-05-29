@@ -102,6 +102,9 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
 
   const { toast } = useToast();
 
+  // 차량 필터 입력값 상태 (표시용)
+  const [vehicleFilterInput, setVehicleFilterInput] = useState('');
+
   // 즐겨찾기 차량 목록을 SearchResult 형태로 변환
   const getFavoriteVehicles = useMemo((): SearchResult[] => {
     return vehicles.map(vehicle => ({
@@ -135,6 +138,21 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       showDetailedList
     });
   }, [startDate, endDate, selectedVehicle, searchQuery, showDetailedList, setSavedState]);
+
+  // 선택된 차량의 표시값 업데이트
+  useEffect(() => {
+    if (selectedVehicle === 'all') {
+      setVehicleFilterInput('');
+    } else {
+      const vehicle = vehicles.find(v => v.id === selectedVehicle);
+      if (vehicle) {
+        setVehicleFilterInput(vehicle.licensePlate);
+      } else {
+        setVehicleFilterInput('');
+        setSelectedVehicle('all');
+      }
+    }
+  }, [selectedVehicle, vehicles]);
 
   useEffect(() => {
     loadTrips();
@@ -193,13 +211,30 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     setFilteredTrips(filtered);
   };
 
-  // 차량 선택 처리
+  // 차량 선택 처리 (수정됨)
   const handleVehicleSelect = (result: SearchResult) => {
     if (result.metadata?.vehicleId) {
       setSelectedVehicle(result.metadata.vehicleId);
+      setVehicleFilterInput(result.value);
       addRecentVehicle(result.value);
+    }
+  };
+
+  // 차량 필터 입력값 변경 처리 (수정됨)
+  const handleVehicleFilterChange = (value: string) => {
+    setVehicleFilterInput(value);
+
+    if (!value.trim()) {
+      setSelectedVehicle('all');
+      return;
+    }
+
+    // 정확히 일치하는 차량이 있는지 확인
+    const matchingVehicle = vehicles.find(v => v.licensePlate === value);
+    if (matchingVehicle) {
+      setSelectedVehicle(matchingVehicle.id);
     } else {
-      // 전체 선택하거나 새로운 차량
+      // 일치하는 차량이 없으면 전체로 설정 (실시간 필터링 방지)
       setSelectedVehicle('all');
     }
   };
@@ -398,31 +433,24 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
               </Popover>
             </div>
 
-            {/* 차량 필터 - SmartInput 사용 */}
+            {/* 차량 필터 - SmartInput 사용 (수정됨) */}
             <div className="space-y-2">
               <Label>차량</Label>
               <div className="flex gap-1">
                 <Button
                   variant={selectedVehicle === 'all' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setSelectedVehicle('all')}
+                  onClick={() => {
+                    setSelectedVehicle('all');
+                    setVehicleFilterInput('');
+                  }}
                   className="shrink-0"
                 >
                   전체
                 </Button>
                 <SmartInput
-                  value={selectedVehicle === 'all' ? '' : vehicles.find(v => v.id === selectedVehicle)?.licensePlate || ''}
-                  onChange={(value) => {
-                    if (!value) {
-                      setSelectedVehicle('all');
-                    } else {
-                      // 입력값으로 실시간 필터링은 하지 않고, 선택 시에만 적용
-                      const vehicle = vehicles.find(v => v.licensePlate === value);
-                      if (vehicle) {
-                        setSelectedVehicle(vehicle.id);
-                      }
-                    }
-                  }}
+                  value={vehicleFilterInput}
+                  onChange={handleVehicleFilterChange}
                   onSelect={handleVehicleSelect}
                   placeholder="차량번호 입력"
                   searchFunction={searchVehicles}
