@@ -139,12 +139,12 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       row.departure || row.destination || (row.unitPrice && row.unitPrice !== '1') || row.driverName || row.memo || row.licensePlate
     );
 
-    // 실제 변경이 있을 때만 저장
+    // 실제 변경이 있을 때만 저장 (깊은 비교로 무한 루프 방지)
     const hasChanges = JSON.stringify(nonEmptyRows) !== JSON.stringify(savedRows);
     if (hasChanges) {
       setSavedRows(nonEmptyRows);
     }
-  }, [rows]); // savedRows 의존성 제거
+  }, [rows]);
 
   // 초기 데이터 로드
   useEffect(() => {

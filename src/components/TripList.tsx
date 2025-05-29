@@ -119,7 +119,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         category: vehicle.defaultUnitPrice ? `${vehicle.defaultUnitPrice.toLocaleString()}원` : undefined
       }
     }));
-  }, [vehicles]);
+  }, [vehicles]); // vehicles만 의존성으로 사용
 
   // 상태 변경 시 localStorage 업데이트
   useEffect(() => {
@@ -130,14 +130,21 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       return `${year}-${month}-${day}`;
     };
 
-    setSavedState({
+    const newState = {
       startDate: formatDate(startDate),
       endDate: formatDate(endDate),
       selectedVehicle,
       searchQuery,
       showDetailedList
-    });
-  }, [startDate, endDate, selectedVehicle, searchQuery, showDetailedList, setSavedState]);
+    };
+
+    // 실제로 변경이 있을 때만 저장 (JSON.stringify로 깊은 비교)
+    if (JSON.stringify(newState) !== JSON.stringify(savedState)) {
+      setSavedState(newState);
+    }
+  }, [startDate, endDate, selectedVehicle, searchQuery, showDetailedList]);
+  // savedState를 의존성에서 제거하여 무한 루프 방지
+
 
   // 선택된 차량의 표시값 업데이트
   useEffect(() => {

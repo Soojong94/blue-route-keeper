@@ -45,40 +45,59 @@ const SmartInput: React.FC<SmartInputProps> = ({
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // 드롭다운 위치 계산
+  // 즐겨찾기를 최근 사용 항목보다 우선으로 정렬하는 함수
+  const sortResults = useCallback((results: SearchResult[]): SearchResult[] => {
+    // 최근 사용한 항목들을 맨 위로
+    const recentResults = results.filter(r => r.type === 'recent');
+    const exactResults = results.filter(r => r.type === 'exact');
+    const favoriteResults = results.filter(r => r.type === 'favorite');
+    const searchResultsOnly = results.filter(r => r.type === 'search');
+
+    return [...recentResults, ...exactResults, ...favoriteResults, ...searchResultsOnly];
+  }, []);
+
+  // 드롭다운 위치 계산 - Portal에서 정확한 위치 계산
   const updateDropdownPosition = useCallback(() => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+
       setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + scrollY,
+        left: rect.left + scrollX,
         width: rect.width
       });
     }
   }, []);
 
-  // 검색 결과를 그룹화하고 정렬 (useMemo 대신 함수로 변경)
+  // 검색 결과를 그룹화하고 정렬
   const organizeResults = useCallback(() => {
-    const exactMatches = searchResults.filter(r => r.type === 'exact');
-    const favorites = searchResults.filter(r => r.type === 'favorite');
-    const recent = searchResults.filter(r => r.type === 'recent');
-    const searchMatches = searchResults.filter(r => r.type === 'search');
+    const sortedResults = sortResults(searchResults);
+    const exactMatches = sortedResults.filter(r => r.type === 'exact');
+    const favorites = sortedResults.filter(r => r.type === 'favorite');
+    const recent = sortedResults.filter(r => r.type === 'recent');
+    const searchMatches = sortedResults.filter(r => r.type === 'search');
 
     return {
       exact: exactMatches,
       favorites,
       recent,
       search: searchMatches,
-      all: [...exactMatches, ...favorites, ...recent, ...searchMatches]
+      all: sortedResults
     };
-  }, [searchResults]);
+  }, [searchResults, sortResults]);
 
   // 디바운스된 검색 함수
   const debouncedSearch = useCallback(async (query: string) => {
@@ -90,15 +109,15 @@ const SmartInput: React.FC<SmartInputProps> = ({
       if (!query.trim()) {
         // 빈 검색어일 때는 최근 사용과 즐겨찾기만 표시
         const results: SearchResult[] = [
-          ...favoriteItems,
           ...recentItems.map((item, index) => ({
             id: `recent-${index}`,
             value: item,
             label: item,
             type: 'recent' as const,
-          }))
+          })),
+          ...favoriteItems,
         ];
-        setSearchResults(results);
+        setSearchResults(sortResults(results));
         setIsLoading(false);
         return;
       }
@@ -106,7 +125,7 @@ const SmartInput: React.FC<SmartInputProps> = ({
       try {
         setIsLoading(true);
         const results = await searchFunction(query);
-        setSearchResults(results);
+        setSearchResults(sortResults(results));
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
@@ -114,7 +133,7 @@ const SmartInput: React.FC<SmartInputProps> = ({
         setIsLoading(false);
       }
     }, debounceMs);
-  }, [searchFunction, favoriteItems, recentItems, debounceMs]);
+  }, [searchFunction, favoriteItems, recentItems, debounceMs, sortResults]);
 
   // 입력값 변경 처리
   const handleInputChange = useCallback((newValue: string) => {
@@ -231,7 +250,7 @@ const SmartInput: React.FC<SmartInputProps> = ({
           ? <Car className="h-4 w-4 text-blue-500" />
           : <MapPin className="h-4 w-4 text-green-500" />;
       case 'recent':
-        return <Clock className="h-4 w-4 text-gray-400" />;
+        return <Clock className="h-4 w-4 text-orange-500" />;
       default:
         return <Search className="h-4 w-4 text-gray-400" />;
     }
@@ -240,7 +259,7 @@ const SmartInput: React.FC<SmartInputProps> = ({
   const highlightMatch = (text: string, query: string) => {
     if (!query.trim()) return text;
 
-    const regex = new RegExp(`(${query})`, 'gi');
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
     const parts = text.split(regex);
 
     return parts.map((part, index) =>
@@ -291,12 +310,13 @@ const SmartInput: React.FC<SmartInputProps> = ({
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto z-[99999]"
+          className="fixed bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,
             width: dropdownPosition.width,
-            minWidth: dropdownPosition.width
+            minWidth: dropdownPosition.width,
+            zIndex: 99999 // 최상위 z-index 보장
           }}
         >
           {isLoading ? (
@@ -306,6 +326,36 @@ const SmartInput: React.FC<SmartInputProps> = ({
             </div>
           ) : (
             <>
+              {/* 최근 사용 (최우선) */}
+              {organized.recent.length > 0 && (
+                <div>
+                  <div className="px-3 py-2 text-xs font-medium text-orange-600 bg-orange-50 border-b">
+                    최근 사용 (우선)
+                  </div>
+                  {organized.recent.map((result, index) => {
+                    const globalIndex = organized.all.indexOf(result);
+                    return (
+                      <div
+                        key={result.id}
+                        onClick={() => handleSelect(result)}
+                        className={cn(
+                          "flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-100",
+                          selectedIndex === globalIndex && "bg-blue-50"
+                        )}
+                      >
+                        {getResultIcon(result)}
+                        <span className="flex-1">
+                          {highlightMatch(result.label, value)}
+                        </span>
+                        <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700">
+                          최근
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* 정확히 일치 */}
               {organized.exact.length > 0 && (
                 <div>
@@ -360,33 +410,6 @@ const SmartInput: React.FC<SmartInputProps> = ({
                             {result.metadata.category}
                           </Badge>
                         )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* 최근 사용 */}
-              {organized.recent.length > 0 && (
-                <div>
-                  <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b">
-                    최근 사용
-                  </div>
-                  {organized.recent.map((result, index) => {
-                    const globalIndex = organized.all.indexOf(result);
-                    return (
-                      <div
-                        key={result.id}
-                        onClick={() => handleSelect(result)}
-                        className={cn(
-                          "flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-100",
-                          selectedIndex === globalIndex && "bg-blue-50"
-                        )}
-                      >
-                        {getResultIcon(result)}
-                        <span className="flex-1">
-                          {highlightMatch(result.label, value)}
-                        </span>
                       </div>
                     );
                   })}
