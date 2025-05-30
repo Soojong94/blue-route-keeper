@@ -1,18 +1,22 @@
-// src/utils/reportUtils.ts 수정
+// src/utils/reportUtils.ts - 완전히 새로운 버전
 import { Trip, Vehicle } from '@/types/trip';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 export interface DailyReportData {
-  date: string;
-  departureGroups: {
+  period: string;
+  vehicleName: string;
+  dailyTrips: {
+    month: number;
+    day: number;
+    vehicleNumber: string;
     departure: string;
-    destinations: {
-      destination: string;
-      vehicle: string;
-      count: number;
-    }[];
+    destination: string;
+    unitPrice: number;
+    count: number;
+    dailyTotal: number;
   }[];
+  monthlyTotal: number;
 }
 
 export interface MonthlyReportData {
@@ -30,64 +34,71 @@ export const generateDailyReport = (
   trips: Trip[], 
   vehicles: Vehicle[], 
   startDate: Date, 
-  endDate: Date
+  endDate: Date,
+  selectedVehicleId?: string
 ): DailyReportData => {
-  if (trips.length === 0) {
+  // 차량별 필터링
+  const filteredTrips = selectedVehicleId && selectedVehicleId !== 'all'
+    ? trips.filter(trip => trip.vehicleId === selectedVehicleId)
+    : trips;
+
+  if (filteredTrips.length === 0) {
     return {
-      date: '',
-      departureGroups: []
+      period: '',
+      vehicleName: '데이터 없음',
+      dailyTrips: [],
+      monthlyTotal: 0
     };
   }
 
   // 차량 정보 매핑
   const vehicleMap = new Map(vehicles.map(v => [v.id, `${v.licensePlate}${v.name ? ` (${v.name})` : ''}`]));
 
-  // 출발지별로 그룹핑
-  const departureGroups = new Map<string, Map<string, { vehicle: string; count: number }>>();
+  // 선택된 차량 이름 결정
+  let vehicleName = '전체 차량';
+  if (selectedVehicleId && selectedVehicleId !== 'all') {
+    const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId);
+    if (selectedVehicle) {
+      vehicleName = `${selectedVehicle.licensePlate}${selectedVehicle.name ? ` (${selectedVehicle.name})` : ''}`;
+    }
+  }
 
-  trips.forEach(trip => {
-    const vehicleName = vehicleMap.get(trip.vehicleId) || '알 수 없음';
+  // 날짜별 운행 데이터 생성
+  const dailyTrips = filteredTrips.map(trip => {
+    const tripDate = new Date(trip.date);
+    const vehicleNumber = vehicleMap.get(trip.vehicleId) || '알 수 없음';
     
-    if (!departureGroups.has(trip.departure)) {
-      departureGroups.set(trip.departure, new Map());
-    }
-    
-    const destinations = departureGroups.get(trip.departure)!;
-    const key = `${trip.destination}-${vehicleName}`;
-    
-    if (destinations.has(key)) {
-      destinations.get(key)!.count += trip.count;
-    } else {
-      destinations.set(key, {
-        vehicle: vehicleName,
-        count: trip.count
-      });
-    }
+    return {
+      month: tripDate.getMonth() + 1,
+      day: tripDate.getDate(),
+      vehicleNumber,
+      departure: trip.departure,
+      destination: trip.destination,
+      unitPrice: trip.unitPrice,
+      count: trip.count,
+      dailyTotal: trip.totalAmount
+    };
+  }).sort((a, b) => {
+    // 월, 일 순으로 정렬
+    if (a.month !== b.month) return a.month - b.month;
+    return a.day - b.day;
   });
 
-  // 날짜 범위 계산
+  // 총액 계산
+  const monthlyTotal = dailyTrips.reduce((sum, trip) => sum + trip.dailyTotal, 0);
+
+  // 기간 계산
   const isSameDate = format(startDate, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd');
-  const dateString = isSameDate 
+  const period = isSameDate 
     ? format(startDate, 'yyyy년 MM월 dd일', { locale: ko })
-    : `${format(startDate, 'yyyy년 MM월 dd일', { locale: ko })}~${format(endDate, 'dd일', { locale: ko })}`;
+    : `${format(startDate, 'yyyy년 MM월 dd일', { locale: ko })} ~ ${format(endDate, 'MM월 dd일', { locale: ko })}`;
 
-  // 데이터 변환
-  const result: DailyReportData = {
-    date: dateString,
-    departureGroups: Array.from(departureGroups.entries()).map(([departure, destinations]) => ({
-      departure,
-      destinations: Array.from(destinations.entries()).map(([key, data]) => {
-        const destination = key.split('-')[0];
-        return {
-          destination,
-          vehicle: data.vehicle,
-          count: data.count
-        };
-      }).sort((a, b) => a.destination.localeCompare(b.destination))
-    })).sort((a, b) => a.departure.localeCompare(b.departure))
+  return {
+    period,
+    vehicleName,
+    dailyTrips,
+    monthlyTotal
   };
-
-  return result;
 };
 
 export const generateMonthlyReport = (trips: Trip[]): MonthlyReportData => {

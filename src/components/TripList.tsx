@@ -313,8 +313,8 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
 
   const dailyReportData = useMemo(() => {
-    return generateDailyReport(filteredTrips, vehicles, startDate, endDate);
-  }, [filteredTrips, vehicles, startDate, endDate]);
+    return generateDailyReport(filteredTrips, vehicles, startDate, endDate, selectedVehicle);
+  }, [filteredTrips, vehicles, startDate, endDate, selectedVehicle]);
 
   const monthlyReportData = useMemo(() => {
     return generateMonthlyReport(filteredTrips);
@@ -512,6 +512,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           {/* 보고서 및 상세보기 버튼 */}
           <div className="flex flex-wrap gap-2 justify-between">
             <div className="flex flex-wrap gap-2">
+
               <Button
                 variant="outline"
                 onClick={() => setIsDailyReportOpen(true)}
@@ -519,7 +520,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 disabled={filteredTrips.length === 0}
               >
                 <FileText className="h-4 w-4" />
-                일간 보고서
+                운행 보고서
               </Button>
               <Button
                 variant="outline"
@@ -918,20 +919,36 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       </Dialog>
 
       {/* 보고서 다이얼로그들 */}
+
       <ReportDialog
         open={isDailyReportOpen}
         onOpenChange={setIsDailyReportOpen}
-        title="일간 운행 보고서"
+        title="운행 보고서"
       >
-        <DailyReport data={dailyReportData} />
-      </ReportDialog>
-
-      <ReportDialog
-        open={isMonthlyReportOpen}
-        onOpenChange={setIsMonthlyReportOpen}
-        title="월간 운행 보고서"
-      >
-        <MonthlyReport data={monthlyReportData} />
+        <DailyReport
+          data={dailyReportData}
+          vehicles={vehicles}
+          selectedVehicleId={selectedVehicle}
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={(newStartDate, newEndDate) => {
+            setStartDate(newStartDate);
+            setEndDate(newEndDate);
+          }}
+          onVehicleChange={(vehicleId) => {
+            setSelectedVehicle(vehicleId);
+            // 차량 필터 입력값도 업데이트
+            if (vehicleId === 'all') {
+              setVehicleFilterInput('');
+            } else {
+              const vehicle = vehicles.find(v => v.id === vehicleId);
+              if (vehicle) {
+                setVehicleFilterInput(vehicle.licensePlate);
+              }
+            }
+          }}
+          onRefresh={loadTrips}
+        />
       </ReportDialog>
     </div>
   );
