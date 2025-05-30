@@ -1,4 +1,3 @@
-// src/components/TripList.tsx 수정된 부분
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car, FileText, Calendar as CalendarReport, Eye, EyeOff } from 'lucide-react';
+import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car, FileText, Calendar as CalendarReport, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useModalBackHandler } from '@/hooks/useBackHandler';
 import { getTrips, getTripsByDateRange, getVehicles, deleteTrip, updateTrip } from '@/utils/storage';
 import { getPeriodStats } from '@/utils/calculations';
 import { generateDailyReport, generateMonthlyReport } from '@/utils/reportUtils';
@@ -43,6 +43,16 @@ interface TripListState {
   selectedVehicle: string;
   searchQuery: string;
   showDetailedList: boolean;
+}
+
+interface TripGroup {
+  key: string;
+  date: string;
+  vehicleId: string;
+  vehicleName: string;
+  trips: Trip[];
+  totalCount: number;
+  totalAmount: number;
 }
 
 const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
@@ -95,10 +105,16 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // 보고서 다이얼로그 상태
   const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
   const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
+
+  // 모달 뒤로가기 핸들러
+  useModalBackHandler(isEditDialogOpen, () => setIsEditDialogOpen(false), 'dialog');
+  useModalBackHandler(isDailyReportOpen, () => setIsDailyReportOpen(false), 'dialog');
+  useModalBackHandler(isMonthlyReportOpen, () => setIsMonthlyReportOpen(false), 'dialog');
 
   const { toast } = useToast();
 
@@ -119,7 +135,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         category: vehicle.defaultUnitPrice ? `${vehicle.defaultUnitPrice.toLocaleString()}원` : undefined
       }
     }));
-  }, [vehicles]); // vehicles만 의존성으로 사용
+  }, [vehicles]);
 
   // 상태 변경 시 localStorage 업데이트
   useEffect(() => {
@@ -138,13 +154,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       showDetailedList
     };
 
-    // 실제로 변경이 있을 때만 저장 (JSON.stringify로 깊은 비교)
     if (JSON.stringify(newState) !== JSON.stringify(savedState)) {
       setSavedState(newState);
     }
   }, [startDate, endDate, selectedVehicle, searchQuery, showDetailedList]);
-  // savedState를 의존성에서 제거하여 무한 루프 방지
-
 
   // 선택된 차량의 표시값 업데이트
   useEffect(() => {
@@ -218,7 +231,45 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     setFilteredTrips(filtered);
   };
 
-  // 차량 선택 처리 (수정됨)
+  // 운행 기록 그룹화
+  const groupedTrips = useMemo((): TripGroup[] => {
+    const groups = new Map<string, TripGroup>();
+
+    filteredTrips.forEach(trip => {
+      const key = `${trip.date}-${trip.vehicleId}`;
+
+      if (groups.has(key)) {
+        const group = groups.get(key)!;
+        group.trips.push(trip);
+        group.totalCount += trip.count;
+        group.totalAmount += trip.totalAmount;
+      } else {
+        const vehicle = vehicles.find(v => v.id === trip.vehicleId);
+        const vehicleName = vehicle
+          ? (vehicle.name ? `${vehicle.licensePlate} (${vehicle.name})` : vehicle.licensePlate)
+          : '알 수 없음';
+
+        groups.set(key, {
+          key,
+          date: trip.date,
+          vehicleId: trip.vehicleId,
+          vehicleName,
+          trips: [trip],
+          totalCount: trip.count,
+          totalAmount: trip.totalAmount
+        });
+      }
+    });
+
+    // 날짜 역순으로 정렬
+    return Array.from(groups.values()).sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateB - dateA; // 최신 날짜가 먼저
+    });
+  }, [filteredTrips, vehicles]);
+
+  // 차량 선택 처리
   const handleVehicleSelect = (result: SearchResult) => {
     if (result.metadata?.vehicleId) {
       setSelectedVehicle(result.metadata.vehicleId);
@@ -227,7 +278,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     }
   };
 
-  // 차량 필터 입력값 변경 처리 (수정됨)
+  // 차량 필터 입력값 변경 처리
   const handleVehicleFilterChange = (value: string) => {
     setVehicleFilterInput(value);
 
@@ -236,12 +287,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       return;
     }
 
-    // 정확히 일치하는 차량이 있는지 확인
     const matchingVehicle = vehicles.find(v => v.licensePlate === value);
     if (matchingVehicle) {
       setSelectedVehicle(matchingVehicle.id);
     } else {
-      // 일치하는 차량이 없으면 전체로 설정 (실시간 필터링 방지)
       setSelectedVehicle('all');
     }
   };
@@ -257,8 +306,46 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     setIsEditDialogOpen(true);
   };
 
+  // 수정된 저장 함수 - validation 개선
   const handleSaveEdit = async () => {
     if (!editingTrip) return;
+
+    // Validation 체크
+    if (editingTrip.unitPrice < 1) {
+      toast({
+        title: "입력 오류",
+        description: "단가는 1원 이상이어야 합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editingTrip.count < 1) {
+      toast({
+        title: "입력 오류",
+        description: "횟수는 1회 이상이어야 합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editingTrip.departure.trim()) {
+      toast({
+        title: "입력 오류",
+        description: "출발지를 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editingTrip.destination.trim()) {
+      toast({
+        title: "입력 오류",
+        description: "목적지를 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const updated = await updateTrip(editingTrip.id, {
@@ -308,6 +395,19 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         });
       }
     }
+  };
+
+  // 그룹 확장/축소 토글
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupKey)) {
+        newSet.delete(groupKey);
+      } else {
+        newSet.add(groupKey);
+      }
+      return newSet;
+    });
   };
 
   const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
@@ -440,7 +540,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
               </Popover>
             </div>
 
-            {/* 차량 필터 - SmartInput 사용 (수정됨) */}
+            {/* 차량 필터 */}
             <div className="space-y-2">
               <Label>차량</Label>
               <div className="flex gap-1">
@@ -468,7 +568,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
               </div>
             </div>
 
-            {/* 검색 - SmartInput 사용 */}
+            {/* 검색 */}
             <div className="space-y-2">
               <Label>검색</Label>
               <SmartInput
@@ -512,7 +612,6 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           {/* 보고서 및 상세보기 버튼 */}
           <div className="flex flex-wrap gap-2 justify-between">
             <div className="flex flex-wrap gap-2">
-
               <Button
                 variant="outline"
                 onClick={() => setIsDailyReportOpen(true)}
@@ -600,7 +699,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         </Card>
       )}
 
-      {/* 운행 기록 상세 테이블 - 상세보기일 때만 표시 */}
+      {/* 운행 기록 상세 목록 - 상세보기일 때만 표시 (그룹화) */}
       {showDetailedList && (
         <Card>
           <CardHeader>
@@ -610,195 +709,29 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredTrips.length === 0 ? (
+            {groupedTrips.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 {loading ? '데이터를 불러오는 중입니다...' : '조건에 맞는 운행 기록이 없습니다.'}
               </div>
             ) : (
-              <>
-                {/* 데스크톱 테이블 */}
-                <div className="hidden lg:block overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>운행일</TableHead>
-                        <TableHead>차량</TableHead>
-                        <TableHead>경로</TableHead>
-                        <TableHead className="text-center">횟수</TableHead>
-                        <TableHead className="text-right">단가</TableHead>
-                        <TableHead className="text-right">총액</TableHead>
-                        <TableHead>운전자</TableHead>
-                        <TableHead>저장일시</TableHead>
-                        <TableHead className="text-center">관리</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTrips.map((trip) => (
-                        <TableRow key={trip.id} className="hover:bg-gray-50">
-                          <TableCell className="font-medium">
-                            {format(new Date(trip.date), 'MM/dd', { locale: ko })}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              <div className="font-medium">{getVehicleName(trip.vehicleId)}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                                {trip.departure}
-                              </Badge>
-                              <ArrowRight className="h-4 w-4 text-gray-400" />
-                              <Badge variant="outline" className="bg-green-50 text-green-700">
-                                {trip.destination}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center font-medium">
-                            {trip.count}회
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {trip.unitPrice.toLocaleString()}원
-                          </TableCell>
-                          <TableCell className="text-right font-semibold text-blue-600">
-                            {trip.totalAmount.toLocaleString()}원
-                          </TableCell>
-                          <TableCell>
-                            {trip.driverName ? (
-                              <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                                {trip.driverName}
-                              </Badge>
-                            ) : (
-                              <span className="text-gray-400 text-sm">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-500">
-                            {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
-                            {trip.updatedAt && (
-                              <div className="text-xs text-blue-500">
-                                (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(trip)}
-                                className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(trip.id)}
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* 모바일 카드 뷰 */}
-                <div className="lg:hidden space-y-4">
-                  {filteredTrips.map((trip) => (
-                    <Card key={trip.id} className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="space-y-1">
-                          <div className="font-medium text-sm">
-                            {format(new Date(trip.date), 'MM/dd', { locale: ko })} |
-                            <span className="text-blue-600 ml-1">{getVehicleName(trip.vehicleId)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-                              {trip.departure}
-                            </Badge>
-                            <ArrowRight className="h-3 w-3 text-gray-400" />
-                            <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
-                              {trip.destination}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(trip)}
-                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(trip.id)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">횟수:</span>
-                          <span className="font-medium ml-1">{trip.count}회</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">단가:</span>
-                          <span className="font-medium ml-1">{trip.unitPrice.toLocaleString()}원</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 p-2 bg-blue-50 rounded flex justify-between items-center">
-                        <span className="text-sm text-blue-600">총액</span>
-                        <span className="font-bold text-blue-800">{trip.totalAmount.toLocaleString()}원</span>
-                      </div>
-
-                      {(trip.driverName || trip.memo) && (
-                        <div className="mt-3 space-y-1 text-sm">
-                          {trip.driverName && (
-                            <div>
-                              <span className="text-gray-500">운전자:</span>
-                              <Badge variant="outline" className="bg-purple-50 text-purple-700 ml-2">
-                                {trip.driverName}
-                              </Badge>
-                            </div>
-                          )}
-                          {trip.memo && (
-                            <div>
-                              <span className="text-gray-500">메모:</span>
-                              <span className="ml-1">{trip.memo}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="mt-3 text-xs text-gray-500">
-                        저장: {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
-                        {trip.updatedAt && (
-                          <span className="text-blue-500 ml-2">
-                            (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
-                          </span>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </>
+              <div className="space-y-4">
+                {groupedTrips.map((group) => (
+                  <TripGroupCard
+                    key={group.key}
+                    group={group}
+                    isExpanded={expandedGroups.has(group.key)}
+                    onToggle={() => toggleGroup(group.key)}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* 수정 다이얼로그 */}
+      {/* 수정 다이얼로그 - validation 개선 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -841,6 +774,9 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                   <Input
                     value={editingTrip.departure}
                     onChange={(e) => setEditingTrip({ ...editingTrip, departure: e.target.value })}
+                    className={cn(
+                      !editingTrip.departure.trim() && "border-red-300"
+                    )}
                   />
                 </div>
                 <div className="space-y-2">
@@ -848,6 +784,9 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                   <Input
                     value={editingTrip.destination}
                     onChange={(e) => setEditingTrip({ ...editingTrip, destination: e.target.value })}
+                    className={cn(
+                      !editingTrip.destination.trim() && "border-red-300"
+                    )}
                   />
                 </div>
               </div>
@@ -862,6 +801,10 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                       ...editingTrip,
                       unitPrice: parseInt(e.target.value) || 0
                     })}
+                    className={cn(
+                      editingTrip.unitPrice < 1 && "border-red-300"
+                    )}
+                    placeholder="1 이상"
                   />
                 </div>
                 <div className="space-y-2">
@@ -871,8 +814,12 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                     value={editingTrip.count}
                     onChange={(e) => setEditingTrip({
                       ...editingTrip,
-                      count: parseInt(e.target.value) || 1
+                      count: parseInt(e.target.value) || 0
                     })}
+                    className={cn(
+                      editingTrip.count < 1 && "border-red-300"
+                    )}
+                    placeholder="1 이상"
                   />
                 </div>
                 <div className="space-y-2">
@@ -919,7 +866,6 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       </Dialog>
 
       {/* 보고서 다이얼로그들 */}
-
       <ReportDialog
         open={isDailyReportOpen}
         onOpenChange={setIsDailyReportOpen}
@@ -937,7 +883,6 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           }}
           onVehicleChange={(vehicleId) => {
             setSelectedVehicle(vehicleId);
-            // 차량 필터 입력값도 업데이트
             if (vehicleId === 'all') {
               setVehicleFilterInput('');
             } else {
@@ -950,7 +895,166 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           onRefresh={loadTrips}
         />
       </ReportDialog>
+
+      <ReportDialog
+        open={isMonthlyReportOpen}
+        onOpenChange={setIsMonthlyReportOpen}
+        title="월간 보고서"
+      >
+        <MonthlyReport data={monthlyReportData} />
+      </ReportDialog>
     </div>
+  );
+};
+
+// 그룹 카드 컴포넌트
+interface TripGroupCardProps {
+  group: TripGroup;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onEdit: (trip: Trip) => void;
+  onDelete: (id: string) => void;
+}
+
+const TripGroupCard: React.FC<TripGroupCardProps> = ({
+  group,
+  isExpanded,
+  onToggle,
+  onEdit,
+  onDelete
+}) => {
+  return (
+    <Card className="overflow-hidden">
+      {/* 그룹 헤더 */}
+      <div
+        className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 cursor-pointer hover:from-blue-100 hover:to-blue-150 transition-colors"
+        onClick={onToggle}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {isExpanded ? (
+                <ChevronUp className="h-5 w-5 text-blue-600" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-blue-600" />
+              )}
+              <span className="font-semibold text-blue-800">
+                {format(new Date(group.date), 'MM/dd (EEE)', { locale: ko })}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-white text-blue-700 border-blue-300">
+                <Car className="h-3 w-3 mr-1" />
+                {group.vehicleName}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-blue-600 font-medium">
+              {group.totalCount}회
+            </span>
+            <span className="text-green-600 font-bold">
+              {group.totalAmount.toLocaleString()}원
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 그룹 내용 */}
+      {isExpanded && (
+        <div className="border-t">
+          {group.trips.map((trip, index) => (
+            <div
+              key={trip.id}
+              className={cn(
+                "p-4 hover:bg-gray-50",
+                index !== group.trips.length - 1 && "border-b"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 space-y-2">
+                  {/* 경로 */}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      {trip.departure}
+                    </Badge>
+                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                      {trip.destination}
+                    </Badge>
+                  </div>
+
+                  {/* 운행 정보 */}
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span>횟수: <span className="font-medium text-gray-900">{trip.count}회</span></span>
+                    <span>단가: <span className="font-medium text-gray-900">{trip.unitPrice.toLocaleString()}원</span></span>
+                    <span>총액: <span className="font-medium text-blue-600">{trip.totalAmount.toLocaleString()}원</span></span>
+                  </div>
+
+                  {/* 추가 정보 */}
+                  {(trip.driverName || trip.memo) && (
+                    <div className="flex items-center gap-4 text-sm">
+                      {trip.driverName && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500">운전자:</span>
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                            {trip.driverName}
+                          </Badge>
+                        </div>
+                      )}
+                      {trip.memo && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500">메모:</span>
+                          <span className="text-gray-700">{trip.memo}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 저장 시간 */}
+                  <div className="text-xs text-gray-400">
+                    저장: {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
+                    {trip.updatedAt && (
+                      <span className="text-blue-500 ml-2">
+                        (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 액션 버튼 */}
+                <div className="flex gap-2 ml-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(trip);
+                    }}
+                    className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(trip.id);
+                    }}
+                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 };
 

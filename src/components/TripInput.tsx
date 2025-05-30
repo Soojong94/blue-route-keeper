@@ -348,6 +348,8 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     smartPriceTimeouts.current.set(rowId, timeoutId);
   }, [rows, toast]);
 
+  // 기존 코드는 그대로 유지하고, saveAllRows 함수만 수정
+
   const saveAllRows = async () => {
     setLoading(true);
     let savedCount = 0;
@@ -374,25 +376,28 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     };
 
     for (const row of rows) {
-      if (!row.departure && !row.destination && !row.licensePlate && (!row.unitPrice || row.unitPrice === '1')) {
+      // 빈 행 체크 (개선됨)
+      if (!row.departure && !row.destination && !row.licensePlate && (!row.unitPrice || row.unitPrice === '0')) {
         continue;
       }
 
-      if (!row.date || !row.licensePlate || !row.departure || !row.destination || !row.unitPrice || !row.count) {
+      // 필수 필드 체크
+      if (!row.date || !row.licensePlate || !row.departure || !row.destination) {
         errors.push(`${row.licensePlate || '차량번호 없음'} ${row.departure || '출발지 없음'} → ${row.destination || '목적지 없음'}: 필수 정보가 누락되었습니다.`);
         continue;
       }
 
+      // unitPrice와 count 검증 (개선됨)
       const unitPrice = parseFloat(row.unitPrice);
       const count = parseInt(row.count);
 
-      if (isNaN(unitPrice) || unitPrice < 1) {
-        errors.push(`${row.licensePlate} ${row.departure} → ${row.destination}: 단가는 1원 이상이어야 합니다.`);
+      if (!row.unitPrice || isNaN(unitPrice) || unitPrice < 1) {
+        errors.push(`${row.licensePlate} ${row.departure} → ${row.destination}: 단가는 1원 이상이어야 합니다. (현재: ${row.unitPrice || '빈값'})`);
         continue;
       }
 
-      if (isNaN(count) || count < 1) {
-        errors.push(`${row.licensePlate} ${row.departure} → ${row.destination}: 횟수는 1 이상이어야 합니다.`);
+      if (!row.count || isNaN(count) || count < 1) {
+        errors.push(`${row.licensePlate} ${row.departure} → ${row.destination}: 횟수는 1회 이상이어야 합니다. (현재: ${row.count || '빈값'})`);
         continue;
       }
 
@@ -443,7 +448,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
 
       toast({
         title: "저장 완료",
-        description: `${savedCount}건의 운행 기록이 저장되었습니다.\n새로운 장소가 자동으로 등록되었습니다.`,
+        description: `${savedCount}건의 운행 기록이 저장되었습니다.`,
       });
 
       setRows([createNewRow()]);
@@ -456,6 +461,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       });
     }
   };
+
 
   const totalAmount = useMemo(() => {
     return rows.reduce((sum, row) => {
@@ -676,7 +682,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
               "text-xs h-8 w-full pr-8",
               row.isPriceAutoLoaded && "bg-blue-50 border-blue-200"
             )}
-            min="1"
+
             step="1000"
           />
           {isPriceLoading && (
@@ -699,7 +705,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
           onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
           placeholder="횟수"
           className="text-xs h-8"
-          min="1"
+
         />
       </td>
 

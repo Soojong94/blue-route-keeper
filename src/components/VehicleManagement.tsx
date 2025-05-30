@@ -16,6 +16,7 @@ import { getVehicleStats } from '@/utils/calculations';
 import { Vehicle } from '@/types/trip';
 import SmartInput, { SearchResult } from '@/components/SmartInput';
 import { searchVehicles, addRecentVehicle, getRecentVehicles } from '@/utils/smartSearch';
+import { useModalBackHandler } from '@/hooks/useBackHandler';
 
 const VehicleManagement: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -31,6 +32,12 @@ const VehicleManagement: React.FC = () => {
   });
 
   const { toast } = useToast();
+
+  // 뒤로가기 핸들러 - 컴포넌트 상단에 위치해야 함
+  useModalBackHandler(isDialogOpen, () => {
+    setIsDialogOpen(false);
+    resetForm();
+  }, 'dialog');
 
   useEffect(() => {
     loadVehicles();
