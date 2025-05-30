@@ -69,7 +69,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     endDate: getTodayString(),
     selectedVehicle: 'all',
     searchQuery: '',
-    showDetailedList: false
+    showDetailedList: true // 기본값을 true로 변경
   });
 
   const [startDate, setStartDate] = useState<Date>(() => {
@@ -101,7 +101,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
   const [searchQuery, setSearchQuery] = useState(savedState.searchQuery);
   const [selectedVehicle, setSelectedVehicle] = useState<string>(savedState.selectedVehicle);
-  const [showDetailedList, setShowDetailedList] = useState<boolean>(savedState.showDetailedList);
+  const [showDetailedList, setShowDetailedList] = useState<boolean>(true); // 기본값을 true로 변경
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -268,6 +268,14 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       return dateB - dateA; // 최신 날짜가 먼저
     });
   }, [filteredTrips, vehicles]);
+
+  // 새로운 데이터 로드 시 모든 그룹을 자동으로 펼친 상태로 설정
+  useEffect(() => {
+    if (groupedTrips.length > 0) {
+      const allGroupKeys = groupedTrips.map(group => group.key);
+      setExpandedGroups(new Set(allGroupKeys)); // 모든 그룹을 펼친 상태로
+    }
+  }, [groupedTrips]);
 
   // 차량 선택 처리
   const handleVehicleSelect = (result: SearchResult) => {
@@ -632,7 +640,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
               </Button>
             </div>
 
-            {/* 상세보기/간략히 보기 버튼 */}
+            {/* 목록 보기/숨기기 버튼 */}
             <Button
               variant={showDetailedList ? "secondary" : "default"}
               onClick={() => setShowDetailedList(!showDetailedList)}
@@ -642,12 +650,12 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
               {showDetailedList ? (
                 <>
                   <EyeOff className="h-4 w-4" />
-                  간략히 보기
+                  목록 숨기기
                 </>
               ) : (
                 <>
                   <Eye className="h-4 w-4" />
-                  상세보기 ({filteredTrips.length}건)
+                  목록 보기 ({filteredTrips.length}건)
                 </>
               )}
             </Button>
@@ -655,51 +663,9 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         </CardContent>
       </Card>
 
-      {/* 차량별 운행 요약 - 상세보기가 아닐 때만 표시 */}
-      {!showDetailedList && vehicleStats.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Car className="h-5 w-5" />
-              차량별 운행 요약
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {vehicleStats.map((stat, index) => (
-                <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-semibold text-lg">{stat.vehicle}</h3>
-                    <div className="flex gap-4 text-sm">
-                      <span className="text-blue-600 font-medium">{stat.totalTrips}회</span>
-                      <span className="text-green-600 font-medium">{stat.totalAmount.toLocaleString()}원</span>
-                    </div>
-                  </div>
 
-                  {/* 상위 3개 경로 표시 */}
-                  <div className="space-y-2">
-                    <div className="text-sm text-gray-600 mb-2">주요 운행 경로</div>
-                    {Array.from(stat.routes.entries())
-                      .sort((a, b) => b[1].count - a[1].count)
-                      .slice(0, 3)
-                      .map(([route, routeStat], idx) => (
-                        <div key={idx} className="flex justify-between items-center text-sm bg-white p-2 rounded">
-                          <span className="font-medium">{route}</span>
-                          <div className="flex gap-2 text-xs">
-                            <span className="text-blue-600">{routeStat.count}회</span>
-                            <span className="text-green-600">{routeStat.amount.toLocaleString()}원</span>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* 운행 기록 상세 목록 - 상세보기일 때만 표시 (그룹화) */}
+      {/* 운행 기록 상세 목록 - 조건부 표시 (그룹화, 기본 펼쳐진 상태) */}
       {showDetailedList && (
         <Card>
           <CardHeader>
@@ -731,7 +697,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         </Card>
       )}
 
-      {/* 수정 다이얼로그 - validation 개선 */}
+      {/* 수정 다이얼로그 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
