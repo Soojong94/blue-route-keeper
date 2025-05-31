@@ -1,5 +1,5 @@
 /* src/components/notepad/GridEditor.tsx 수정 */
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Minus } from 'lucide-react';
@@ -24,15 +24,15 @@ interface GridEditorProps {
 const GridEditor: React.FC<GridEditorProps> = ({
   data: initialData,
   onDataChange,
-  rows: initialRows = 20,
-  cols: initialCols = 10
+  rows: initialRows = 10, // 기본 10행으로 변경
+  cols: initialCols = 5   // 기본 5열로 변경
 }) => {
+  // 컴포넌트가 마운트될 때마다 완전히 새로운 데이터로 초기화
   const [data, setData] = useState<CellData[][]>(() => {
-    if (initialData.length > 0) {
-      // 깊은 복사로 초기화
+    if (initialData && initialData.length > 0) {
       return JSON.parse(JSON.stringify(initialData));
     }
-    // 초기 데이터 생성
+    // 초기 데이터 생성 (10행 5열)
     return Array(initialRows).fill(null).map(() =>
       Array(initialCols).fill(null).map(() => ({ value: '' }))
     );
@@ -44,35 +44,27 @@ const GridEditor: React.FC<GridEditorProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // props 데이터가 변경될 때 로컬 상태 업데이트 (깊은 복사)
-  useEffect(() => {
-    if (initialData.length > 0) {
-      setData(JSON.parse(JSON.stringify(initialData)));
-    }
-  }, [initialData]);
-
-  // 데이터 변경 시 부모에게 알림 (깊은 복사)
+  // 데이터 변경 알림 함수
   const notifyDataChange = useCallback((newData: CellData[][]) => {
-    const deepCopiedData = JSON.parse(JSON.stringify(newData));
-    onDataChange(deepCopiedData);
+    setTimeout(() => {
+      onDataChange(JSON.parse(JSON.stringify(newData)));
+    }, 0);
   }, [onDataChange]);
 
   const updateCell = useCallback((row: number, col: number, value: string) => {
     setData(prev => {
-      // 새로운 배열 생성 (불변성 보장)
       const newData = prev.map((rowData, rowIndex) => {
         if (rowIndex === row) {
           return rowData.map((cell, colIndex) => {
             if (colIndex === col) {
-              return { ...cell, value }; // 새로운 셀 객체 생성
+              return { ...cell, value };
             }
-            return { ...cell }; // 기존 셀도 새로운 객체로 복사
+            return { ...cell };
           });
         }
-        return rowData.map(cell => ({ ...cell })); // 다른 행도 새로운 객체로 복사
+        return rowData.map(cell => ({ ...cell }));
       });
 
-      // 부모에게 변경 알림
       notifyDataChange(newData);
       return newData;
     });
@@ -105,7 +97,6 @@ const GridEditor: React.FC<GridEditorProps> = ({
         if (editingCell) {
           handleCellBlur();
         }
-        // 다음 행으로 이동
         const nextRow = Math.min(selectedCell.row + 1, data.length - 1);
         setSelectedCell({ row: nextRow, col: selectedCell.col });
         break;
@@ -114,7 +105,6 @@ const GridEditor: React.FC<GridEditorProps> = ({
         if (editingCell) {
           handleCellBlur();
         }
-        // 다음 열로 이동
         const nextCol = e.shiftKey
           ? Math.max(selectedCell.col - 1, 0)
           : Math.min(selectedCell.col + 1, (data[0]?.length || initialCols) - 1);
