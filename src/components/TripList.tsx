@@ -2,27 +2,23 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Car, FileText, Calendar as CalendarReport, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { CalendarIcon, Search, Edit, Trash2, ArrowRight, BarChart3, MapPin, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useModalBackHandler } from '@/hooks/useBackHandler';
 import { getTrips, getTripsByDateRange, getVehicles, deleteTrip, updateTrip } from '@/utils/storage';
 import { getPeriodStats } from '@/utils/calculations';
-import { generateDailyReport, generateMonthlyReport } from '@/utils/reportUtils';
-import { Trip, Vehicle, PeriodStats } from '@/types/trip';
+import { Trip, Vehicle } from '@/types/trip';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import DailyReport from '@/components/reports/DailyReport';
-import MonthlyReport from '@/components/reports/MonthlyReport';
-import ReportDialog from '@/components/reports/ReportDialog';
 import SmartInput, { SearchResult } from '@/components/SmartInput';
 import {
   searchVehicles,
@@ -69,7 +65,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     endDate: getTodayString(),
     selectedVehicle: 'all',
     searchQuery: '',
-    showDetailedList: true // 기본값을 true로 변경
+    showDetailedList: true
   });
 
   const [startDate, setStartDate] = useState<Date>(() => {
@@ -101,20 +97,14 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
   const [searchQuery, setSearchQuery] = useState(savedState.searchQuery);
   const [selectedVehicle, setSelectedVehicle] = useState<string>(savedState.selectedVehicle);
-  const [showDetailedList, setShowDetailedList] = useState<boolean>(true); // 기본값을 true로 변경
+  const [showDetailedList, setShowDetailedList] = useState<boolean>(true);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // 보고서 다이얼로그 상태
-  const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
-  const [isMonthlyReportOpen, setIsMonthlyReportOpen] = useState(false);
-
   // 모달 뒤로가기 핸들러
   useModalBackHandler(isEditDialogOpen, () => setIsEditDialogOpen(false), 'dialog');
-  useModalBackHandler(isDailyReportOpen, () => setIsDailyReportOpen(false), 'dialog');
-  useModalBackHandler(isMonthlyReportOpen, () => setIsMonthlyReportOpen(false), 'dialog');
 
   const { toast } = useToast();
 
@@ -273,7 +263,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
   useEffect(() => {
     if (groupedTrips.length > 0) {
       const allGroupKeys = groupedTrips.map(group => group.key);
-      setExpandedGroups(new Set(allGroupKeys)); // 모든 그룹을 펼친 상태로
+      setExpandedGroups(new Set(allGroupKeys));
     }
   }, [groupedTrips]);
 
@@ -314,7 +304,6 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
     setIsEditDialogOpen(true);
   };
 
-  // 수정된 저장 함수 - validation 개선
   const handleSaveEdit = async () => {
     if (!editingTrip) return;
 
@@ -420,77 +409,38 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
 
   const stats = useMemo(() => getPeriodStats(filteredTrips), [filteredTrips]);
 
-  const dailyReportData = useMemo(() => {
-    return generateDailyReport(filteredTrips, vehicles, startDate, endDate, selectedVehicle);
-  }, [filteredTrips, vehicles, startDate, endDate, selectedVehicle]);
-
-  const monthlyReportData = useMemo(() => {
-    return generateMonthlyReport(filteredTrips);
-  }, [filteredTrips]);
-
   const getVehicleName = (vehicleId: string) => {
     const vehicle = vehicles.find(v => v.id === vehicleId);
     if (!vehicle) return '알 수 없음';
     return vehicle.name ? `${vehicle.licensePlate} (${vehicle.name})` : vehicle.licensePlate;
   };
 
-  // 차량별 운행 통계 계산
-  const vehicleStats = useMemo(() => {
-    const stats = new Map();
-
-    filteredTrips.forEach(trip => {
-      const vehicleKey = trip.vehicleId;
-      if (!stats.has(vehicleKey)) {
-        stats.set(vehicleKey, {
-          vehicle: getVehicleName(vehicleKey),
-          totalTrips: 0,
-          totalAmount: 0,
-          routes: new Map()
-        });
-      }
-
-      const vehicleStat = stats.get(vehicleKey);
-      vehicleStat.totalTrips += trip.count;
-      vehicleStat.totalAmount += trip.totalAmount;
-
-      const routeKey = `${trip.departure} → ${trip.destination}`;
-      if (!vehicleStat.routes.has(routeKey)) {
-        vehicleStat.routes.set(routeKey, { count: 0, amount: 0 });
-      }
-      const routeStat = vehicleStat.routes.get(routeKey);
-      routeStat.count += trip.count;
-      routeStat.amount += trip.totalAmount;
-    });
-
-    return Array.from(stats.values());
-  }, [filteredTrips, vehicles]);
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 필터 및 기본 통계 카드 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <BarChart3 className="h-4 w-4" />
             운행 기록 조회
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {/* 필터 컨트롤 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* 시작일 */}
-            <div className="space-y-2">
-              <Label>시작일</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">시작일</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal text-xs h-7",
                       !startDate && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-1 h-3 w-3" />
                     {startDate ? format(startDate, "yyyy-MM-dd") : "시작일"}
                   </Button>
                 </PopoverTrigger>
@@ -514,18 +464,18 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
             </div>
 
             {/* 종료일 */}
-            <div className="space-y-2">
-              <Label>종료일</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">종료일</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal text-xs h-7",
                       !endDate && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-1 h-3 w-3" />
                     {endDate ? format(endDate, "yyyy-MM-dd") : "종료일"}
                   </Button>
                 </PopoverTrigger>
@@ -549,8 +499,8 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
             </div>
 
             {/* 차량 필터 */}
-            <div className="space-y-2">
-              <Label>차량</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">차량</Label>
               <div className="flex gap-1">
                 <Button
                   variant={selectedVehicle === 'all' ? 'default' : 'outline'}
@@ -559,7 +509,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                     setSelectedVehicle('all');
                     setVehicleFilterInput('');
                   }}
-                  className="shrink-0"
+                  className="shrink-0 text-xs h-7 px-2"
                 >
                   전체
                 </Button>
@@ -567,7 +517,8 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                   value={vehicleFilterInput}
                   onChange={handleVehicleFilterChange}
                   onSelect={handleVehicleSelect}
-                  placeholder="차량번호 입력"
+                  placeholder="차량번호"
+                  className="text-xs h-7"
                   searchFunction={searchVehicles}
                   recentItems={getRecentVehicles()}
                   favoriteItems={getFavoriteVehicles}
@@ -577,13 +528,14 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
             </div>
 
             {/* 검색 */}
-            <div className="space-y-2">
-              <Label>검색</Label>
+            <div className="space-y-1">
+              <Label className="text-xs">검색</Label>
               <SmartInput
                 value={searchQuery}
                 onChange={setSearchQuery}
                 onSelect={handleSearchSelect}
                 placeholder="출발지, 목적지, 운전자, 메모 검색..."
+                className="text-xs h-7"
                 searchFunction={searchGeneral}
                 recentItems={getRecentGeneral()}
                 favoriteItems={[]}
@@ -593,23 +545,23 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           </div>
 
           {/* 기본 통계 */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
               <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
+                <MapPin className="h-4 w-4 text-blue-600" />
                 <div>
-                  <p className="text-sm text-blue-600">총 운행</p>
-                  <p className="text-2xl font-bold text-blue-800">{stats.totalTrips}회</p>
+                  <p className="text-xs text-blue-600">총 운행</p>
+                  <p className="text-lg font-bold text-blue-800">{stats.totalTrips}회</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
               <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-green-600" />
+                <BarChart3 className="h-4 w-4 text-green-600" />
                 <div>
-                  <p className="text-sm text-green-600">총 금액</p>
-                  <p className="text-2xl font-bold text-green-800">
+                  <p className="text-xs text-green-600">총 금액</p>
+                  <p className="text-lg font-bold text-green-800">
                     {stats.totalAmount.toLocaleString()}원
                   </p>
                 </div>
@@ -617,44 +569,22 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
             </div>
           </div>
 
-          {/* 보고서 및 상세보기 버튼 */}
-          <div className="flex flex-wrap gap-2 justify-between">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsDailyReportOpen(true)}
-                className="flex items-center gap-2"
-                disabled={filteredTrips.length === 0}
-              >
-                <FileText className="h-4 w-4" />
-                운행 보고서
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsMonthlyReportOpen(true)}
-                className="flex items-center gap-2"
-                disabled={filteredTrips.length === 0}
-              >
-                <CalendarReport className="h-4 w-4" />
-                월간 보고서
-              </Button>
-            </div>
-
-            {/* 목록 보기/숨기기 버튼 */}
+          {/* 목록 보기/숨기기 버튼 */}
+          <div className="flex justify-end">
             <Button
               variant={showDetailedList ? "secondary" : "default"}
               onClick={() => setShowDetailedList(!showDetailedList)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-xs h-7"
               disabled={filteredTrips.length === 0}
             >
               {showDetailedList ? (
                 <>
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-3 w-3" />
                   목록 숨기기
                 </>
               ) : (
                 <>
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-3 w-3" />
                   목록 보기 ({filteredTrips.length}건)
                 </>
               )}
@@ -663,24 +593,22 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
         </CardContent>
       </Card>
 
-
-
-      {/* 운행 기록 상세 목록 - 조건부 표시 (그룹화, 기본 펼쳐진 상태) */}
+      {/* 운행 기록 상세 목록 - 조건부 표시 */}
       {showDetailedList && (
         <Card>
-          <CardHeader>
-            <CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">
               운행 기록 목록 ({filteredTrips.length}건)
-              {loading && <span className="text-sm font-normal text-gray-500 ml-2">로딩 중...</span>}
+              {loading && <span className="text-xs font-normal text-gray-500 ml-2">로딩 중...</span>}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {groupedTrips.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-6 text-gray-500 text-xs">
                 {loading ? '데이터를 불러오는 중입니다...' : '조건에 맞는 운행 기록이 없습니다.'}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {groupedTrips.map((group) => (
                   <TripGroupCard
                     key={group.key}
@@ -701,31 +629,32 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>운행 기록 수정</DialogTitle>
+            <DialogTitle className="text-sm">운행 기록 수정</DialogTitle>
           </DialogHeader>
           {editingTrip && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>날짜</Label>
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">날짜</Label>
                   <Input
                     type="date"
                     value={editingTrip.date}
                     onChange={(e) => setEditingTrip({ ...editingTrip, date: e.target.value })}
+                    className="text-xs h-7"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>차량</Label>
+                <div className="space-y-1">
+                  <Label className="text-xs">차량</Label>
                   <Select
                     value={editingTrip.vehicleId}
                     onValueChange={(value) => setEditingTrip({ ...editingTrip, vehicleId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-xs h-7">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {vehicles.map((vehicle) => (
-                        <SelectItem key={vehicle.id} value={vehicle.id}>
+                        <SelectItem key={vehicle.id} value={vehicle.id} className="text-xs">
                           {getVehicleName(vehicle.id)}
                         </SelectItem>
                       ))}
@@ -734,32 +663,34 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>출발지</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">출발지</Label>
                   <Input
                     value={editingTrip.departure}
                     onChange={(e) => setEditingTrip({ ...editingTrip, departure: e.target.value })}
                     className={cn(
+                      "text-xs h-7",
                       !editingTrip.departure.trim() && "border-red-300"
                     )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>목적지</Label>
+                <div className="space-y-1">
+                  <Label className="text-xs">목적지</Label>
                   <Input
                     value={editingTrip.destination}
                     onChange={(e) => setEditingTrip({ ...editingTrip, destination: e.target.value })}
                     className={cn(
+                      "text-xs h-7",
                       !editingTrip.destination.trim() && "border-red-300"
                     )}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>단가</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">단가</Label>
                   <Input
                     type="number"
                     value={editingTrip.unitPrice}
@@ -768,13 +699,14 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                       unitPrice: parseInt(e.target.value) || 0
                     })}
                     className={cn(
+                      "text-xs h-7",
                       editingTrip.unitPrice < 1 && "border-red-300"
                     )}
                     placeholder="1 이상"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>횟수</Label>
+                <div className="space-y-1">
+                  <Label className="text-xs">횟수</Label>
                   <Input
                     type="number"
                     value={editingTrip.count}
@@ -783,46 +715,49 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                       count: parseInt(e.target.value) || 0
                     })}
                     className={cn(
+                      "text-xs h-7",
                       editingTrip.count < 1 && "border-red-300"
                     )}
                     placeholder="1 이상"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>총액</Label>
-                  <div className="px-3 py-2 bg-blue-50 rounded border font-semibold text-blue-800 text-sm">
+                <div className="space-y-1">
+                  <Label className="text-xs">총액</Label>
+                  <div className="px-2 py-1.5 bg-blue-50 rounded border font-semibold text-blue-800 text-xs">
                     {(editingTrip.unitPrice * editingTrip.count).toLocaleString()}원
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>운전자 (선택)</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">운전자 (선택)</Label>
                 <Input
                   value={editingTrip.driverName || ''}
                   onChange={(e) => setEditingTrip({ ...editingTrip, driverName: e.target.value })}
                   placeholder="운전자명"
+                  className="text-xs h-7"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>메모 (선택)</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">메모 (선택)</Label>
                 <Input
                   value={editingTrip.memo || ''}
                   onChange={(e) => setEditingTrip({ ...editingTrip, memo: e.target.value })}
                   placeholder="메모"
+                  className="text-xs h-7"
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-3">
                 <Button
                   variant="outline"
                   onClick={() => setIsEditDialogOpen(false)}
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto text-xs h-7"
                 >
                   취소
                 </Button>
-                <Button onClick={handleSaveEdit} className="w-full sm:w-auto">
+                <Button onClick={handleSaveEdit} className="w-full sm:w-auto text-xs h-7">
                   저장
                 </Button>
               </div>
@@ -830,45 +765,6 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* 보고서 다이얼로그들 */}
-      <ReportDialog
-        open={isDailyReportOpen}
-        onOpenChange={setIsDailyReportOpen}
-        title="운행 보고서"
-      >
-        <DailyReport
-          data={dailyReportData}
-          vehicles={vehicles}
-          selectedVehicleId={selectedVehicle}
-          startDate={startDate}
-          endDate={endDate}
-          onDateChange={(newStartDate, newEndDate) => {
-            setStartDate(newStartDate);
-            setEndDate(newEndDate);
-          }}
-          onVehicleChange={(vehicleId) => {
-            setSelectedVehicle(vehicleId);
-            if (vehicleId === 'all') {
-              setVehicleFilterInput('');
-            } else {
-              const vehicle = vehicles.find(v => v.id === vehicleId);
-              if (vehicle) {
-                setVehicleFilterInput(vehicle.licensePlate);
-              }
-            }
-          }}
-          onRefresh={loadTrips}
-        />
-      </ReportDialog>
-
-      <ReportDialog
-        open={isMonthlyReportOpen}
-        onOpenChange={setIsMonthlyReportOpen}
-        title="월간 보고서"
-      >
-        <MonthlyReport data={monthlyReportData} />
-      </ReportDialog>
     </div>
   );
 };
@@ -893,31 +789,31 @@ const TripGroupCard: React.FC<TripGroupCardProps> = ({
     <Card className="overflow-hidden">
       {/* 그룹 헤더 */}
       <div
-        className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 cursor-pointer hover:from-blue-100 hover:to-blue-150 transition-colors"
+        className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 cursor-pointer hover:from-blue-100 hover:to-blue-150 transition-colors"
         onClick={onToggle}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
               {isExpanded ? (
-                <ChevronUp className="h-5 w-5 text-blue-600" />
+                <ChevronUp className="h-4 w-4 text-blue-600" />
               ) : (
-                <ChevronDown className="h-5 w-5 text-blue-600" />
+                <ChevronDown className="h-4 w-4 text-blue-600" />
               )}
-              <span className="font-semibold text-blue-800">
+              <span className="font-semibold text-blue-800 text-sm">
                 {format(new Date(group.date), 'MM/dd (EEE)', { locale: ko })}
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-white text-blue-700 border-blue-300">
-                <Car className="h-3 w-3 mr-1" />
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className="bg-white text-blue-700 border-blue-300 text-xs">
+                <Card className="h-3 w-3 mr-1" />
                 {group.vehicleName}
               </Badge>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-3 text-xs">
             <span className="text-blue-600 font-medium">
               {group.totalCount}회
             </span>
@@ -935,25 +831,25 @@ const TripGroupCard: React.FC<TripGroupCardProps> = ({
             <div
               key={trip.id}
               className={cn(
-                "p-4 hover:bg-gray-50",
+                "p-3 hover:bg-gray-50",
                 index !== group.trips.length - 1 && "border-b"
               )}
             >
               <div className="flex items-center justify-between">
-                <div className="flex-1 space-y-2">
+                <div className="flex-1 space-y-1">
                   {/* 경로 */}
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
                       {trip.departure}
                     </Badge>
-                    <ArrowRight className="h-4 w-4 text-gray-400" />
-                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                    <ArrowRight className="h-3 w-3 text-gray-400" />
+                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
                       {trip.destination}
                     </Badge>
                   </div>
 
                   {/* 운행 정보 */}
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-3 text-xs text-gray-600">
                     <span>횟수: <span className="font-medium text-gray-900">{trip.count}회</span></span>
                     <span>단가: <span className="font-medium text-gray-900">{trip.unitPrice.toLocaleString()}원</span></span>
                     <span>총액: <span className="font-medium text-blue-600">{trip.totalAmount.toLocaleString()}원</span></span>
@@ -961,11 +857,11 @@ const TripGroupCard: React.FC<TripGroupCardProps> = ({
 
                   {/* 추가 정보 */}
                   {(trip.driverName || trip.memo) && (
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-3 text-xs">
                       {trip.driverName && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-500">운전자:</span>
-                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
                             {trip.driverName}
                           </Badge>
                         </div>
@@ -980,7 +876,7 @@ const TripGroupCard: React.FC<TripGroupCardProps> = ({
                   )}
 
                   {/* 저장 시간 */}
-                  <div className="text-xs text-gray-400">
+                  <div className="text-[10px] text-gray-400">
                     저장: {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
                     {trip.updatedAt && (
                       <span className="text-blue-500 ml-2">
@@ -991,7 +887,7 @@ const TripGroupCard: React.FC<TripGroupCardProps> = ({
                 </div>
 
                 {/* 액션 버튼 */}
-                <div className="flex gap-2 ml-4">
+                <div className="flex gap-1 ml-3">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -999,9 +895,9 @@ const TripGroupCard: React.FC<TripGroupCardProps> = ({
                       e.stopPropagation();
                       onEdit(trip);
                     }}
-                    className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                    className="h-6 w-6 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-3 w-3" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -1010,9 +906,9 @@ const TripGroupCard: React.FC<TripGroupCardProps> = ({
                       e.stopPropagation();
                       onDelete(trip.id);
                     }}
-                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
               </div>

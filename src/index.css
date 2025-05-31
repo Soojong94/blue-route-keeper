@@ -2,34 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 드롭다운 z-index 보장 */
+/* 전체 폰트 크기를 절반으로 줄임 */
+@layer base {
+  html {
+    font-size: 8px;
+    /* 기본 16px의 절반 */
+  }
+
+  body {
+    font-size: 0.875rem;
+    /* 14px -> 7px 효과 */
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  /* 24px -> 12px */
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  /* 20px -> 10px */
+  h3 {
+    font-size: 1.125rem;
+  }
+
+  /* 18px -> 9px */
+  h4 {
+    font-size: 1rem;
+  }
+
+  /* 16px -> 8px */
+  h5 {
+    font-size: 0.875rem;
+  }
+
+  /* 14px -> 7px */
+  h6 {
+    font-size: 0.75rem;
+  }
+
+  /* 12px -> 6px */
+
+  small {
+    font-size: 0.625rem;
+  }
+
+  /* 10px -> 5px */
+}
+
+/* 기존 드롭다운 z-index 스타일들 유지 */
 .dropdown-portal {
   z-index: 9999 !important;
 }
 
-/* Select 컴포넌트 드롭다운 z-index */
 [data-radix-popper-content-wrapper] {
   z-index: 9999 !important;
 }
 
-/* Popover 컴포넌트 z-index */
 [data-radix-popper-content-wrapper][data-side] {
   z-index: 9999 !important;
 }
 
-/* 🆕 통일된 입력 컴포넌트 드롭다운 최상위 보장 */
 .unified-dropdown {
   z-index: 99999 !important;
   position: absolute !important;
 }
 
-/* 🆕 모든 드롭다운이 다른 요소에 가려지지 않도록 */
 [data-unified-dropdown="true"] {
   z-index: 99999 !important;
   position: relative;
 }
 
-/* 🆕 모든 Radix UI 컴포넌트들 최상위로 */
 [data-radix-popper-content-wrapper] {
   z-index: 99999 !important;
 }
@@ -50,22 +95,18 @@
   z-index: 50001 !important;
 }
 
-/* 🆕 Calendar 컴포넌트도 최상위로 */
 [data-radix-calendar] {
   z-index: 99999 !important;
 }
 
-/* 🆕 Tooltip도 최상위로 */
 [data-radix-tooltip-content] {
   z-index: 99999 !important;
 }
 
-/* 🆕 DropdownMenu도 최상위로 */
 [data-radix-dropdown-menu-content] {
   z-index: 99999 !important;
 }
 
-/* 🆕 통일된 입력 컴포넌트 스타일링 */
 .unified-input-container {
   position: relative;
 }
@@ -85,7 +126,6 @@
   overflow-y: auto;
 }
 
-/* 🆕 스크롤바 스타일링 */
 .unified-input-dropdown::-webkit-scrollbar {
   width: 6px;
 }
@@ -104,7 +144,6 @@
   background: #94a3b8;
 }
 
-/* 🆕 드롭다운 옵션 호버 효과 */
 .unified-dropdown-option {
   display: flex;
   align-items: center;
@@ -127,7 +166,6 @@
   background-color: #f1f5f9;
 }
 
-/* 🆕 카테고리 헤더 스타일 */
 .unified-dropdown-category {
   position: sticky;
   top: 0;
@@ -140,7 +178,6 @@
   z-index: 1;
 }
 
-/* 🆕 빈 상태 스타일 */
 .unified-dropdown-empty {
   padding: 16px;
   text-align: center;
@@ -157,7 +194,6 @@
   color: #9ca3af;
 }
 
-/* 🆕 로딩 스피너 */
 .unified-input-loading {
   position: absolute;
   right: 40px;
@@ -181,7 +217,6 @@
   }
 }
 
-/* 🆕 스마트 가격 표시 */
 .smart-price-indicator {
   position: absolute;
   right: 8px;
@@ -196,8 +231,13 @@
   border-color: #93c5fd !important;
 }
 
-/* 인쇄용 스타일 추가 */
+/* 인쇄용 스타일 */
 @media print {
+  html {
+    font-size: 12px;
+    /* 인쇄 시에는 조금 더 크게 */
+  }
+
   .no-print {
     display: none !important;
   }
@@ -252,7 +292,6 @@
     max-height: none !important;
   }
 
-  /* 🆕 인쇄 시 드롭다운 숨기기 */
   .unified-input-dropdown {
     display: none !important;
   }
@@ -262,76 +301,51 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-
     --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
-
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-
     --radius: 0.5rem;
-
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
-
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
-
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
