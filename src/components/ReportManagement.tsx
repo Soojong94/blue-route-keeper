@@ -122,26 +122,22 @@ const ReportManagement: React.FC = () => {
     }
   };
 
-  // 수정된 handleGenerateMonthlyReport - 편집된 데이터 저장
+  // src/components/ReportManagement.tsx에서 handleGenerateMonthlyReport 함수 수정
   const handleGenerateMonthlyReport = async (settings: {
     title: string;
-    startDate: Date;
-    endDate: Date;
-    reportData: MonthlyReportData; // 편집된 데이터
+    reportData: MonthlyReportData;
   }) => {
     try {
       setLoading(true);
 
-      // 저장 - 편집된 데이터를 data와 editable_rows에 모두 저장
       await saveReport({
         title: settings.title,
         type: 'monthly',
         settings: {
-          startDate: settings.startDate.toISOString(),
-          endDate: settings.endDate.toISOString()
+          title: settings.title
         },
         data: settings.reportData,
-        editableRows: settings.reportData.rows // 편집 가능한 행들 별도 저장
+        editableRows: settings.reportData.rows
       });
 
       toast({
