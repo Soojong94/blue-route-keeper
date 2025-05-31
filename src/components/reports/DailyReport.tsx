@@ -1,3 +1,4 @@
+/* src/components/reports/DailyReport.tsx 수정 */
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,8 @@ interface DailyReportProps {
   onDateChange: (startDate: Date, endDate: Date) => void;
   onVehicleChange: (vehicleId: string) => void;
   onRefresh: () => void;
+  viewMode?: 'edit' | 'preview' | 'view'; // 모드 추가
+  savedSettings?: any; // 저장된 설정 추가
 }
 
 const DailyReport: React.FC<DailyReportProps> = ({
@@ -31,24 +34,34 @@ const DailyReport: React.FC<DailyReportProps> = ({
   endDate,
   onDateChange,
   onVehicleChange,
-  onRefresh
+  onRefresh,
+  viewMode = 'edit',
+  savedSettings = {}
 }) => {
   const [localStartDate, setLocalStartDate] = useState<Date>(startDate);
   const [localEndDate, setLocalEndDate] = useState<Date>(endDate);
   const [vehicleInput, setVehicleInput] = useState<string>('');
 
-  // 새로 추가된 상태들
-  const [additionalText, setAdditionalText] = useState<string>('');
-  const [driverName, setDriverName] = useState<string>('');
-  const [contact, setContact] = useState<string>('');
+  // 저장된 설정에서 값 가져오기 (뷰 모드일 때)
+  const [additionalText, setAdditionalText] = useState<string>(
+    viewMode === 'view' ? (savedSettings.additionalText || '') : ''
+  );
+  const [driverName, setDriverName] = useState<string>(
+    viewMode === 'view' ? (savedSettings.driverName || '') : ''
+  );
+  const [contact, setContact] = useState<string>(
+    viewMode === 'view' ? (savedSettings.contact || '') : ''
+  );
 
   // props 유효성 검사
-  if (!data || !onDateChange || !onVehicleChange || !onRefresh) {
-    return (
-      <div className="text-center py-6 text-gray-500">
-        데이터를 불러오는 중입니다...
-      </div>
-    );
+  if (!data || (!onDateChange && viewMode !== 'view') || (!onVehicleChange && viewMode !== 'view') || (!onRefresh && viewMode !== 'view')) {
+    if (viewMode !== 'view') {
+      return (
+        <div className="text-center py-6 text-gray-500">
+          데이터를 불러오는 중입니다...
+        </div>
+      );
+    }
   }
 
   const getVehicleDisplayName = (vehicleId: string) => {
@@ -72,15 +85,17 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
   // 현재 선택된 차량의 번호판을 input에 표시
   React.useEffect(() => {
-    if (selectedVehicleId === 'all') {
-      setVehicleInput('');
-    } else {
-      const vehicle = vehicles.find(v => v.id === selectedVehicleId);
-      if (vehicle) {
-        setVehicleInput(vehicle.licensePlate);
+    if (viewMode !== 'view') {
+      if (selectedVehicleId === 'all') {
+        setVehicleInput('');
+      } else {
+        const vehicle = vehicles.find(v => v.id === selectedVehicleId);
+        if (vehicle) {
+          setVehicleInput(vehicle.licensePlate);
+        }
       }
     }
-  }, [selectedVehicleId, vehicles]);
+  }, [selectedVehicleId, vehicles, viewMode]);
 
   // 즐겨찾기 차량 목록 생성
   const getFavoriteVehicles = useCallback((): SearchResult[] => {
@@ -110,30 +125,32 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
   // 차량 선택 처리
   const handleVehicleSelect = useCallback((result: SearchResult) => {
-    if (result.metadata?.vehicleId) {
+    if (viewMode !== 'view' && result.metadata?.vehicleId) {
       onVehicleChange(result.metadata.vehicleId);
       if (result.value) {
         addRecentVehicle(result.value);
       }
     }
-  }, [onVehicleChange]);
+  }, [onVehicleChange, viewMode]);
 
   // 차량 입력값 변경 처리
   const handleVehicleInputChange = useCallback((value: string) => {
-    setVehicleInput(value);
+    if (viewMode !== 'view') {
+      setVehicleInput(value);
 
-    if (!value.trim()) {
-      onVehicleChange('all');
-      return;
-    }
+      if (!value.trim()) {
+        onVehicleChange('all');
+        return;
+      }
 
-    const matchingVehicle = vehicles.find(v => v.licensePlate === value);
-    if (matchingVehicle) {
-      onVehicleChange(matchingVehicle.id);
-    } else {
-      onVehicleChange('all');
+      const matchingVehicle = vehicles.find(v => v.licensePlate === value);
+      if (matchingVehicle) {
+        onVehicleChange(matchingVehicle.id);
+      } else {
+        onVehicleChange('all');
+      }
     }
-  }, [vehicles, onVehicleChange]);
+  }, [vehicles, onVehicleChange, viewMode]);
 
   // 날짜 포맷팅 함수 (월/일 통합)
   const formatTripDate = (month: number, day: number) => {
@@ -148,130 +165,138 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
   return (
     <div className="space-y-2 p-3 bg-white report-container">
-      {/* 필터 컨트롤 - 적용 버튼 제거, 3컬럼으로 변경 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-        {/* 시작일 */}
-        <div>
-          <label className="text-xs text-gray-500 block mb-1">시작일</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "w-full justify-start text-left font-normal h-8 text-xs",
-                  !localStartDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-1 h-3 w-3" />
-                {localStartDate ? format(localStartDate, "MM/dd") : "시작일"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={localStartDate}
-                onSelect={(date) => {
-                  if (date) {
-                    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                    setLocalStartDate(localDate);
-                    if (localDate > localEndDate) {
-                      setLocalEndDate(localDate);
-                    }
-                    // 바로 적용
-                    onDateChange(localDate, localDate > localEndDate ? localDate : localEndDate);
-                    onRefresh();
-                  }
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* 종료일 */}
-        <div>
-          <label className="text-xs text-gray-500 block mb-1">종료일</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "w-full justify-start text-left font-normal h-8 text-xs",
-                  !localEndDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-1 h-3 w-3" />
-                {localEndDate ? format(localEndDate, "MM/dd") : "종료일"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={localEndDate}
-                onSelect={(date) => {
-                  if (date) {
-                    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                    setLocalEndDate(localDate);
-                    if (localDate < localStartDate) {
+      {/* 필터 컨트롤 - 뷰 모드에서는 숨김 */}
+      {viewMode === 'edit' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+          {/* 시작일 */}
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">시작일</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "w-full justify-start text-left font-normal h-8 text-xs",
+                    !localStartDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-1 h-3 w-3" />
+                  {localStartDate ? format(localStartDate, "MM/dd") : "시작일"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={localStartDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                       setLocalStartDate(localDate);
+                      if (localDate > localEndDate) {
+                        setLocalEndDate(localDate);
+                      }
+                      onDateChange(localDate, localDate > localEndDate ? localDate : localEndDate);
+                      onRefresh();
                     }
-                    // 바로 적용
-                    onDateChange(localDate < localStartDate ? localDate : localStartDate, localDate);
-                    onRefresh();
-                  }
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
-        {/* 차량 선택 */}
-        <div>
-          <label className="text-xs text-gray-500 block mb-1">차량</label>
-          <div className="flex gap-1">
-            <Button
-              variant={selectedVehicleId === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                onVehicleChange('all');
-                setVehicleInput('');
-                onRefresh(); // 바로 적용
-              }}
-              className="shrink-0 h-8 text-xs px-2"
-            >
-              전체
-            </Button>
-            <SmartInput
-              value={vehicleInput}
-              onChange={handleVehicleInputChange}
-              onSelect={(result) => {
-                handleVehicleSelect(result);
-                onRefresh(); // 바로 적용
-              }}
-              placeholder="차량번호"
-              className="text-xs h-8"
-              searchFunction={searchVehicles}
-              recentItems={getRecentVehicles()}
-              favoriteItems={getFavoriteVehicles()}
-              debounceMs={300}
-            />
+          {/* 종료일 */}
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">종료일</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "w-full justify-start text-left font-normal h-8 text-xs",
+                    !localEndDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-1 h-3 w-3" />
+                  {localEndDate ? format(localEndDate, "MM/dd") : "종료일"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={localEndDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                      setLocalEndDate(localDate);
+                      if (localDate < localStartDate) {
+                        setLocalStartDate(localDate);
+                      }
+                      onDateChange(localDate < localStartDate ? localDate : localStartDate, localDate);
+                      onRefresh();
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* 차량 선택 */}
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">차량</label>
+            <div className="flex gap-1">
+              <Button
+                variant={selectedVehicleId === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  onVehicleChange('all');
+                  setVehicleInput('');
+                  onRefresh();
+                }}
+                className="shrink-0 h-8 text-xs px-2"
+              >
+                전체
+              </Button>
+              <SmartInput
+                value={vehicleInput}
+                onChange={handleVehicleInputChange}
+                onSelect={(result) => {
+                  handleVehicleSelect(result);
+                  onRefresh();
+                }}
+                placeholder="차량번호"
+                className="text-xs h-8"
+                searchFunction={searchVehicles}
+                recentItems={getRecentVehicles()}
+                favoriteItems={getFavoriteVehicles()}
+                debounceMs={300}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* 추가 텍스트 입력 - 제목 위에 (placeholder 제거) */}
-      <div className="text-center mb-2">
-        <Input
-          value={additionalText}
-          onChange={(e) => setAdditionalText(e.target.value)}
-          className="text-center text-sm h-8 max-w-md mx-auto border-gray-200"
-        />
-      </div>
+      {/* 추가 텍스트 입력 - 뷰 모드에서는 입력 불가, 저장된 값만 표시 */}
+      {(viewMode === 'edit' || (viewMode === 'view' && additionalText)) && (
+        <div className="text-center mb-2">
+          {viewMode === 'edit' ? (
+            <Input
+              value={additionalText}
+              onChange={(e) => setAdditionalText(e.target.value)}
+              className="text-center text-sm h-8 max-w-md mx-auto border-gray-200"
+            />
+          ) : (
+            <div className="text-center text-sm font-medium text-gray-700">
+              {additionalText}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* 새로운 제목 줄 - 왼쪽에 날짜, 가운데 제목 */}
+      {/* 제목 줄 - 왼쪽에 날짜, 가운데 제목 */}
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-medium text-gray-700">
           {getDateRangeString()}
@@ -279,7 +304,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
         <div className="text-lg font-bold text-gray-900">
           운행 보고서
         </div>
-        <div className="w-24"></div> {/* 균형을 위한 빈 공간 */}
+        <div className="w-24"></div>
       </div>
 
       {/* 운행 내역이 없는 경우 */}
@@ -306,21 +331,29 @@ const DailyReport: React.FC<DailyReportProps> = ({
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
                 <span className="text-gray-600">성명:</span>
-                <Input
-                  value={driverName}
-                  onChange={(e) => setDriverName(e.target.value)}
-                  placeholder="이름"
-                  className="h-6 w-28 text-xs"
-                />
+                {viewMode === 'edit' ? (
+                  <Input
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    placeholder="이름"
+                    className="h-6 w-28 text-xs"
+                  />
+                ) : (
+                  <span className="text-gray-800 font-medium">{driverName || '-'}</span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-gray-600">연락처:</span>
-                <Input
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value)}
-                  placeholder="연락처"
-                  className="h-6 w-32 text-xs"
-                />
+                {viewMode === 'edit' ? (
+                  <Input
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="연락처"
+                    className="h-6 w-32 text-xs"
+                  />
+                ) : (
+                  <span className="text-gray-800 font-medium">{contact || '-'}</span>
+                )}
               </div>
             </div>
           </div>
@@ -341,26 +374,34 @@ const DailyReport: React.FC<DailyReportProps> = ({
             <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1">
                 <span className="text-gray-600">성명:</span>
-                <Input
-                  value={driverName}
-                  onChange={(e) => setDriverName(e.target.value)}
-                  placeholder="이름"
-                  className="h-6 w-20 text-xs"
-                />
+                {viewMode === 'edit' ? (
+                  <Input
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    placeholder="이름"
+                    className="h-6 w-20 text-xs"
+                  />
+                ) : (
+                  <span className="text-gray-800 font-medium">{driverName || '-'}</span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-gray-600">연락처:</span>
-                <Input
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value)}
-                  placeholder="연락처"
-                  className="h-6 w-32 text-xs"
-                />
+                {viewMode === 'edit' ? (
+                  <Input
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="연락처"
+                    className="h-6 w-32 text-xs"
+                  />
+                ) : (
+                  <span className="text-gray-800 font-medium">{contact || '-'}</span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* 운행 내역 테이블 - 셀 배경색 적용 */}
+          {/* 운행 내역 테이블 */}
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse border border-gray-200">
               <thead>

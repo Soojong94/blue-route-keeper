@@ -1,3 +1,4 @@
+/* src/components/Notepad.tsx 수정 */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,12 +20,17 @@ const Notepad: React.FC = () => {
 
   const { toast } = useToast();
 
-  // 빈 그리드 데이터 생성
-  const getEmptyGrid = () => {
+  // 빈 그리드 데이터 생성 (깊은 복사를 위한 함수)
+  const getEmptyGrid = useCallback(() => {
     return Array(20).fill(null).map(() =>
       Array(10).fill(null).map(() => ({ value: '' }))
     );
-  };
+  }, []);
+
+  // 깊은 복사 함수
+  const deepCopy = useCallback((data: any[][]) => {
+    return JSON.parse(JSON.stringify(data));
+  }, []);
 
   useEffect(() => {
     loadNotes();
@@ -54,26 +60,29 @@ const Notepad: React.FC = () => {
     }
   };
 
-  const selectNote = (noteId: string) => {
+  const selectNote = useCallback((noteId: string) => {
     const note = notes.find(n => n.id === noteId);
     if (note) {
       setSelectedNoteId(noteId);
-      setCurrentNoteData(note.content || getEmptyGrid());
+      // 깊은 복사를 사용하여 데이터 분리
+      const noteContent = note.content && note.content.length > 0 ? note.content : getEmptyGrid();
+      setCurrentNoteData(deepCopy(noteContent));
       setHasUnsavedChanges(false);
     }
-  };
+  }, [notes, getEmptyGrid, deepCopy]);
 
   const createNewNote = async () => {
     try {
       const noteCount = notes.length;
+      const emptyGrid = getEmptyGrid();
       const newNote = await saveNote({
         title: `새 메모 #${noteCount + 1}`,
-        content: getEmptyGrid()
+        content: emptyGrid
       });
 
       setNotes(prev => [newNote, ...prev]);
       setSelectedNoteId(newNote.id);
-      setCurrentNoteData(newNote.content);
+      setCurrentNoteData(deepCopy(emptyGrid)); // 깊은 복사 사용
       setHasUnsavedChanges(false);
 
       toast({
@@ -95,7 +104,8 @@ const Notepad: React.FC = () => {
 
     try {
       setLoading(true);
-      await updateNote(selectedNoteId, { content: currentNoteData });
+      // 저장할 때도 깊은 복사 사용
+      await updateNote(selectedNoteId, { content: deepCopy(currentNoteData) });
       setHasUnsavedChanges(false);
 
       // 메모 목록 새로고침
@@ -118,10 +128,12 @@ const Notepad: React.FC = () => {
     }
   };
 
+  // 데이터 변경 처리 - 깊은 복사 보장
   const handleDataChange = useCallback((newData: any[][]) => {
-    setCurrentNoteData(newData);
+    // 새로운 데이터를 깊은 복사로 설정
+    setCurrentNoteData(deepCopy(newData));
     setHasUnsavedChanges(true);
-  }, []);
+  }, [deepCopy]);
 
   const handleSelectNote = (noteId: string) => {
     if (hasUnsavedChanges) {
@@ -225,8 +237,8 @@ const Notepad: React.FC = () => {
                   <Card
                     key={note.id}
                     className={`cursor-pointer transition-colors ${selectedNoteId === note.id
-                        ? 'bg-purple-50 border-purple-200'
-                        : 'hover:bg-gray-50'
+                      ? 'bg-purple-50 border-purple-200'
+                      : 'hover:bg-gray-50'
                       }`}
                   >
                     <CardContent className="p-3">

@@ -1,3 +1,4 @@
+/* src/components/reports/SavedReportViewer.tsx 수정 */
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -82,7 +83,8 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
+        {/* 다이얼로그 헤더 - 인쇄 시 숨김 */}
+        <DialogHeader className="no-print">
           <DialogTitle className="flex items-center gap-2">
             {report.type === 'daily' ? (
               <FileText className="h-5 w-5" />
@@ -111,6 +113,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
           </div>
         </DialogHeader>
 
+        {/* 보고서 내용 - 인쇄 시 이 부분만 출력 */}
         <div className="py-4">
           <div className="report-container">
             {report.type === 'daily' ? (
@@ -123,9 +126,14 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
                 onDateChange={() => { }}
                 onVehicleChange={() => { }}
                 onRefresh={() => { }}
+                viewMode="view" // 뷰 모드 추가
+                savedSettings={report.settings} // 저장된 설정 전달
               />
             ) : (
-              <MonthlyReport data={report.data} />
+              <MonthlyReport
+                data={report.data}
+                viewMode="view" // 뷰 모드 추가
+              />
             )}
           </div>
         </div>

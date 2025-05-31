@@ -1,3 +1,4 @@
+/* src/components/reports/MonthlyReport.tsx 수정 */
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,9 +7,13 @@ import { MonthlyReportData } from '@/utils/reportUtils';
 
 interface MonthlyReportProps {
   data: MonthlyReportData;
+  viewMode?: 'edit' | 'view'; // 뷰 모드 추가
 }
 
-const MonthlyReport: React.FC<MonthlyReportProps> = ({ data }) => {
+const MonthlyReport: React.FC<MonthlyReportProps> = ({
+  data,
+  viewMode = 'edit'
+}) => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [customPrices, setCustomPrices] = useState<{ [key: number]: string }>({});
 
@@ -21,6 +26,8 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ data }) => {
   }
 
   const handleEditStart = (index: number, currentAmount: number, currentCount: number) => {
+    if (viewMode === 'view') return; // 뷰 모드에서는 편집 불가
+
     setEditingIndex(index);
     const currentUnitPrice = Math.round(currentAmount / currentCount);
     setCustomPrices({ ...customPrices, [index]: currentUnitPrice.toString() });
@@ -70,7 +77,9 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ data }) => {
               <th className="text-center p-2 font-medium">횟수</th>
               <th className="text-right p-2 font-medium">단가</th>
               <th className="text-right p-2 font-medium">총액</th>
-              <th className="text-center p-2 font-medium w-16">수정</th>
+              {viewMode === 'edit' && (
+                <th className="text-center p-2 font-medium w-16">수정</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -105,37 +114,39 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ data }) => {
                   <td className="text-right p-2 font-semibold">
                     {calculatedAmount.toLocaleString()}원
                   </td>
-                  <td className="text-center p-2">
-                    {isEditing ? (
-                      <div className="flex gap-1 justify-center">
+                  {viewMode === 'edit' && (
+                    <td className="text-center p-2">
+                      {isEditing ? (
+                        <div className="flex gap-1 justify-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSave(index)}
+                            className="h-6 w-6 p-0 text-green-600"
+                          >
+                            <Check className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditCancel(index)}
+                            className="h-6 w-6 p-0 text-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleEditSave(index)}
-                          className="h-6 w-6 p-0 text-green-600"
+                          onClick={() => handleEditStart(index, stat.totalAmount, stat.totalCount)}
+                          className="h-6 w-6 p-0 text-blue-600"
                         >
-                          <Check className="h-3 w-3" />
+                          <Edit2 className="h-3 w-3" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditCancel(index)}
-                          className="h-6 w-6 p-0 text-red-600"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditStart(index, stat.totalAmount, stat.totalCount)}
-                        className="h-6 w-6 p-0 text-blue-600"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </td>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}

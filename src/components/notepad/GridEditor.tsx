@@ -1,3 +1,4 @@
+/* src/components/notepad/GridEditor.tsx 수정 */
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,8 @@ const GridEditor: React.FC<GridEditorProps> = ({
 }) => {
   const [data, setData] = useState<CellData[][]>(() => {
     if (initialData.length > 0) {
-      return initialData;
+      // 깊은 복사로 초기화
+      return JSON.parse(JSON.stringify(initialData));
     }
     // 초기 데이터 생성
     return Array(initialRows).fill(null).map(() =>
@@ -42,24 +44,39 @@ const GridEditor: React.FC<GridEditorProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 데이터 변경 시 부모에게 알림
+  // props 데이터가 변경될 때 로컬 상태 업데이트 (깊은 복사)
   useEffect(() => {
-    onDataChange(data);
-  }, [data, onDataChange]);
+    if (initialData.length > 0) {
+      setData(JSON.parse(JSON.stringify(initialData)));
+    }
+  }, [initialData]);
+
+  // 데이터 변경 시 부모에게 알림 (깊은 복사)
+  const notifyDataChange = useCallback((newData: CellData[][]) => {
+    const deepCopiedData = JSON.parse(JSON.stringify(newData));
+    onDataChange(deepCopiedData);
+  }, [onDataChange]);
 
   const updateCell = useCallback((row: number, col: number, value: string) => {
     setData(prev => {
-      const newData = [...prev];
-      if (!newData[row]) {
-        newData[row] = Array(data[0]?.length || initialCols).fill(null).map(() => ({ value: '' }));
-      }
-      if (!newData[row][col]) {
-        newData[row][col] = { value: '' };
-      }
-      newData[row][col] = { ...newData[row][col], value };
+      // 새로운 배열 생성 (불변성 보장)
+      const newData = prev.map((rowData, rowIndex) => {
+        if (rowIndex === row) {
+          return rowData.map((cell, colIndex) => {
+            if (colIndex === col) {
+              return { ...cell, value }; // 새로운 셀 객체 생성
+            }
+            return { ...cell }; // 기존 셀도 새로운 객체로 복사
+          });
+        }
+        return rowData.map(cell => ({ ...cell })); // 다른 행도 새로운 객체로 복사
+      });
+
+      // 부모에게 변경 알림
+      notifyDataChange(newData);
       return newData;
     });
-  }, [data, initialCols]);
+  }, [notifyDataChange]);
 
   const handleCellClick = (row: number, col: number) => {
     setSelectedCell({ row, col });
@@ -123,25 +140,41 @@ const GridEditor: React.FC<GridEditorProps> = ({
   };
 
   const addRow = () => {
-    setData(prev => [
-      ...prev,
-      Array(prev[0]?.length || initialCols).fill(null).map(() => ({ value: '' }))
-    ]);
+    setData(prev => {
+      const newData = [
+        ...prev,
+        Array(prev[0]?.length || initialCols).fill(null).map(() => ({ value: '' }))
+      ];
+      notifyDataChange(newData);
+      return newData;
+    });
   };
 
   const addColumn = () => {
-    setData(prev => prev.map(row => [...row, { value: '' }]));
+    setData(prev => {
+      const newData = prev.map(row => [...row, { value: '' }]);
+      notifyDataChange(newData);
+      return newData;
+    });
   };
 
   const removeRow = () => {
     if (data.length > 1) {
-      setData(prev => prev.slice(0, -1));
+      setData(prev => {
+        const newData = prev.slice(0, -1);
+        notifyDataChange(newData);
+        return newData;
+      });
     }
   };
 
   const removeColumn = () => {
     if (data[0]?.length > 1) {
-      setData(prev => prev.map(row => row.slice(0, -1)));
+      setData(prev => {
+        const newData = prev.map(row => row.slice(0, -1));
+        notifyDataChange(newData);
+        return newData;
+      });
     }
   };
 
@@ -212,8 +245,8 @@ const GridEditor: React.FC<GridEditorProps> = ({
                   <td
                     key={colIndex}
                     className={`min-w-16 h-6 border cursor-pointer hover:bg-blue-50 relative ${selectedCell?.row === rowIndex && selectedCell?.col === colIndex
-                        ? 'ring-2 ring-blue-500 bg-blue-50'
-                        : ''
+                      ? 'ring-2 ring-blue-500 bg-blue-50'
+                      : ''
                       }`}
                     onClick={() => handleCellClick(rowIndex, colIndex)}
                   >

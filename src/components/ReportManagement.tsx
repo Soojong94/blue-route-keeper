@@ -1,3 +1,4 @@
+/* src/components/ReportManagement.tsx 수정 - handleGenerateDailyReport 함수 수정 */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,11 +61,15 @@ const ReportManagement: React.FC = () => {
     }
   };
 
+  // 수정된 handleGenerateDailyReport - 추가 필드 저장
   const handleGenerateDailyReport = async (settings: {
     title: string;
     startDate: Date;
     endDate: Date;
     vehicleId: string;
+    additionalText?: string;
+    driverName?: string;
+    contact?: string;
   }) => {
     try {
       setLoading(true);
@@ -84,14 +89,17 @@ const ReportManagement: React.FC = () => {
         settings.vehicleId
       );
 
-      // 저장
+      // 저장 - 추가 필드들을 settings에 포함
       await saveReport({
         title: settings.title,
         type: 'daily',
         settings: {
           startDate: settings.startDate.toISOString(),
           endDate: settings.endDate.toISOString(),
-          vehicleId: settings.vehicleId
+          vehicleId: settings.vehicleId,
+          additionalText: settings.additionalText || '',
+          driverName: settings.driverName || '',
+          contact: settings.contact || ''
         },
         data: reportData
       });

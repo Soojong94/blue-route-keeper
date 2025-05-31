@@ -1,3 +1,4 @@
+/* src/components/reports/DailyReportSettings.tsx 수정 - 추가 필드 저장 기능 추가 */
 import React, { useState, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,9 @@ interface DailyReportSettingsProps {
     startDate: Date;
     endDate: Date;
     vehicleId: string;
+    additionalText?: string;
+    driverName?: string;
+    contact?: string;
   }) => void;
 }
 
@@ -42,7 +46,10 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
     startDate: new Date(),
     endDate: new Date(),
     vehicleId: 'all',
-    vehicleInput: ''
+    vehicleInput: '',
+    additionalText: '', // 추가 필드
+    driverName: '',     // 추가 필드
+    contact: ''         // 추가 필드
   });
 
   const { toast } = useToast();
@@ -58,7 +65,10 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
         startDate: today,
         endDate: today,
         vehicleId: 'all',
-        vehicleInput: ''
+        vehicleInput: '',
+        additionalText: '',
+        driverName: '',
+        contact: ''
       }));
       setPreviewData(null);
     }
@@ -180,7 +190,10 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
         title: settings.title,
         startDate: settings.startDate,
         endDate: settings.endDate,
-        vehicleId: settings.vehicleId
+        vehicleId: settings.vehicleId,
+        additionalText: settings.additionalText,
+        driverName: settings.driverName,
+        contact: settings.contact
       });
       onOpenChange(false);
     } catch (error) {
@@ -206,6 +219,34 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
               onChange={(e) => setSettings(prev => ({ ...prev, title: e.target.value }))}
               placeholder="예: 2024년 12월 운행보고서"
             />
+          </div>
+
+          {/* 추가 필드들 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>추가 텍스트 (선택)</Label>
+              <Input
+                value={settings.additionalText}
+                onChange={(e) => setSettings(prev => ({ ...prev, additionalText: e.target.value }))}
+                placeholder="예: 특별 운행, 긴급 운송 등"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>성명 (선택)</Label>
+              <Input
+                value={settings.driverName}
+                onChange={(e) => setSettings(prev => ({ ...prev, driverName: e.target.value }))}
+                placeholder="예: 홍길동"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>연락처 (선택)</Label>
+              <Input
+                value={settings.contact}
+                onChange={(e) => setSettings(prev => ({ ...prev, contact: e.target.value }))}
+                placeholder="예: 010-1234-5678"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -326,6 +367,12 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
                 onDateChange={() => { }}
                 onVehicleChange={() => { }}
                 onRefresh={() => { }}
+                viewMode="preview"
+                savedSettings={{
+                  additionalText: settings.additionalText,
+                  driverName: settings.driverName,
+                  contact: settings.contact
+                }}
               />
             </div>
           ) : (
