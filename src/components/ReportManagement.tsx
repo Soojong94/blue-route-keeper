@@ -1,11 +1,11 @@
-/* src/components/ReportManagement.tsx 수정 - handleGenerateDailyReport 함수 수정 */
+/* src/components/ReportManagement.tsx 수정 - handleGenerateMonthlyReport 함수 수정 */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getTripsByDateRange, getVehicles } from '@/utils/storage';
-import { generateDailyReport, generateMonthlyReport } from '@/utils/reportUtils';
+import { generateDailyReport, generateMonthlyReport, MonthlyReportData } from '@/utils/reportUtils';
 import { saveReport, getReports, updateReport, deleteReport, SavedReport } from '@/utils/reportStorage';
 import ReportTypeSelector from '@/components/reports/ReportTypeSelector';
 import DailyReportSettings from '@/components/reports/DailyReportSettings';
@@ -122,21 +122,17 @@ const ReportManagement: React.FC = () => {
     }
   };
 
+  // 수정된 handleGenerateMonthlyReport - 편집된 데이터 저장
   const handleGenerateMonthlyReport = async (settings: {
     title: string;
     startDate: Date;
     endDate: Date;
+    reportData: MonthlyReportData; // 편집된 데이터
   }) => {
     try {
       setLoading(true);
 
-      // 데이터 가져오기
-      const trips = await getTripsByDateRange(settings.startDate, settings.endDate);
-
-      // 보고서 생성
-      const reportData = generateMonthlyReport(trips);
-
-      // 저장
+      // 저장 - 편집된 데이터를 data와 editable_rows에 모두 저장
       await saveReport({
         title: settings.title,
         type: 'monthly',
@@ -144,7 +140,8 @@ const ReportManagement: React.FC = () => {
           startDate: settings.startDate.toISOString(),
           endDate: settings.endDate.toISOString()
         },
-        data: reportData
+        data: settings.reportData,
+        editableRows: settings.reportData.rows // 편집 가능한 행들 별도 저장
       });
 
       toast({

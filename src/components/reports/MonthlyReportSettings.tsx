@@ -1,3 +1,4 @@
+// src/components/reports/MonthlyReportSettings.tsx - onDataChange 핸들러 추가
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { ko } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getTripsByDateRange } from '@/utils/storage';
-import { generateMonthlyReport } from '@/utils/reportUtils';
+import { generateMonthlyReport, MonthlyReportData } from '@/utils/reportUtils';
 import MonthlyReport from '@/components/reports/MonthlyReport';
 
 interface MonthlyReportSettingsProps {
@@ -21,6 +22,7 @@ interface MonthlyReportSettingsProps {
     title: string;
     startDate: Date;
     endDate: Date;
+    reportData: MonthlyReportData; // 편집된 데이터 포함
   }) => void;
 }
 
@@ -31,7 +33,7 @@ const MonthlyReportSettings: React.FC<MonthlyReportSettingsProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<MonthlyReportData | null>(null);
   const [settings, setSettings] = useState({
     title: '',
     startDate: new Date(),
@@ -78,6 +80,11 @@ const MonthlyReportSettings: React.FC<MonthlyReportSettingsProps> = ({
     }
   };
 
+  // 미리보기 데이터 변경 핸들러
+  const handlePreviewDataChange = (newData: MonthlyReportData) => {
+    setPreviewData(newData);
+  };
+
   const handleGenerate = async () => {
     if (!settings.title.trim()) {
       toast({
@@ -102,7 +109,8 @@ const MonthlyReportSettings: React.FC<MonthlyReportSettingsProps> = ({
       await onGenerate({
         title: settings.title,
         startDate: settings.startDate,
-        endDate: settings.endDate
+        endDate: settings.endDate,
+        reportData: previewData // 편집된 데이터 전달
       });
       onOpenChange(false);
     } catch (error) {
@@ -114,7 +122,7 @@ const MonthlyReportSettings: React.FC<MonthlyReportSettingsProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         {/* 상단: 설정 폼 */}
         <DialogHeader>
           <DialogTitle>월간 보고서 설정</DialogTitle>
@@ -206,12 +214,15 @@ const MonthlyReportSettings: React.FC<MonthlyReportSettingsProps> = ({
             <p className="text-sm text-gray-600">
               기간: {format(settings.startDate, 'yyyy년 MM월 dd일')} ~ {format(settings.endDate, 'MM월 dd일')}
             </p>
+            <p className="text-xs text-blue-600 mt-1">
+              💡 아래 미리보기에서 직접 항목을 편집할 수 있습니다.
+            </p>
           </div>
         </div>
 
         {/* 하단: 실시간 미리보기 */}
         <div className="border-t pt-4 mt-4">
-          <h3 className="font-medium mb-3">미리보기</h3>
+          <h3 className="font-medium mb-3">미리보기 및 편집</h3>
           {previewLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin inline-block h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
@@ -219,7 +230,11 @@ const MonthlyReportSettings: React.FC<MonthlyReportSettingsProps> = ({
             </div>
           ) : previewData ? (
             <div className="max-h-96 overflow-y-auto border rounded-lg report-container">
-              <MonthlyReport data={previewData} />
+              <MonthlyReport
+                data={previewData}
+                viewMode="edit"
+                onDataChange={handlePreviewDataChange}
+              />
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">

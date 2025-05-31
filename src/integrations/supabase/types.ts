@@ -17,6 +17,7 @@ export type Database = {
           type: string
           settings: Json
           data: Json
+          editable_rows: Json | null  // 새로 추가된 필드
           created_at: string
           updated_at: string | null
         }
@@ -27,6 +28,7 @@ export type Database = {
           type: string
           settings: Json
           data: Json
+          editable_rows?: Json | null  // 새로 추가된 필드
           created_at?: string
           updated_at?: string | null
         }
@@ -37,6 +39,7 @@ export type Database = {
           type?: string
           settings?: Json
           data?: Json
+          editable_rows?: Json | null  // 새로 추가된 필드
           created_at?: string
           updated_at?: string | null
         }

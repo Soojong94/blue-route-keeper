@@ -19,15 +19,21 @@ export interface DailyReportData {
   monthlyTotal: number;
 }
 
+// 새로운 월간 리포트 데이터 구조
+export interface MonthlyReportRow {
+  id: string;
+  date: string;          // 날짜 (YYYY-MM-DD)
+  item: string;          // 품목/항목명
+  count: number;         // 횟수
+  unitPrice: number;     // 단가
+  totalAmount: number;   // 금액 (자동계산: count * unitPrice)
+}
+
 export interface MonthlyReportData {
   period: string;
-  departureStats: {
-    departure: string;
-    totalCount: number;
-    totalAmount: number;
-    customUnitPrice?: number;
-    calculatedAmount?: number;
-  }[];
+  rows: MonthlyReportRow[];
+  totalAmount: number;   // 전체 총액
+  originalDepartureStats?: any[]; // 기존 출발지 통계 (참고용)
 }
 
 export const generateDailyReport = (
@@ -101,15 +107,18 @@ export const generateDailyReport = (
   };
 };
 
+// 새로운 월간 리포트 생성 함수
 export const generateMonthlyReport = (trips: Trip[]): MonthlyReportData => {
   if (trips.length === 0) {
     return {
       period: '',
-      departureStats: []
+      rows: [],
+      totalAmount: 0,
+      originalDepartureStats: []
     };
   }
 
-  // 출발지별 집계
+  // 기존 출발지별 집계 (참고용으로 보관)
   const departureStats = new Map<string, { totalCount: number; totalAmount: number }>();
 
   trips.forEach(trip => {
@@ -125,6 +134,53 @@ export const generateMonthlyReport = (trips: Trip[]): MonthlyReportData => {
     }
   });
 
+  const originalDepartureStats = Array.from(departureStats.entries()).map(([departure, stats]) => ({
+    departure,
+    totalCount: stats.totalCount,
+    totalAmount: stats.totalAmount
+  })).sort((a, b) => b.totalAmount - a.totalAmount);
+
+  // 기본 그리드 행들 생성 (날짜별로 정리)
+  const sortedTrips = trips.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const rows: MonthlyReportRow[] = [];
+
+  // 날짜별로 그룹화하여 행 생성
+  const dateGroups = new Map<string, Trip[]>();
+  sortedTrips.forEach(trip => {
+    const date = trip.date;
+    if (!dateGroups.has(date)) {
+      dateGroups.set(date, []);
+    }
+    dateGroups.get(date)!.push(trip);
+  });
+
+  // 각 날짜별로 행 생성
+  Array.from(dateGroups.entries()).forEach(([date, tripsOnDate]) => {
+    tripsOnDate.forEach((trip, index) => {
+      const item = `${trip.departure} → ${trip.destination}`;
+      rows.push({
+        id: `${trip.id}-${index}`,
+        date: date,
+        item: item,
+        count: trip.count,
+        unitPrice: trip.unitPrice,
+        totalAmount: trip.totalAmount
+      });
+    });
+  });
+
+  // 빈 행들 추가 (최소 3개 빈 행)
+  for (let i = 0; i < 3; i++) {
+    rows.push({
+      id: `empty-${Date.now()}-${i}`,
+      date: '',
+      item: '',
+      count: 0,
+      unitPrice: 0,
+      totalAmount: 0
+    });
+  }
+
   // 기간 계산
   const dates = trips.map(t => new Date(t.date)).sort((a, b) => a.getTime() - b.getTime());
   const startDate = dates[0];
@@ -133,12 +189,31 @@ export const generateMonthlyReport = (trips: Trip[]): MonthlyReportData => {
     ? format(startDate, 'yyyy년 MM월', { locale: ko })
     : `${format(startDate, 'yyyy년 MM월', { locale: ko })} ~ ${format(endDate, 'yyyy년 MM월', { locale: ko })}`;
 
+  const totalAmount = rows.reduce((sum, row) => sum + row.totalAmount, 0);
+
   return {
     period,
-    departureStats: Array.from(departureStats.entries()).map(([departure, stats]) => ({
-      departure,
-      totalCount: stats.totalCount,
-      totalAmount: stats.totalAmount
-    })).sort((a, b) => b.totalAmount - a.totalAmount)
+    rows,
+    totalAmount,
+    originalDepartureStats
   };
 };
+
+// 유틸리티 함수들
+export const createEmptyMonthlyReportRow = (): MonthlyReportRow => ({
+  id: `empty-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  date: '',
+  item: '',
+  count: 0,
+  unitPrice: 0,
+  totalAmount: 0
+});
+
+export const calculateRowTotal = (count: number, unitPrice: number): number => {
+  return count * unitPrice;
+};
+
+export const updateRowCalculation = (row: MonthlyReportRow): MonthlyReportRow => ({
+  ...row,
+  totalAmount: calculateRowTotal(row.count, row.unitPrice)
+});
