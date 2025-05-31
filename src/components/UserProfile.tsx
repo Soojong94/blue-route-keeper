@@ -1,3 +1,4 @@
+// src/components/UserProfile.tsx 수정
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,12 +10,13 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, User, Car, MapPin, Settings, Trash2 } from 'lucide-react';
+import { LogOut, User, Car, MapPin, Settings, Trash2, Database } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import ProfileSettingsDialog from '@/components/profile/ProfileSettingsDialog';
 import AccountDeletionDialog from '@/components/profile/AccountDeletionDialog';
 import VehicleManagementDialog from '@/components/profile/VehicleManagementDialog';
 import LocationManagementDialog from '@/components/profile/LocationManagementDialog';
+import DataManagementDialog from '@/components/profile/DataManagementDialog';
 
 const UserProfile: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -22,6 +24,7 @@ const UserProfile: React.FC = () => {
   const [isAccountDeletionOpen, setIsAccountDeletionOpen] = useState(false);
   const [isVehicleManagementOpen, setIsVehicleManagementOpen] = useState(false);
   const [isLocationManagementOpen, setIsLocationManagementOpen] = useState(false);
+  const [isDataManagementOpen, setIsDataManagementOpen] = useState(false);
 
   if (!user) return null;
 
@@ -53,7 +56,7 @@ const UserProfile: React.FC = () => {
             onClick={() => setIsProfileSettingsOpen(true)}
           >
             <User className="mr-2 h-3 w-3" />
-            <span>프로필 설정</span>
+            <span>프로필 및 사용 통계</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             className="cursor-pointer text-xs"
@@ -68,6 +71,14 @@ const UserProfile: React.FC = () => {
           >
             <MapPin className="mr-2 h-3 w-3" />
             <span>장소 관리</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="cursor-pointer text-xs text-orange-600"
+            onClick={() => setIsDataManagementOpen(true)}
+          >
+            <Database className="mr-2 h-3 w-3" />
+            <span>데이터 관리</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -101,6 +112,10 @@ const UserProfile: React.FC = () => {
       <LocationManagementDialog
         open={isLocationManagementOpen}
         onOpenChange={setIsLocationManagementOpen}
+      />
+      <DataManagementDialog
+        open={isDataManagementOpen}
+        onOpenChange={setIsDataManagementOpen}
       />
     </>
   );

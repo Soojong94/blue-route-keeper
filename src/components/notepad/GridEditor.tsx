@@ -1,5 +1,5 @@
-/* src/components/notepad/GridEditor.tsx 수정 */
-import React, { useState, useCallback, useRef } from 'react';
+/* src/components/notepad/GridEditor.tsx 최종 수정 */
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Minus } from 'lucide-react';
@@ -24,15 +24,16 @@ interface GridEditorProps {
 const GridEditor: React.FC<GridEditorProps> = ({
   data: initialData,
   onDataChange,
-  rows: initialRows = 10, // 기본 10행으로 변경
-  cols: initialCols = 5   // 기본 5열로 변경
+  rows: initialRows = 10,
+  cols: initialCols = 5
 }) => {
   // 컴포넌트가 마운트될 때마다 완전히 새로운 데이터로 초기화
   const [data, setData] = useState<CellData[][]>(() => {
     if (initialData && initialData.length > 0) {
+      // 깊은 복사로 완전히 새로운 객체 생성
       return JSON.parse(JSON.stringify(initialData));
     }
-    // 초기 데이터 생성 (10행 5열)
+    // 초기 데이터 생성
     return Array(initialRows).fill(null).map(() =>
       Array(initialCols).fill(null).map(() => ({ value: '' }))
     );
@@ -46,6 +47,7 @@ const GridEditor: React.FC<GridEditorProps> = ({
 
   // 데이터 변경 알림 함수
   const notifyDataChange = useCallback((newData: CellData[][]) => {
+    // 다음 틱에서 실행하여 렌더링 사이클과 분리
     setTimeout(() => {
       onDataChange(JSON.parse(JSON.stringify(newData)));
     }, 0);
@@ -53,6 +55,7 @@ const GridEditor: React.FC<GridEditorProps> = ({
 
   const updateCell = useCallback((row: number, col: number, value: string) => {
     setData(prev => {
+      // 완전히 새로운 배열 생성
       const newData = prev.map((rowData, rowIndex) => {
         if (rowIndex === row) {
           return rowData.map((cell, colIndex) => {
@@ -65,6 +68,7 @@ const GridEditor: React.FC<GridEditorProps> = ({
         return rowData.map(cell => ({ ...cell }));
       });
 
+      // 부모에게 변경 알림
       notifyDataChange(newData);
       return newData;
     });

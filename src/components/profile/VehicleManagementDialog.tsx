@@ -1,3 +1,4 @@
+// src/components/profile/VehicleManagementDialog.tsx 수정
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Car, Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Car, Plus, Edit, Trash2, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +31,7 @@ const VehicleManagementDialog: React.FC<VehicleManagementDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
+  const [showStats, setShowStats] = useState(false); // 통계 표시 상태 (기본값: false)
   const [formData, setFormData] = useState({
     licensePlate: '',
     name: '',
@@ -197,18 +199,36 @@ const VehicleManagementDialog: React.FC<VehicleManagementDialogProps> = ({
 
           <div className="space-y-3 py-2">
             <div className="flex flex-col sm:flex-row justify-between gap-2">
-              <div className="flex-1 max-w-xs">
-                <SmartInput
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                  onSelect={handleSearchSelect}
-                  placeholder="차량번호 또는 이름으로 검색..."
-                  className="text-xs h-7"
-                  searchFunction={searchVehicles}
-                  recentItems={getRecentVehicles()}
-                  favoriteItems={getFavoriteVehicles()}
-                  debounceMs={300}
-                />
+              <div className="flex gap-2 flex-1">
+                <div className="flex-1 max-w-xs">
+                  <SmartInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    onSelect={handleSearchSelect}
+                    placeholder="차량번호 또는 이름으로 검색..."
+                    className="text-xs h-7"
+                    searchFunction={searchVehicles}
+                    recentItems={getRecentVehicles()}
+                    favoriteItems={getFavoriteVehicles()}
+                    debounceMs={300}
+                  />
+                </div>
+
+                {/* 통계 토글 버튼 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowStats(!showStats)}
+                  className="text-xs h-7 px-2 shrink-0"
+                >
+                  <BarChart3 className="h-3 w-3 mr-1" />
+                  통계
+                  {showStats ? (
+                    <ChevronUp className="h-3 w-3 ml-1" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  )}
+                </Button>
               </div>
 
               <Button onClick={handleAddNew} className="text-xs h-7 px-3">
@@ -229,6 +249,7 @@ const VehicleManagementDialog: React.FC<VehicleManagementDialogProps> = ({
                     vehicle={vehicle}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    showStats={showStats}
                   />
                 ))}
               </div>
@@ -303,25 +324,29 @@ const VehicleManagementDialog: React.FC<VehicleManagementDialogProps> = ({
   );
 };
 
+// 수정된 VehicleCard - showStats prop 추가
 const VehicleCard: React.FC<{
   vehicle: Vehicle;
   onEdit: (vehicle: Vehicle) => void;
   onDelete: (id: string) => void;
-}> = ({ vehicle, onEdit, onDelete }) => {
+  showStats: boolean;
+}> = ({ vehicle, onEdit, onDelete, showStats }) => {
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const [trips, vehicles] = await Promise.all([getTrips(), getVehicles()]);
-        const statsData = getVehicleStats(vehicle.id, trips, vehicles);
-        setStats(statsData);
-      } catch (error) {
-        console.error('Error getting vehicle stats:', error);
-      }
-    };
-    loadStats();
-  }, [vehicle.id]);
+    if (showStats) {
+      const loadStats = async () => {
+        try {
+          const [trips, vehicles] = await Promise.all([getTrips(), getVehicles()]);
+          const statsData = getVehicleStats(vehicle.id, trips, vehicles);
+          setStats(statsData);
+        } catch (error) {
+          console.error('Error getting vehicle stats:', error);
+        }
+      };
+      loadStats();
+    }
+  }, [vehicle.id, showStats]);
 
   return (
     <Card className="p-3">
@@ -356,34 +381,55 @@ const VehicleCard: React.FC<{
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-        <div>
-          <span className="text-gray-500">기본 단가:</span>
-          <div className="text-xs">
-            {vehicle.defaultUnitPrice ? (
-              <span className="text-green-600">
-                {vehicle.defaultUnitPrice.toLocaleString()}원
-              </span>
-            ) : (
-              <span className="text-gray-400">미설정</span>
+      {/* 기본 정보 */}
+      <div className="space-y-2">
+        {vehicle.defaultUnitPrice && (
+          <div className="bg-green-50 p-2 rounded text-xs">
+            <div className="text-green-600">기본 단가</div>
+            <div className="text-sm font-bold text-green-800">
+              {vehicle.defaultUnitPrice.toLocaleString()}원
+            </div>
+          </div>
+        )}
+
+        {/* 통계 정보 - showStats가 true일 때만 표시 */}
+        {showStats && stats && (
+          <div className="space-y-2 border-t pt-2">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-gray-500">총 운행:</span>
+                <div className="text-xs font-medium">{stats.totalTrips || 0}회</div>
+              </div>
+              <div>
+                <span className="text-gray-500">평균 단가:</span>
+                <div className="text-xs font-medium">
+                  {stats.avgUnitPrice ? Math.round(stats.avgUnitPrice).toLocaleString() : 0}원
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-2 rounded text-xs">
+              <div className="text-blue-600">총 운행 금액</div>
+              <div className="text-sm font-bold text-blue-800">
+                {(stats.totalAmount || 0).toLocaleString()}원
+              </div>
+            </div>
+
+            {stats.mostFrequentRoute && (
+              <div className="bg-gray-50 p-2 rounded text-xs">
+                <div className="text-gray-600">최다 경로</div>
+                <div className="text-xs font-medium">
+                  {stats.mostFrequentRoute.departure} → {stats.mostFrequentRoute.destination}
+                  <span className="ml-1 text-gray-500">({stats.mostFrequentRoute.count}회)</span>
+                </div>
+              </div>
             )}
           </div>
-        </div>
-        <div>
-          <span className="text-gray-500">총 운행:</span>
-          <div className="text-xs">{stats?.totalTrips || 0}회</div>
-        </div>
-      </div>
+        )}
 
-      <div className="bg-blue-50 p-2 rounded text-xs mb-2">
-        <div className="text-blue-600">총 운행 금액</div>
-        <div className="text-sm font-bold text-blue-800">
-          {(stats?.totalAmount || 0).toLocaleString()}원
+        <div className="text-[10px] text-gray-500">
+          등록일: {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
         </div>
-      </div>
-
-      <div className="text-[10px] text-gray-500">
-        등록일: {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
       </div>
     </Card>
   );
