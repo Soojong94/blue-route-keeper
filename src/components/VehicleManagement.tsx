@@ -1,26 +1,30 @@
-// src/components/VehicleManagement.tsx 일부 수정
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Car, Plus, Edit, Trash2 } from 'lucide-react';
+import { Car, Plus, Edit, Trash2, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { getVehicles, saveVehicle, updateVehicle, deleteVehicle, getTrips } from '@/utils/storage';
-import { getVehicleStats } from '@/utils/calculations';
+import { getVehicles, saveVehicle, updateVehicle, deleteVehicle } from '@/utils/storage';
 import { Vehicle } from '@/types/trip';
 import SmartInput, { SearchResult } from '@/components/SmartInput';
 import { searchVehicles, addRecentVehicle, getRecentVehicles } from '@/utils/smartSearch';
-import { useModalBackHandler } from '@/hooks/useBackHandler';
 
-const VehicleManagement: React.FC = () => {
+interface VehicleManagementDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const VehicleManagementDialog: React.FC<VehicleManagementDialogProps> = ({
+  open,
+  onOpenChange
+}) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,18 +37,13 @@ const VehicleManagement: React.FC = () => {
 
   const { toast } = useToast();
 
-  // 뒤로가기 핸들러 - 컴포넌트 상단에 위치해야 함
-  useModalBackHandler(isDialogOpen, () => {
-    setIsDialogOpen(false);
-    resetForm();
-  }, 'dialog');
+  useEffect(() => {
+    if (open) {
+      loadVehicles();
+    }
+  }, [open]);
 
   useEffect(() => {
-    loadVehicles();
-  }, []);
-
-  useEffect(() => {
-    // 검색 필터링
     if (searchQuery) {
       const filtered = vehicles.filter(vehicle =>
         vehicle.licensePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,7 +55,6 @@ const VehicleManagement: React.FC = () => {
     }
   }, [vehicles, searchQuery]);
 
-  // 즐겨찾기 차량 목록 (전체 차량 목록)
   const getFavoriteVehicles = (): SearchResult[] => {
     return vehicles.map(vehicle => ({
       id: `fav-vehicle-${vehicle.id}`,
@@ -72,7 +70,6 @@ const VehicleManagement: React.FC = () => {
     }));
   };
 
-  // 검색어 선택 처리
   const handleSearchSelect = (result: SearchResult) => {
     setSearchQuery(result.value);
     addRecentVehicle(result.value);
@@ -128,7 +125,7 @@ const VehicleManagement: React.FC = () => {
       }
 
       resetForm();
-      setIsDialogOpen(false);
+      setIsEditDialogOpen(false);
       await loadVehicles();
     } catch (error) {
       console.error('Save vehicle error:', error);
@@ -149,7 +146,7 @@ const VehicleManagement: React.FC = () => {
       name: vehicle.name || '',
       defaultUnitPrice: vehicle.defaultUnitPrice?.toString() || '',
     });
-    setIsDialogOpen(true);
+    setIsEditDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -183,103 +180,63 @@ const VehicleManagement: React.FC = () => {
 
   const handleAddNew = () => {
     resetForm();
-    setIsDialogOpen(true);
-  };
-
-  const getVehicleStatsData = async (vehicleId: string) => {
-    try {
-      const [trips, vehicles] = await Promise.all([getTrips(), getVehicles()]);
-      return getVehicleStats(vehicleId, trips, vehicles);
-    } catch (error) {
-      console.error('Error getting vehicle stats:', error);
-      return null;
-    }
+    setIsEditDialogOpen(true);
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      <Card>
-        <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-          <CardTitle className="flex items-center gap-2">
-            <Car className="h-5 w-5" />
-            차량 관리
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
-            {/* 검색 */}
-            <div className="flex-1 max-w-md">
-              <SmartInput
-                value={searchQuery}
-                onChange={setSearchQuery}
-                onSelect={handleSearchSelect}
-                placeholder="차량번호 또는 이름으로 검색..."
-                searchFunction={searchVehicles}
-                recentItems={getRecentVehicles()}
-                favoriteItems={getFavoriteVehicles()}
-                debounceMs={300}
-              />
-            </div>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Car className="h-5 w-5" />
+              차량 관리
+            </DialogTitle>
+          </DialogHeader>
 
-            <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="mr-2 h-4 w-4" />
-              차량 등록
-            </Button>
-          </div>
-
-          {filteredVehicles.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {searchQuery ? '검색 결과가 없습니다.' : '등록된 차량이 없습니다. 차량을 등록해주세요.'}
-            </div>
-          ) : (
-            <>
-              {/* 데스크톱 테이블 */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>번호판</TableHead>
-                      <TableHead>성명 (선택)</TableHead>
-                      <TableHead>기본 단가</TableHead>
-                      <TableHead>총 운행</TableHead>
-                      <TableHead>총 금액</TableHead>
-                      <TableHead>등록일</TableHead>
-                      <TableHead className="text-center">관리</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredVehicles.map((vehicle) => (
-                      <VehicleTableRow
-                        key={vehicle.id}
-                        vehicle={vehicle}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        getStats={getVehicleStatsData}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
+          <div className="space-y-4 py-4">
+            <div className="flex flex-col sm:flex-row justify-between gap-4">
+              <div className="flex-1 max-w-md">
+                <SmartInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  onSelect={handleSearchSelect}
+                  placeholder="차량번호 또는 이름으로 검색..."
+                  searchFunction={searchVehicles}
+                  recentItems={getRecentVehicles()}
+                  favoriteItems={getFavoriteVehicles()}
+                  debounceMs={300}
+                />
               </div>
 
-              {/* 모바일 카드 뷰 */}
-              <div className="md:hidden space-y-4">
+              <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="mr-2 h-4 w-4" />
+                차량 등록
+              </Button>
+            </div>
+
+            {filteredVehicles.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {searchQuery ? '검색 결과가 없습니다.' : '등록된 차량이 없습니다.'}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredVehicles.map((vehicle) => (
                   <VehicleCard
                     key={vehicle.id}
                     vehicle={vehicle}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
-                    getStats={getVehicleStatsData}
                   />
                 ))}
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 차량 등록/수정 다이얼로그 */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -288,141 +245,57 @@ const VehicleManagement: React.FC = () => {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="licensePlate">번호판 (필수)</Label>
+              <Label>번호판 (필수)</Label>
               <Input
-                id="licensePlate"
                 value={formData.licensePlate}
                 onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
                 placeholder="예: 12가3456"
-                className="text-lg font-semibold"
+                className="font-semibold"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">성명 (선택)</Label>
+              <Label>성명 (선택)</Label>
               <Input
-                id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="예: 홍길동 (선택사항)"
+                placeholder="예: 홍길동"
               />
-              <p className="text-sm text-gray-500">
-                성명은 선택사항입니다. 비워두셔도 됩니다.
-              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="defaultUnitPrice">기본 단가 (선택)</Label>
+              <Label>기본 단가 (선택)</Label>
               <Input
-                id="defaultUnitPrice"
                 type="number"
                 value={formData.defaultUnitPrice}
                 onChange={(e) => setFormData({ ...formData, defaultUnitPrice: e.target.value })}
                 placeholder="예: 50000"
                 min="0"
               />
-              <p className="text-sm text-gray-500">
-                운행 기록 입력 시 자동으로 설정됩니다
-              </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+            <div className="flex gap-2 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setIsDialogOpen(false);
+                  setIsEditDialogOpen(false);
                   resetForm();
                 }}
-                className="w-full sm:w-auto"
+                className="flex-1"
                 disabled={loading}
               >
                 취소
               </Button>
-              <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
+              <Button type="submit" className="flex-1" disabled={loading}>
                 {loading ? '저장 중...' : (editingVehicle ? '수정' : '등록')}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-};
-
-// 기존 VehicleTableRow, VehicleCard 컴포넌트들은 그대로 유지
-const VehicleTableRow: React.FC<{
-  vehicle: Vehicle;
-  onEdit: (vehicle: Vehicle) => void;
-  onDelete: (id: string) => void;
-  getStats: (vehicleId: string) => Promise<any>;
-}> = ({ vehicle, onEdit, onDelete, getStats }) => {
-  const [stats, setStats] = useState<any>(null);
-
-  useEffect(() => {
-    const loadStats = async () => {
-      const statsData = await getStats(vehicle.id);
-      setStats(statsData);
-    };
-    loadStats();
-  }, [vehicle.id, getStats]);
-
-  return (
-    <TableRow className="hover:bg-gray-50">
-      <TableCell>
-        <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-base px-3 py-1">
-          {vehicle.licensePlate}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        {vehicle.name ? (
-          <span className="font-medium">{vehicle.name}</span>
-        ) : (
-          <span className="text-gray-400 italic">미입력</span>
-        )}
-      </TableCell>
-      <TableCell>
-        {vehicle.defaultUnitPrice ? (
-          <span className="text-green-600 font-medium">
-            {vehicle.defaultUnitPrice.toLocaleString()}원
-          </span>
-        ) : (
-          <span className="text-gray-400">미설정</span>
-        )}
-      </TableCell>
-      <TableCell>
-        <span className="font-medium">{stats?.totalTrips || 0}회</span>
-      </TableCell>
-      <TableCell>
-        <span className="font-medium text-blue-600">
-          {(stats?.totalAmount || 0).toLocaleString()}원
-        </span>
-      </TableCell>
-      <TableCell className="text-gray-500">
-        {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
-      </TableCell>
-      <TableCell>
-        <div className="flex justify-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit(vehicle)}
-            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(vehicle.id)}
-            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
+    </>
   );
 };
 
@@ -430,82 +303,56 @@ const VehicleCard: React.FC<{
   vehicle: Vehicle;
   onEdit: (vehicle: Vehicle) => void;
   onDelete: (id: string) => void;
-  getStats: (vehicleId: string) => Promise<any>;
-}> = ({ vehicle, onEdit, onDelete, getStats }) => {
-  const [stats, setStats] = useState<any>(null);
-
-  useEffect(() => {
-    const loadStats = async () => {
-      const statsData = await getStats(vehicle.id);
-      setStats(statsData);
-    };
-    loadStats();
-  }, [vehicle.id, getStats]);
-
+}> = ({ vehicle, onEdit, onDelete }) => {
   return (
-    <Card className="p-4">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-lg px-3 py-1 mb-2">
-            {vehicle.licensePlate}
-          </Badge>
-          {vehicle.name ? (
-            <h3 className="font-medium text-lg">{vehicle.name}</h3>
-          ) : (
-            <h3 className="font-medium text-lg text-gray-400 italic">성명 미입력</h3>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit(vehicle)}
-            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(vehicle.id)}
-            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-        <div>
-          <span className="text-gray-500">기본 단가:</span>
-          <div className="font-medium">
-            {vehicle.defaultUnitPrice ? (
-              <span className="text-green-600">
-                {vehicle.defaultUnitPrice.toLocaleString()}원
-              </span>
+    <Card className="hover:bg-gray-50 transition-colors">
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1">
+            <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-base px-3 py-1 mb-2">
+              {vehicle.licensePlate}
+            </Badge>
+            {vehicle.name ? (
+              <h3 className="font-medium">{vehicle.name}</h3>
             ) : (
-              <span className="text-gray-400">미설정</span>
+              <h3 className="font-medium text-gray-400 italic">성명 미입력</h3>
             )}
           </div>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(vehicle)}
+              className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(vehicle.id)}
+              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div>
-          <span className="text-gray-500">총 운행:</span>
-          <div className="font-medium">{stats?.totalTrips || 0}회</div>
-        </div>
-      </div>
 
-      <div className="bg-blue-50 p-3 rounded-lg mb-3">
-        <div className="text-sm text-blue-600">총 운행 금액</div>
-        <div className="text-xl font-bold text-blue-800">
-          {(stats?.totalAmount || 0).toLocaleString()}원
-        </div>
-      </div>
+        {vehicle.defaultUnitPrice && (
+          <div className="bg-green-50 p-3 rounded-lg">
+            <div className="text-sm text-green-600">기본 단가</div>
+            <div className="text-lg font-bold text-green-800">
+              {vehicle.defaultUnitPrice.toLocaleString()}원
+            </div>
+          </div>
+        )}
 
-      <div className="text-sm text-gray-500">
-        등록일: {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
-      </div>
+        <div className="text-sm text-gray-500 mt-3">
+          등록일: {format(new Date(vehicle.createdAt), 'yyyy-MM-dd', { locale: ko })}
+        </div>
+      </CardContent>
     </Card>
   );
 };
 
-export default VehicleManagement;
+export default VehicleManagementDialog;

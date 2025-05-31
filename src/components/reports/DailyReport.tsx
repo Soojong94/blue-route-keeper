@@ -51,8 +51,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
     );
   }
 
-
-
   const getVehicleDisplayName = (vehicleId: string) => {
     if (vehicleId === 'all') return '전체 차량';
     const vehicle = vehicles.find(v => v.id === vehicleId);
@@ -149,7 +147,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
   };
 
   return (
-    <div className="space-y-2 p-3 bg-white">
+    <div className="space-y-2 p-3 bg-white report-container">
       {/* 필터 컨트롤 - 적용 버튼 제거, 3컬럼으로 변경 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
         {/* 시작일 */}

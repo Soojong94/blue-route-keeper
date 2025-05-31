@@ -1,7 +1,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, BarChart3, Download, Printer } from 'lucide-react'; // Print → Printer
+import { FileText, BarChart3, Download, Printer } from 'lucide-react';
 import DailyReport from '@/components/reports/DailyReport';
 import MonthlyReport from '@/components/reports/MonthlyReport';
 
@@ -81,13 +81,13 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-sm flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2">
             {report.type === 'daily' ? (
-              <FileText className="h-4 w-4" />
+              <FileText className="h-5 w-5" />
             ) : (
-              <BarChart3 className="h-4 w-4" />
+              <BarChart3 className="h-5 w-5" />
             )}
             {report.title}
           </DialogTitle>
@@ -96,38 +96,38 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
               variant="outline"
               size="sm"
               onClick={handlePrint}
-              className="text-xs h-7"
             >
-              <Printer className="h-3 w-3 mr-1" />
+              <Printer className="h-4 w-4 mr-2" />
               인쇄
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleExport}
-              className="text-xs h-7"
             >
-              <Download className="h-3 w-3 mr-1" />
+              <Download className="h-4 w-4 mr-2" />
               CSV 내보내기
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="py-2">
-          {report.type === 'daily' ? (
-            <DailyReport
-              data={report.data}
-              vehicles={[]}
-              selectedVehicleId={report.settings.vehicleId || 'all'}
-              startDate={new Date(report.settings.startDate)}
-              endDate={new Date(report.settings.endDate)}
-              onDateChange={() => { }}
-              onVehicleChange={() => { }}
-              onRefresh={() => { }}
-            />
-          ) : (
-            <MonthlyReport data={report.data} />
-          )}
+        <div className="py-4">
+          <div className="report-container">
+            {report.type === 'daily' ? (
+              <DailyReport
+                data={report.data}
+                vehicles={[]}
+                selectedVehicleId={report.settings.vehicleId || 'all'}
+                startDate={new Date(report.settings.startDate)}
+                endDate={new Date(report.settings.endDate)}
+                onDateChange={() => { }}
+                onVehicleChange={() => { }}
+                onRefresh={() => { }}
+              />
+            ) : (
+              <MonthlyReport data={report.data} />
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

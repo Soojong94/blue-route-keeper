@@ -2,54 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 전체 폰트 크기를 절반으로 줄임 */
+/* 기본 폰트 크기 복원 - 보고서 제외 */
 @layer base {
   html {
-    font-size: 8px;
-    /* 기본 16px의 절반 */
+    font-size: 16px;
+    /* 8px에서 16px로 복원 */
   }
 
   body {
-    font-size: 0.875rem;
-    /* 14px -> 7px 효과 */
+    font-size: 1rem;
+    /* 14px 효과 */
   }
 
   h1 {
-    font-size: 1.5rem;
+    font-size: 2rem;
+    /* 32px */
   }
 
-  /* 24px -> 12px */
   h2 {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
+    /* 24px */
   }
 
-  /* 20px -> 10px */
   h3 {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
+    /* 20px */
   }
 
-  /* 18px -> 9px */
   h4 {
-    font-size: 1rem;
+    font-size: 1.125rem;
+    /* 18px */
   }
 
-  /* 16px -> 8px */
   h5 {
-    font-size: 0.875rem;
+    font-size: 1rem;
+    /* 16px */
   }
 
-  /* 14px -> 7px */
   h6 {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
+    /* 14px */
   }
-
-  /* 12px -> 6px */
 
   small {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
+    /* 12px */
   }
+}
 
-  /* 10px -> 5px */
+/* 보고서 컴포넌트만 작은 크기 유지 */
+.report-container {
+  font-size: 10px;
+}
+
+.report-container h1 {
+  font-size: 1.4rem;
+}
+
+.report-container h2 {
+  font-size: 1.2rem;
+}
+
+.report-container h3 {
+  font-size: 1.1rem;
+}
+
+.report-container h4 {
+  font-size: 1rem;
+}
+
+.report-container h5 {
+  font-size: 0.9rem;
+}
+
+.report-container h6 {
+  font-size: 0.8rem;
+}
+
+.report-container .text-xs {
+  font-size: 0.75rem;
+}
+
+.report-container .text-sm {
+  font-size: 0.875rem;
+}
+
+.report-container .text-base {
+  font-size: 1rem;
+}
+
+.report-container .text-lg {
+  font-size: 1.125rem;
+}
+
+.report-container .text-xl {
+  font-size: 1.25rem;
 }
 
 /* 기존 드롭다운 z-index 스타일들 유지 */
@@ -235,7 +282,6 @@
 @media print {
   html {
     font-size: 12px;
-    /* 인쇄 시에는 조금 더 크게 */
   }
 
   .no-print {

@@ -14,7 +14,7 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ data }) => {
 
   if (!data.departureStats.length) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-gray-500 report-container">
         선택한 기간에 운행 기록이 없습니다.
       </div>
     );
@@ -45,13 +45,13 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({ data }) => {
     return originalAmount;
   };
 
-  const totalCalculatedAmount = data.departureStats.reduce((sum, stat, index) => 
+  const totalCalculatedAmount = data.departureStats.reduce((sum, stat, index) =>
     sum + getCalculatedAmount(index, stat.totalAmount, stat.totalCount), 0
   );
   const totalCount = data.departureStats.reduce((sum, stat) => sum + stat.totalCount, 0);
 
   return (
-    <div className="space-y-4 p-4 bg-white">
+    <div className="space-y-4 p-4 bg-white report-container">
       {/* 헤더 */}
       <div className="text-center border-b pb-4">
         <h2 className="text-xl font-bold text-gray-900">{data.period} 월간 운행 보고서</h2>
