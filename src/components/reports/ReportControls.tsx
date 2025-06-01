@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, RefreshCw } from 'lucide-react';
+import { CalendarIcon, RefreshCw, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Vehicle } from '@/types/trip';
 import SmartInput, { SearchResult } from '@/components/SmartInput';
-import { searchVehicles, addRecentVehicle, getRecentVehicles } from '@/utils/smartSearch';
+import { searchVehicles, searchLocations, addRecentVehicle, addRecentLocation, getRecentVehicles, getRecentLocations } from '@/utils/smartSearch';
 
 interface ReportSettings {
   title: string;
@@ -21,6 +21,9 @@ interface ReportSettings {
   additionalText: string;
   driverName: string;
   contact: string;
+  // 🔥 새로 추가된 필터링 옵션
+  departureFilter?: string;
+  destinationFilter?: string;
 }
 
 interface ReportControlsProps {
@@ -30,6 +33,8 @@ interface ReportControlsProps {
   onRegenerate?: () => void;
   showRegenerate?: boolean;
   compact?: boolean;
+  // 🔥 새로 추가 - 필터링 활성화 옵션
+  enableLocationFilters?: boolean;
 }
 
 export const ReportControls: React.FC<ReportControlsProps> = ({
@@ -38,7 +43,8 @@ export const ReportControls: React.FC<ReportControlsProps> = ({
   onSettingsChange,
   onRegenerate,
   showRegenerate = false,
-  compact = false
+  compact = false,
+  enableLocationFilters = false
 }) => {
   // 즐겨찾기 차량 목록 생성
   const getFavoriteVehicles = useCallback((): SearchResult[] => {
@@ -90,6 +96,17 @@ export const ReportControls: React.FC<ReportControlsProps> = ({
       onSettingsChange('vehicleId', 'all');
     }
   }, [vehicles, onSettingsChange]);
+
+  // 🔥 장소 선택 처리 함수들 추가
+  const handleLocationSelect = useCallback((field: 'departureFilter' | 'destinationFilter', result: SearchResult) => {
+    onSettingsChange(field, result.value);
+    addRecentLocation(result.value);
+  }, [onSettingsChange]);
+
+  // 🔥 필터 초기화 함수
+  const clearLocationFilter = useCallback((field: 'departureFilter' | 'destinationFilter') => {
+    onSettingsChange(field, '');
+  }, [onSettingsChange]);
 
   // 현재 선택된 차량의 번호판 표시
   const getVehicleInputValue = () => {
@@ -211,6 +228,65 @@ export const ReportControls: React.FC<ReportControlsProps> = ({
           </div>
         </div>
 
+        {/* 🔥 장소 필터링 (활성화된 경우에만) */}
+        {enableLocationFilters && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">출발지 필터 (선택)</Label>
+              <div className="flex gap-1">
+                <SmartInput
+                  value={settings.departureFilter || ''}
+                  onChange={(value) => onSettingsChange('departureFilter', value)}
+                  onSelect={(result) => handleLocationSelect('departureFilter', result)}
+                  placeholder="출발지 필터"
+                  className="text-xs h-8"
+                  searchFunction={searchLocations}
+                  recentItems={getRecentLocations()}
+                  favoriteItems={[]}
+                  debounceMs={300}
+                />
+                {settings.departureFilter && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => clearLocationFilter('departureFilter')}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">목적지 필터 (선택)</Label>
+              <div className="flex gap-1">
+                <SmartInput
+                  value={settings.destinationFilter || ''}
+                  onChange={(value) => onSettingsChange('destinationFilter', value)}
+                  onSelect={(result) => handleLocationSelect('destinationFilter', result)}
+                  placeholder="목적지 필터"
+                  className="text-xs h-8"
+                  searchFunction={searchLocations}
+                  recentItems={getRecentLocations()}
+                  favoriteItems={[]}
+                  debounceMs={300}
+                />
+                {settings.destinationFilter && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => clearLocationFilter('destinationFilter')}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 추가 필드들 */}
         <div className="grid grid-cols-3 gap-2">
           <div>
@@ -242,6 +318,25 @@ export const ReportControls: React.FC<ReportControlsProps> = ({
           </div>
         </div>
 
+        {/* 🔥 필터 상태 표시 */}
+        {enableLocationFilters && (settings.departureFilter || settings.destinationFilter) && (
+          <div className="bg-blue-50 p-2 rounded text-xs">
+            <div className="text-blue-700 font-medium">활성 필터:</div>
+            <div className="flex gap-2 mt-1">
+              {settings.departureFilter && (
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
+                  출발지: {settings.departureFilter}
+                </span>
+              )}
+              {settings.destinationFilter && (
+                <span className="bg-red-100 text-red-800 px-2 py-1 rounded">
+                  목적지: {settings.destinationFilter}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 새로고침 버튼 */}
         {showRegenerate && onRegenerate && (
           <div className="flex justify-end">
@@ -255,7 +350,7 @@ export const ReportControls: React.FC<ReportControlsProps> = ({
     );
   }
 
-  // 일반 모드 (기존 DailyReportSettings와 동일)
+  // 일반 모드 (기존 DailyReportSettings와 동일하지만 필터링 추가)
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -389,6 +484,103 @@ export const ReportControls: React.FC<ReportControlsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 🔥 장소 필터링 섹션 - 일반 모드에서도 사용 가능 */}
+      {enableLocationFilters && (
+        <>
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-medium mb-3">장소 필터링 (선택)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>출발지 필터</Label>
+                <div className="flex gap-2">
+                  <SmartInput
+                    value={settings.departureFilter || ''}
+                    onChange={(value) => onSettingsChange('departureFilter', value)}
+                    onSelect={(result) => handleLocationSelect('departureFilter', result)}
+                    placeholder="특정 출발지만 포함하려면 입력"
+                    searchFunction={searchLocations}
+                    recentItems={getRecentLocations()}
+                    favoriteItems={[]}
+                    debounceMs={300}
+                  />
+                  {settings.departureFilter && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearLocationFilter('departureFilter')}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>목적지 필터</Label>
+                <div className="flex gap-2">
+                  <SmartInput
+                    value={settings.destinationFilter || ''}
+                    onChange={(value) => onSettingsChange('destinationFilter', value)}
+                    onSelect={(result) => handleLocationSelect('destinationFilter', result)}
+                    placeholder="특정 목적지만 포함하려면 입력"
+                    searchFunction={searchLocations}
+                    recentItems={getRecentLocations()}
+                    favoriteItems={[]}
+                    debounceMs={300}
+                  />
+                  {settings.destinationFilter && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearLocationFilter('destinationFilter')}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 필터 상태 표시 */}
+            {(settings.departureFilter || settings.destinationFilter) && (
+              <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                <div className="text-sm font-medium text-blue-800 mb-2">활성 필터:</div>
+                <div className="flex gap-2">
+                  {settings.departureFilter && (
+                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                      출발지: {settings.departureFilter}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => clearLocationFilter('departureFilter')}
+                        className="h-4 w-4 p-0 text-green-600 hover:text-green-800"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </span>
+                  )}
+                  {settings.destinationFilter && (
+                    <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                      목적지: {settings.destinationFilter}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => clearLocationFilter('destinationFilter')}
+                        className="h-4 w-4 p-0 text-red-600 hover:text-red-800"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {showRegenerate && onRegenerate && (
         <div className="flex justify-end">

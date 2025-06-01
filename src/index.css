@@ -712,3 +712,56 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* src/index.css 에 추가 - 월간보고서 테이블 최적화 */
+
+/* 🔥 월간 보고서 테이블 컬럼 너비 강제 적용 */
+.report-container table[style*="table-layout: fixed"] th,
+.report-container table[style*="table-layout: fixed"] td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 🔥 모바일에서 월간보고서 횟수 컬럼 더 좁게 */
+@media (max-width: 768px) {
+
+  .report-container table[style*="table-layout: fixed"] th:nth-child(3),
+  .report-container table[style*="table-layout: fixed"] td:nth-child(3) {
+    width: 8% !important;
+    min-width: 30px !important;
+    padding: 1px 2px !important;
+    font-size: 6px !important;
+  }
+
+  /* 품목 컬럼도 약간 축소 */
+  .report-container table[style*="table-layout: fixed"] th:nth-child(2),
+  .report-container table[style*="table-layout: fixed"] td:nth-child(2) {
+    width: 35% !important;
+    padding: 1px 2px !important;
+    font-size: 6px !important;
+  }
+}
+
+/* 🔥 횟수 입력 필드 너비 제한 */
+.report-container input[type="number"][class*="w-full"] {
+  max-width: 60px;
+}
+
+/* 🔥 MonthlyReportGrid 전용 스타일 */
+.monthly-report-grid {
+  table-layout: fixed !important;
+}
+
+.monthly-report-grid th:nth-child(3),
+.monthly-report-grid td:nth-child(3) {
+  width: 4% !important;
+  min-width: 40px !important;
+  text-align: center !important;
+}
+
+.monthly-report-grid th:nth-child(3) input,
+.monthly-report-grid td:nth-child(3) input {
+  max-width: 50px !important;
+  text-align: center !important;
+}

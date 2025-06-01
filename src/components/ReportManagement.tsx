@@ -1,4 +1,4 @@
-// src/components/ReportManagement.tsx
+// src/components/ReportManagement.tsx (실시간 반영 수정)
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,9 @@ interface ReportSettings {
   additionalText: string;
   driverName: string;
   contact: string;
+  // 🔥 새로 추가된 필터링 옵션
+  departureFilter?: string;
+  destinationFilter?: string;
 }
 
 const ReportManagement: React.FC = () => {
@@ -83,7 +86,7 @@ const ReportManagement: React.FC = () => {
     }
   };
 
-  // 🔥 수정된 handleGenerateDailyReport - ReportSettings 타입 사용
+  // 🔥 수정된 handleGenerateDailyReport - 필터링 포함
   const handleGenerateDailyReport = async (settings: ReportSettings) => {
     try {
       setLoading(true);
@@ -94,13 +97,20 @@ const ReportManagement: React.FC = () => {
         getVehicles()
       ]);
 
+      // 🔥 필터링 옵션 전달
+      const filters = {
+        departureFilter: settings.departureFilter,
+        destinationFilter: settings.destinationFilter
+      };
+
       // 보고서 생성
       const reportData = generateDailyReport(
         trips,
         vehicles,
         settings.startDate,
         settings.endDate,
-        settings.vehicleId
+        settings.vehicleId,
+        filters
       );
 
       // 저장 - 모든 설정 포함
@@ -114,7 +124,10 @@ const ReportManagement: React.FC = () => {
           vehicleId: settings.vehicleId,
           additionalText: settings.additionalText,
           driverName: settings.driverName,
-          contact: settings.contact
+          contact: settings.contact,
+          // 🔥 필터링 옵션도 저장
+          departureFilter: settings.departureFilter,
+          destinationFilter: settings.destinationFilter
         },
         data: reportData
       });
@@ -182,8 +195,23 @@ const ReportManagement: React.FC = () => {
     setIsReportViewerOpen(true);
   };
 
+  // 🔥 실시간 반영을 위한 수정된 함수
   const handleReportUpdated = async () => {
+    // 보고서 목록을 새로고침하여 실시간 반영
     await loadReports();
+
+    // 현재 보고 있는 보고서도 업데이트
+    if (viewingReport) {
+      try {
+        const updatedReports = await getReports();
+        const updatedReport = updatedReports.find(r => r.id === viewingReport.id);
+        if (updatedReport) {
+          setViewingReport(updatedReport);
+        }
+      } catch (error) {
+        console.error('Error updating viewing report:', error);
+      }
+    }
   };
 
   const handleDeleteReport = async (id: string) => {

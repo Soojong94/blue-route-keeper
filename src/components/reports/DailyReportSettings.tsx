@@ -1,4 +1,4 @@
-// src/components/reports/DailyReportSettings.tsx
+// src/components/reports/DailyReportSettings.tsx (수정)
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,8 @@ import { getVehicles, getTripsByDateRange } from '@/utils/storage';
 import { generateDailyReport } from '@/utils/reportUtils';
 import { ReportControls } from '@/components/reports/ReportControls';
 import DailyReport from '@/components/reports/DailyReport';
-import { format } from 'date-fns'; // 🔥 이 줄 추가
-import { ko } from 'date-fns/locale'; // 🔥 이 줄도 추가 (필요한 경우)
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 interface ReportSettings {
   title: string;
@@ -20,6 +20,9 @@ interface ReportSettings {
   additionalText: string;
   driverName: string;
   contact: string;
+  // 🔥 새로 추가된 필터링 옵션
+  departureFilter?: string;
+  destinationFilter?: string;
 }
 
 interface DailyReportSettingsProps {
@@ -44,7 +47,9 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
     vehicleId: 'all',
     additionalText: '',
     driverName: '',
-    contact: ''
+    contact: '',
+    departureFilter: '',
+    destinationFilter: ''
   });
 
   const { toast } = useToast();
@@ -55,7 +60,7 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
       const today = new Date();
       setSettings(prev => ({
         ...prev,
-        title: `${format(today, 'yyyy년 MM월', { locale: ko })} 운행보고서`, // 🔥 여기서 format 사용
+        title: `${format(today, 'yyyy년 MM월', { locale: ko })} 운행보고서`,
         startDate: today,
         endDate: today
       }));
@@ -63,12 +68,12 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
     }
   }, [open]);
 
-  // 설정 변경 시 실시간 미리보기 생성
+  // 🔥 설정 변경 시 실시간 미리보기 생성 (필터 포함)
   useEffect(() => {
     if (open && settings.title && settings.startDate && settings.endDate) {
       generatePreview();
     }
-  }, [settings.startDate, settings.endDate, settings.vehicleId, open]);
+  }, [settings.startDate, settings.endDate, settings.vehicleId, settings.departureFilter, settings.destinationFilter, open]);
 
   const loadVehicles = async () => {
     try {
@@ -83,12 +88,20 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
     setPreviewLoading(true);
     try {
       const trips = await getTripsByDateRange(settings.startDate, settings.endDate);
+
+      // 🔥 필터링 옵션 전달
+      const filters = {
+        departureFilter: settings.departureFilter,
+        destinationFilter: settings.destinationFilter
+      };
+
       const reportData = generateDailyReport(
         trips,
         vehicles,
         settings.startDate,
         settings.endDate,
-        settings.vehicleId
+        settings.vehicleId,
+        filters
       );
       setPreviewData(reportData);
     } catch (error) {
@@ -141,7 +154,7 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* 보고서 설정 */}
+          {/* 🔥 보고서 설정 - 필터링 활성화 */}
           <ReportControls
             settings={settings}
             vehicles={vehicles}
@@ -149,6 +162,7 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
             onRegenerate={generatePreview}
             showRegenerate={true}
             compact={false}
+            enableLocationFilters={true}
           />
 
           {/* 미리보기 */}

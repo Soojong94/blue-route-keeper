@@ -1,8 +1,8 @@
-// src/components/reports/SavedReportViewer.tsx
+// src/components/reports/SavedReportViewer.tsx (수정된 부분)
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, BarChart3, Download, Printer, Edit, Save, X } from 'lucide-react';
+import { FileText, BarChart3, Edit, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateReport } from '@/utils/reportStorage';
 import { getTripsByDateRange } from '@/utils/storage';
@@ -10,6 +10,7 @@ import { generateDailyReport } from '@/utils/reportUtils';
 import { Vehicle } from '@/types/trip';
 import DailyReport from '@/components/reports/DailyReport';
 import MonthlyReport from '@/components/reports/MonthlyReport';
+import ReportDownloader from '@/components/reports/ReportDownloader';
 import { MonthlyReportData } from '@/utils/reportUtils';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +22,9 @@ interface ReportSettings {
   additionalText: string;
   driverName: string;
   contact: string;
+  // 🔥 새로 추가된 필터링 옵션
+  departureFilter?: string;
+  destinationFilter?: string;
 }
 
 interface SavedReport {
@@ -58,11 +62,38 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   const { toast } = useToast();
 
+  // 🔥 날짜 변환 헬퍼 함수 추가
+  const convertStringToDate = (dateStr: string | Date): Date => {
+    if (dateStr instanceof Date && !isNaN(dateStr.getTime())) return dateStr;
+    if (typeof dateStr === 'string') {
+      const parsed = new Date(dateStr);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date(); // 기본값
+  };
+
+  // 🔥 설정 변환 함수 추가
+  const convertSettings = (settings: any): ReportSettings => {
+    return {
+      title: settings.title || '',
+      startDate: convertStringToDate(settings.startDate),
+      endDate: convertStringToDate(settings.endDate),
+      vehicleId: settings.vehicleId || 'all',
+      additionalText: settings.additionalText || '',
+      driverName: settings.driverName || '',
+      contact: settings.contact || '',
+      // 🔥 필터링 옵션 추가
+      departureFilter: settings.departureFilter || '',
+      destinationFilter: settings.destinationFilter || ''
+    };
+  };
+
   // 데이터 초기화
   useEffect(() => {
     if (report && isEditing) {
       setEditedData(JSON.parse(JSON.stringify(report.data)));
-      setEditedSettings(JSON.parse(JSON.stringify(report.settings)));
+      // 🔥 설정도 날짜 변환하여 설정
+      setEditedSettings(convertSettings(report.settings));
       setHasUnsavedChanges(false);
     }
   }, [report, isEditing]);
@@ -75,7 +106,8 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   const handleStartEdit = () => {
     setIsEditing(true);
     setEditedData(JSON.parse(JSON.stringify(report.data)));
-    setEditedSettings(JSON.parse(JSON.stringify(report.settings)));
+    // 🔥 설정도 날짜 변환하여 설정
+    setEditedSettings(convertSettings(report.settings));
     setHasUnsavedChanges(false);
   };
 
@@ -96,29 +128,37 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   };
 
-  // 일간 보고서 설정 변경 처리
+  // 🔥 일간 보고서 설정 변경 처리 수정
   const handleDailySettingsChange = (newSettings: ReportSettings) => {
+    // 이미 Date 객체로 변환된 상태이므로 그대로 저장
     setEditedSettings(newSettings);
     setHasUnsavedChanges(true);
   };
 
-  // 일간 보고서 데이터 재생성
+  // 🔥 일간 보고서 데이터 재생성 (필터링 포함)
   const handleRegenerateDaily = async () => {
     if (!editedSettings) return;
 
     setRegenerating(true);
     try {
       const trips = await getTripsByDateRange(
-        new Date(editedSettings.startDate),
-        new Date(editedSettings.endDate)
+        editedSettings.startDate,
+        editedSettings.endDate
       );
+
+      // 🔥 필터링 옵션 전달
+      const filters = {
+        departureFilter: editedSettings.departureFilter,
+        destinationFilter: editedSettings.destinationFilter
+      };
 
       const newReportData = generateDailyReport(
         trips,
         vehicles,
-        new Date(editedSettings.startDate),
-        new Date(editedSettings.endDate),
-        editedSettings.vehicleId
+        editedSettings.startDate,
+        editedSettings.endDate,
+        editedSettings.vehicleId,
+        filters
       );
 
       setEditedData(newReportData);
@@ -162,9 +202,13 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
         data: editedData
       };
 
-      // 설정도 변경된 경우
+      // 설정도 변경된 경우 - 날짜를 문자열로 변환하여 저장
       if (editedSettings) {
-        updateData.settings = editedSettings;
+        updateData.settings = {
+          ...editedSettings,
+          startDate: editedSettings.startDate.toISOString(),
+          endDate: editedSettings.endDate.toISOString()
+        };
       }
 
       // 월간 보고서의 경우 편집 가능한 행도 저장
@@ -184,6 +228,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
       setEditedSettings(null);
       setHasUnsavedChanges(false);
 
+      // 🔥 실시간 반영을 위해 부모 컴포넌트에 즉시 알림
       if (onReportUpdated) {
         onReportUpdated();
       }
@@ -199,66 +244,12 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   };
 
-  const handlePrint = () => {
-    setTimeout(() => {
-      window.print();
-    }, 100);
-  };
-
-  const handleExport = () => {
-    // CSV 내보내기 로직
-    if (report.type === 'daily') {
-      const dataToExport = isEditing ? editedData : report.data;
-      const csvData = dataToExport.dailyTrips.map((trip: any) => [
-        `${trip.month}/${trip.day}`,
-        trip.vehicleNumber,
-        trip.departure,
-        trip.destination,
-        trip.unitPrice,
-        trip.count,
-        trip.dailyTotal
-      ]);
-
-      const headers = ['날짜', '차량번호', '출발지', '목적지', '단가', '횟수', '총액'];
-      const csvContent = [headers, ...csvData]
-        .map(row => row.join(','))
-        .join('\n');
-
-      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${report.title}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } else {
-      const dataToExport = isEditing ? editedData : report.data;
-      const csvData = dataToExport.rows?.map((row: any) => [
-        row.date,
-        row.item,
-        row.count,
-        row.unitPrice,
-        row.totalAmount
-      ]) || [];
-
-      const headers = ['날짜', '품목', '횟수', '단가', '총액'];
-      const csvContent = [headers, ...csvData]
-        .map(row => row.join(','))
-        .join('\n');
-
-      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${report.title}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-    }
-  };
-
   // 현재 표시할 데이터와 설정 결정
   const displayData = isEditing ? editedData : report.data;
-  const displaySettings = isEditing ? editedSettings : report.settings;
+  const displaySettings = isEditing ? editedSettings : convertSettings(report.settings);
+
+  // 🔥 다운로드용 고유 ID 생성
+  const reportElementId = `report-content-${report.id}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -291,24 +282,12 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
                   <Edit className="h-4 w-4 mr-2" />
                   편집
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrint}
-                  className="no-print"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  인쇄
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExport}
-                  className="no-print"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  CSV 내보내기
-                </Button>
+                {/* 🔥 다운로드 컴포넌트로 교체 */}
+                <ReportDownloader
+                  targetElementId={reportElementId}
+                  filename={report.title}
+                  showText={true}
+                />
               </>
             ) : (
               <>
@@ -355,9 +334,9 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
           )}
         </DialogHeader>
 
-        {/* 보고서 내용 */}
+        {/* 🔥 보고서 내용 - 다운로드용 ID 추가 */}
         <div className="py-4">
-          <div className="report-container">
+          <div className="report-container" id={reportElementId}>
             {report.type === 'daily' ? (
               <DailyReport
                 data={displayData}
