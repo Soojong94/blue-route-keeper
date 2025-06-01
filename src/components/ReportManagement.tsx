@@ -1,4 +1,4 @@
-/* src/components/ReportManagement.tsx 수정 - 차량 데이터 전달 */
+// src/components/ReportManagement.tsx
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,16 +7,26 @@ import { useToast } from '@/hooks/use-toast';
 import { getTripsByDateRange, getVehicles } from '@/utils/storage';
 import { generateDailyReport, generateMonthlyReport, MonthlyReportData } from '@/utils/reportUtils';
 import { saveReport, getReports, updateReport, deleteReport, SavedReport } from '@/utils/reportStorage';
-import { Vehicle } from '@/types/trip'; // 🔥 Vehicle 타입 import
+import { Vehicle } from '@/types/trip';
 import ReportTypeSelector from '@/components/reports/ReportTypeSelector';
 import DailyReportSettings from '@/components/reports/DailyReportSettings';
 import MonthlyReportSettings from '@/components/reports/MonthlyReportSettings';
 import ReportList from '@/components/reports/ReportList';
 import SavedReportViewer from '@/components/reports/SavedReportViewer';
 
+interface ReportSettings {
+  title: string;
+  startDate: Date;
+  endDate: Date;
+  vehicleId: string;
+  additionalText: string;
+  driverName: string;
+  contact: string;
+}
+
 const ReportManagement: React.FC = () => {
   const [reports, setReports] = useState<SavedReport[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]); // 🔥 차량 데이터 상태 추가
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState<'daily' | 'monthly' | null>(null);
   const [viewingReport, setViewingReport] = useState<SavedReport | null>(null);
@@ -31,7 +41,7 @@ const ReportManagement: React.FC = () => {
 
   useEffect(() => {
     loadReports();
-    loadVehicles(); // 🔥 차량 데이터 로드
+    loadVehicles();
   }, []);
 
   const loadReports = async () => {
@@ -51,7 +61,6 @@ const ReportManagement: React.FC = () => {
     }
   };
 
-  // 🔥 차량 데이터 로드 함수 추가
   const loadVehicles = async () => {
     try {
       const vehiclesData = await getVehicles();
@@ -74,16 +83,8 @@ const ReportManagement: React.FC = () => {
     }
   };
 
-  // 수정된 handleGenerateDailyReport - 추가 필드 저장
-  const handleGenerateDailyReport = async (settings: {
-    title: string;
-    startDate: Date;
-    endDate: Date;
-    vehicleId: string;
-    additionalText?: string;
-    driverName?: string;
-    contact?: string;
-  }) => {
+  // 🔥 수정된 handleGenerateDailyReport - ReportSettings 타입 사용
+  const handleGenerateDailyReport = async (settings: ReportSettings) => {
     try {
       setLoading(true);
 
@@ -102,17 +103,18 @@ const ReportManagement: React.FC = () => {
         settings.vehicleId
       );
 
-      // 저장 - 추가 필드들을 settings에 포함
+      // 저장 - 모든 설정 포함
       await saveReport({
         title: settings.title,
         type: 'daily',
         settings: {
+          title: settings.title,
           startDate: settings.startDate.toISOString(),
           endDate: settings.endDate.toISOString(),
           vehicleId: settings.vehicleId,
-          additionalText: settings.additionalText || '',
-          driverName: settings.driverName || '',
-          contact: settings.contact || ''
+          additionalText: settings.additionalText,
+          driverName: settings.driverName,
+          contact: settings.contact
         },
         data: reportData
       });
@@ -176,32 +178,12 @@ const ReportManagement: React.FC = () => {
   };
 
   const handleEditReport = (report: SavedReport) => {
-    // 편집 기능은 SavedReportViewer에서 처리하므로 단순히 보기로 이동
     setViewingReport(report);
     setIsReportViewerOpen(true);
   };
 
-  // 📝 보고서 업데이트 후 목록 새로고침
   const handleReportUpdated = async () => {
     await loadReports();
-  };
-
-  const updateReportTitle = async (id: string, title: string) => {
-    try {
-      await updateReport(id, { title });
-      toast({
-        title: "수정 완료",
-        description: "보고서 제목이 수정되었습니다.",
-      });
-      await loadReports();
-    } catch (error) {
-      console.error('Update report error:', error);
-      toast({
-        title: "수정 실패",
-        description: "보고서 수정 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleDeleteReport = async (id: string) => {
@@ -275,7 +257,6 @@ const ReportManagement: React.FC = () => {
         onGenerate={handleGenerateMonthlyReport}
       />
 
-      {/* 🔥 SavedReportViewer에 vehicles prop 전달 */}
       <SavedReportViewer
         open={isReportViewerOpen}
         onOpenChange={setIsReportViewerOpen}

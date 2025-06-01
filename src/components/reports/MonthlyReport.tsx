@@ -1,4 +1,4 @@
-// src/components/reports/MonthlyReport.tsx - 편집 모드 개선
+// src/components/reports/MonthlyReport.tsx
 import React, { useState, useEffect } from 'react';
 import { MonthlyReportData, MonthlyReportRow } from '@/utils/reportUtils';
 import MonthlyReportGrid from './MonthlyReportGrid';
@@ -18,6 +18,7 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({
 }) => {
   const [reportData, setReportData] = useState<MonthlyReportData>(data);
 
+  // 🔥 props 변경 시 즉시 동기화
   useEffect(() => {
     setReportData(data);
   }, [data]);
@@ -31,8 +32,10 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({
       totalAmount
     };
 
+    // 🔥 즉시 로컬 상태 업데이트
     setReportData(newReportData);
 
+    // 🔥 즉시 상위 컴포넌트에 알림
     if (onDataChange) {
       onDataChange(newReportData);
     }

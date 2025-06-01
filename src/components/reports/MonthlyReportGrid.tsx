@@ -1,4 +1,4 @@
-// src/components/reports/MonthlyReportGrid.tsx - 컬럼 너비 조정
+// src/components/reports/MonthlyReportGrid.tsx
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
 
   const notifyRowsChange = useCallback((newRows: MonthlyReportRow[]) => {
     setRows(newRows);
+    // 즉시 상위 컴포넌트에 알림
     onRowsChange(newRows);
   }, [onRowsChange]);
 
@@ -71,7 +72,6 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
   const handleCellClick = (rowIndex: number, field: keyof MonthlyReportRow) => {
     if (readonly) return;
 
-    // 날짜 필드는 달력 팝오버로 처리
     if (field === 'date') {
       const popoverKey = `${rowIndex}-${field}`;
       setDatePickerOpen(prev => ({ ...prev, [popoverKey]: true }));
@@ -122,7 +122,6 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
           : Math.min(currentFieldIndex + 1, fields.length - 1);
         const nextField = fields[nextFieldIndex];
 
-        // 다음 필드가 날짜면 달력 열기
         if (nextField === 'date') {
           const popoverKey = `${editingCell.rowIndex}-date`;
           setDatePickerOpen(prev => ({ ...prev, [popoverKey]: true }));
@@ -172,7 +171,6 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
       );
     }
 
-    // 날짜 필드 특별 처리
     if (field === 'date') {
       const popoverKey = `${rowIndex}-${field}`;
       const dateValue = value ? new Date(value as string) : undefined;
@@ -248,7 +246,6 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* 상단 행 추가 버튼 */}
       {!readonly && (
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={addRow} className="text-xs h-7 px-3">
@@ -258,16 +255,16 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
         </div>
       )}
 
-      {/* 그리드 테이블 - 🔥 컬럼 너비 조정 */}
+      {/* 🔥 수정된 컬럼 너비 */}
       <div className="border rounded-lg overflow-auto">
         <table className="w-full border-collapse text-xs min-w-[600px]">
           <thead className="bg-gray-50 sticky top-0">
             <tr>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '12%' }}>날짜</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '45%' }}>품목</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '8%' }}>횟수</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '20%' }}>단가</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '15%' }}>금액</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '15%' }}>날짜</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '40%' }}>품목</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '6%' }}>횟수</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '22%' }}>단가</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '17%' }}>금액</th>
               {!readonly && <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '5%' }}>삭제</th>}
             </tr>
           </thead>
@@ -298,7 +295,6 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
         </table>
       </div>
 
-      {/* 하단 행 추가 버튼 */}
       {!readonly && (
         <div className="flex justify-center">
           <Button variant="outline" size="sm" onClick={addRow} className="text-xs h-7 px-3">
