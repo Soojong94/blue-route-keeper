@@ -262,6 +262,7 @@ const ReportManagement: React.FC = () => {
             onEdit={handleEditReport}
             onDelete={handleDeleteReport}
             loading={loading}
+            vehicles={vehicles} // 🔥 vehicles prop 추가
           />
         </CardContent>
       </Card>

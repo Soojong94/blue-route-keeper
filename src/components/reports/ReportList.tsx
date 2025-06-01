@@ -1,10 +1,10 @@
-// src/components/reports/ReportList.tsx - 편집 버튼 개선
+// src/components/reports/ReportList.tsx 수정
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { FileText, BarChart3, Eye, Edit, Trash2, Search } from 'lucide-react';
+import { FileText, BarChart3, Eye, Edit, Trash2, Search, Car, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +25,7 @@ interface ReportListProps {
   onEdit: (report: SavedReport) => void;
   onDelete: (id: string) => void;
   loading: boolean;
+  vehicles?: any[]; // 차량 목록 추가
 }
 
 const ReportList: React.FC<ReportListProps> = ({
@@ -32,7 +33,8 @@ const ReportList: React.FC<ReportListProps> = ({
   onView,
   onEdit,
   onDelete,
-  loading
+  loading,
+  vehicles = []
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredReports, setFilteredReports] = useState<SavedReport[]>([]);
@@ -72,6 +74,55 @@ const ReportList: React.FC<ReportListProps> = ({
     return type === 'daily'
       ? 'bg-blue-100 text-blue-800 border-blue-300'
       : 'bg-green-100 text-green-800 border-green-300';
+  };
+
+  // 🔥 차량 정보 표시 함수 추가
+  const getVehicleInfo = (report: SavedReport) => {
+    if (report.type !== 'daily' || !report.settings) return null;
+
+    const vehicleId = report.settings.vehicleId;
+    if (vehicleId === 'all') {
+      return <Badge variant="outline" className="bg-gray-50 text-gray-700 text-xs">전체 차량</Badge>;
+    }
+
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      return (
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+          <Car className="h-3 w-3 mr-1" />
+          {vehicle.licensePlate}{vehicle.name ? ` (${vehicle.name})` : ''}
+        </Badge>
+      );
+    }
+
+    return null;
+  };
+
+  // 🔥 장소 필터 정보 표시 함수 추가
+  const getLocationFilters = (report: SavedReport) => {
+    if (report.type !== 'daily' || !report.settings) return null;
+
+    const filters = [];
+
+    if (report.settings.departureFilter) {
+      filters.push(
+        <Badge key="departure" variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+          <MapPin className="h-3 w-3 mr-1" />
+          출발: {report.settings.departureFilter}
+        </Badge>
+      );
+    }
+
+    if (report.settings.destinationFilter) {
+      filters.push(
+        <Badge key="destination" variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+          <MapPin className="h-3 w-3 mr-1" />
+          목적: {report.settings.destinationFilter}
+        </Badge>
+      );
+    }
+
+    return filters.length > 0 ? filters : null;
   };
 
   if (loading) {
@@ -117,15 +168,22 @@ const ReportList: React.FC<ReportListProps> = ({
                       </h3>
                     </div>
 
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <Badge className={`${getTypeBadgeColor(report.type)} px-2 py-1`}>
                         {getTypeLabel(report.type)}
                       </Badge>
+
+                      {/* 🔥 차량 정보 표시 */}
+                      {getVehicleInfo(report)}
+
+                      {/* 🔥 장소 필터 정보 표시 */}
+                      {getLocationFilters(report)}
+
                       {report.settings?.startDate && report.settings?.endDate && (
-                        <span className="text-sm text-gray-500">
+                        <Badge variant="outline" className="text-xs">
                           {format(new Date(report.settings.startDate), 'yyyy.MM.dd')} ~
                           {format(new Date(report.settings.endDate), 'MM.dd')}
-                        </span>
+                        </Badge>
                       )}
                     </div>
 

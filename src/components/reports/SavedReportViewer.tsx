@@ -169,6 +169,15 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   const handleMonthlyDataChange = (newData: MonthlyReportData) => {
     setEditedData(newData);
+
+    // 🔥 월간보고서에서 제목이 변경된 경우 설정도 업데이트
+    if (editedSettings && newData.period !== editedSettings.title) {
+      setEditedSettings({
+        ...editedSettings,
+        title: newData.period
+      });
+    }
+
     setHasUnsavedChanges(true);
   };
 
@@ -187,7 +196,14 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
         data: editedData
       };
 
-      if (editedSettings) {
+      // 🔥 월간보고서의 경우 제목 업데이트 처리
+      if (report.type === 'monthly' && editedData.period) {
+        updateData.title = editedData.period;
+        updateData.settings = {
+          ...report.settings,
+          title: editedData.period
+        };
+      } else if (editedSettings) {
         updateData.settings = {
           ...editedSettings,
           startDate: editedSettings.startDate.toISOString(),
