@@ -31,22 +31,133 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
         throw new Error('요소를 찾을 수 없습니다.');
       }
 
-      // 🔥 모바일에서 더 높은 해상도로 캡처
+      // 🔥 다운로드용 클래스 추가
+      const originalClasses = element.className;
+      element.classList.add('download-optimized');
+
       const canvas = await html2canvas(element, {
-        scale: window.innerWidth <= 768 ? 3 : 2, // 모바일에서 더 높은 스케일
+        scale: 3, // 높은 해상도
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
-        removeContainer: true,
+        removeContainer: false,
         scrollX: 0,
         scrollY: 0,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        foreignObjectRendering: true
+        foreignObjectRendering: false,
+        logging: false,
+        onclone: (clonedDoc, clonedElement) => {
+          // 🔥 클론된 요소에 다운로드 최적화 스타일 적용
+          const style = clonedDoc.createElement('style');
+          style.textContent = `
+            .download-optimized {
+              background: white !important;
+              color: black !important;
+              font-family: Arial, sans-serif !important;
+              padding: 16px !important;
+              width: 800px !important;
+              max-width: none !important;
+              margin: 0 !important;
+              font-size: 14px !important;
+              line-height: 1.4 !important;
+            }
+            
+            .download-optimized table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              border: 2px solid #000 !important;
+              margin: 8px 0 !important;
+              table-layout: fixed !important;
+            }
+            
+            .download-optimized th,
+            .download-optimized td {
+              border: 1px solid #000 !important;
+              padding: 8px 4px !important;
+              text-align: center !important;
+              font-size: 12px !important;
+              line-height: 1.3 !important;
+              vertical-align: middle !important;
+              word-wrap: break-word !important;
+              background: white !important;
+              color: black !important;
+              height: auto !important;
+              min-height: 28px !important;
+              white-space: normal !important;
+            }
+            
+            .download-optimized th {
+              background: #f0f0f0 !important;
+              font-weight: bold !important;
+              font-size: 13px !important;
+            }
+            
+            /* 일간보고서 컬럼 너비 */
+            .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(1),
+            .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(1) { width: 80px !important; }
+            .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(2),
+            .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(2) { width: 100px !important; }
+            .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(3),
+            .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(3) { width: 120px !important; }
+            .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(4),
+            .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(4) { width: 120px !important; }
+            .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(5),
+            .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(5) { width: 90px !important; }
+            .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(6),
+            .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(6) { width: 60px !important; }
+            .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(7),
+            .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(7) { width: 100px !important; }
+            
+            /* 월간보고서 컬럼 너비 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(1),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(1) { width: 100px !important; }
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(2),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(2) { width: 200px !important; }
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(3),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) { width: 80px !important; }
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(4),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(4) { width: 120px !important; }
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(5),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(5) { width: 120px !important; }
+            
+            .download-optimized .text-lg { font-size: 18px !important; font-weight: bold !important; }
+            .download-optimized .text-xl { font-size: 20px !important; font-weight: bold !important; }
+            
+            .download-optimized .bg-blue-50,
+            .download-optimized .bg-green-50,
+            .download-optimized .bg-red-50,
+            .download-optimized .bg-gray-50 {
+              background: #f8f8f8 !important;
+              border: 1px solid #ccc !important;
+              padding: 8px !important;
+              margin: 4px 0 !important;
+            }
+            
+            .download-optimized * {
+              box-shadow: none !important;
+              text-shadow: none !important;
+            }
+            
+            /* 색상 통일 */
+            .download-optimized .text-blue-600,
+            .download-optimized .text-blue-700,
+            .download-optimized .text-blue-800,
+            .download-optimized .text-green-600,
+            .download-optimized .text-green-700,
+            .download-optimized .text-green-800,
+            .download-optimized .text-red-600,
+            .download-optimized .text-red-700,
+            .download-optimized .text-red-800 {
+              color: #000 !important;
+            }
+          `;
+          clonedDoc.head.appendChild(style);
+        }
       });
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      // 🔥 원래 클래스 복원
+      element.className = originalClasses;
 
+      const imgData = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
       link.download = `${filename}.png`;
       link.href = imgData;
@@ -78,66 +189,89 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
         throw new Error('요소를 찾을 수 없습니다.');
       }
 
-      // 🔥 모바일 PDF 생성 최적화
-      const isMobile = window.innerWidth <= 768;
+      // 이미지 생성과 동일한 방식으로 처리
+      const originalClasses = element.className;
+      element.classList.add('download-optimized');
 
       const canvas = await html2canvas(element, {
-        scale: isMobile ? 3 : 2, // 모바일에서 더 높은 해상도
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
-        removeContainer: true,
+        removeContainer: false,
         scrollX: 0,
         scrollY: 0,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        foreignObjectRendering: true,
-        // 🔥 모바일에서 테이블 렌더링 개선
+        foreignObjectRendering: false,
+        logging: false,
         onclone: (clonedDoc) => {
-          if (isMobile) {
-            const tables = clonedDoc.querySelectorAll('.report-container table');
-            tables.forEach(table => {
-              (table as HTMLElement).style.minWidth = '400px';
-              (table as HTMLElement).style.width = '100%';
-              (table as HTMLElement).style.tableLayout = 'fixed';
-
-              const cells = table.querySelectorAll('th, td');
-              cells.forEach((cell, index) => {
-                const cellElement = cell as HTMLElement;
-                cellElement.style.border = '1px solid #000';
-                cellElement.style.padding = '2px';
-                cellElement.style.fontSize = '8px';
-                cellElement.style.lineHeight = '1.2';
-                cellElement.style.wordWrap = 'break-word';
-                cellElement.style.overflow = 'visible';
-                cellElement.style.whiteSpace = 'normal';
-              });
-            });
-          }
+          // PDF용 동일한 스타일 적용
+          const style = clonedDoc.createElement('style');
+          style.textContent = `
+            .download-optimized {
+              background: white !important;
+              color: black !important;
+              font-family: Arial, sans-serif !important;
+              padding: 20px !important;
+              width: 900px !important;
+              max-width: none !important;
+              margin: 0 !important;
+              font-size: 16px !important;
+              line-height: 1.4 !important;
+            }
+            
+            .download-optimized table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              border: 3px solid #000 !important;
+              margin: 10px 0 !important;
+              table-layout: fixed !important;
+            }
+            
+            .download-optimized th,
+            .download-optimized td {
+              border: 2px solid #000 !important;
+              padding: 10px 6px !important;
+              text-align: center !important;
+              font-size: 14px !important;
+              line-height: 1.4 !important;
+              vertical-align: middle !important;
+              word-wrap: break-word !important;
+              background: white !important;
+              color: black !important;
+              height: auto !important;
+              min-height: 32px !important;
+              white-space: normal !important;
+            }
+            
+            .download-optimized th {
+              background: #e0e0e0 !important;
+              font-weight: bold !important;
+              font-size: 15px !important;
+            }
+            
+            .download-optimized .text-lg { font-size: 20px !important; font-weight: bold !important; }
+            .download-optimized .text-xl { font-size: 22px !important; font-weight: bold !important; }
+            
+            .download-optimized * { color: #000 !important; }
+          `;
+          clonedDoc.head.appendChild(style);
         }
       });
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      element.className = originalClasses;
 
-      // 🔥 PDF 생성 최적화
+      const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-
-      // 🔥 모바일에서 더 나은 비율 계산
-      const ratio = Math.min(
-        (pdfWidth - 10) / imgWidth,
-        (pdfHeight - 10) / imgHeight
-      );
-
+      const ratio = Math.min((pdfWidth - 10) / imgWidth, (pdfHeight - 10) / imgHeight);
       const finalWidth = imgWidth * ratio;
       const finalHeight = imgHeight * ratio;
-
       const x = (pdfWidth - finalWidth) / 2;
-      const y = 5; // 상단 여백
+      const y = 5;
 
       pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
       pdf.save(`${filename}.pdf`);
