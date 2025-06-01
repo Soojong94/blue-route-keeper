@@ -1,4 +1,4 @@
-/* src/components/reports/SavedReportViewer.tsx 수정 */
+/* src/components/reports/SavedReportViewer.tsx */
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -30,14 +30,9 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   if (!report) return null;
 
   const handlePrint = () => {
-    // 인쇄 전에 body에 printing 클래스 추가
-    document.body.classList.add('printing');
+    // 간단한 인쇄 처리
     setTimeout(() => {
       window.print();
-      // 인쇄 후 클래스 제거
-      setTimeout(() => {
-        document.body.classList.remove('printing');
-      }, 1000);
     }, 100);
   };
 
@@ -92,7 +87,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto mx-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         {/* 다이얼로그 헤더 - 인쇄 시 숨김 */}
         <DialogHeader className="no-print">
           <DialogTitle className="flex items-center gap-2">
@@ -125,10 +120,9 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
           </div>
         </DialogHeader>
 
-        {/* 보고서 내용 - 인쇄 시 이 부분만 출력 */}
+        {/* 보고서 내용 */}
         <div className="py-4">
-          {/* 보고서 컨테이너에 중앙 정렬 및 최대 너비 설정 */}
-          <div className="report-container mx-auto" style={{ maxWidth: '210mm' }}>
+          <div className="report-container">
             {report.type === 'daily' ? (
               <DailyReport
                 data={report.data}

@@ -41,26 +41,50 @@
   }
 }
 
-/* 🎯 다이얼로그 중앙 정렬 강화 */
+/* 🎯 다이얼로그 중앙 정렬 - 모바일 포함 */
 [data-radix-dialog-content] {
-  margin: 0 auto !important;
+  position: fixed !important;
+  top: 50% !important;
   left: 50% !important;
-  transform: translateX(-50%) !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  width: min(95vw, 1200px) !important;
+  max-height: 95vh !important;
+  overflow-y: auto !important;
+}
+
+/* 모바일에서 다이얼로그 크기 조정 */
+@media (max-width: 768px) {
+  [data-radix-dialog-content] {
+    width: 95vw !important;
+    height: 90vh !important;
+    max-height: 90vh !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+  }
 }
 
 /* 보고서 컨테이너 중앙 정렬 */
 .report-container {
   margin: 0 auto !important;
   width: 100% !important;
-  max-width: 210mm;
-  /* A4 용지 너비 */
-}
-
-/* 보고서 컴포넌트만 작은 크기 유지 */
-.report-container {
+  max-width: 210mm !important;
+  display: block !important;
+  text-align: left !important;
   font-size: 10px;
 }
 
+/* 다이얼로그 내부 보고서 컨테이너 */
+[data-radix-dialog-content] .report-container {
+  margin: 0 auto !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 보고서 컴포넌트만 작은 크기 유지 */
 .report-container h1 {
   font-size: 1.4rem;
 }
@@ -105,43 +129,138 @@
   font-size: 1.25rem;
 }
 
-/* 모바일 보고서 레이아웃 개선 */
+/* 🎯 모바일 보고서 레이아웃 개선 - 가로 스크롤 대폭 최소화 */
 @media (max-width: 768px) {
   .report-container {
     width: 100% !important;
-    margin: 0 !important;
-    padding: 8px !important;
-    font-size: 9px !important;
+    margin: 0 auto !important;
+    padding: 2px !important;
+    font-size: 7px !important;
     overflow-x: auto;
   }
 
+  /* 모바일에서 테이블 컬럼 너비 극도로 최적화 */
   .report-container table {
     width: 100% !important;
     table-layout: fixed !important;
-    min-width: 600px;
+    min-width: 360px !important;
+    /* 480px에서 360px로 대폭 줄임 */
   }
 
-  .report-container th,
-  .report-container td {
-    padding: 4px 2px !important;
-    font-size: 8px !important;
-    word-wrap: break-word;
+  /* 모바일 테이블 셀 너비 비율 재조정 - 더 컴팩트하게 */
+  .report-container th:nth-child(1),
+  /* 날짜 */
+  .report-container td:nth-child(1) {
+    width: 7% !important;
+    padding: 1px 0.5px !important;
+    font-size: 6px !important;
   }
 
+  .report-container th:nth-child(2),
+  /* 차량번호 */
+  .report-container td:nth-child(2) {
+    width: 10% !important;
+    padding: 1px 0.5px !important;
+    font-size: 6px !important;
+  }
+
+  .report-container th:nth-child(3),
+  /* 출발지 */
+  .report-container td:nth-child(3) {
+    width: 16% !important;
+    padding: 1px 0.5px !important;
+    font-size: 6px !important;
+  }
+
+  .report-container th:nth-child(4),
+  /* 목적지 */
+  .report-container td:nth-child(4) {
+    width: 16% !important;
+    padding: 1px 0.5px !important;
+    font-size: 6px !important;
+  }
+
+  .report-container th:nth-child(5),
+  /* 단가 */
+  .report-container td:nth-child(5) {
+    width: 13% !important;
+    padding: 1px 0.5px !important;
+    font-size: 6px !important;
+  }
+
+  .report-container th:nth-child(6),
+  /* 횟수 */
+  .report-container td:nth-child(6) {
+    width: 6% !important;
+    padding: 1px 0.5px !important;
+    font-size: 6px !important;
+  }
+
+  .report-container th:nth-child(7),
+  /* 총액 */
+  .report-container td:nth-child(7) {
+    width: 32% !important;
+    padding: 1px 0.5px !important;
+    font-size: 6px !important;
+    font-weight: bold !important;
+  }
+
+  /* 모바일에서 헤더와 제목 크기 조정 */
   .report-container .text-lg {
-    font-size: 14px !important;
+    font-size: 10px !important;
   }
 
   .report-container .text-xl {
-    font-size: 16px !important;
+    font-size: 12px !important;
+  }
+
+  /* 모바일에서 통합 정보 라인 간격 조정 */
+  .report-container .bg-blue-50 {
+    padding: 4px 2px !important;
+    font-size: 6px !important;
+  }
+
+  /* 숫자 포맷팅 최적화 */
+  .report-container td {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* 모바일에서 차량번호는 뒤 4자리만 표시 */
+  .report-container td:nth-child(2) {
+    font-family: monospace !important;
+  }
+
+  /* 모바일에서 금액은 천원 단위로 축약 표시 고려 */
+  .report-container td:nth-child(5),
+  .report-container td:nth-child(7) {
+    text-align: right !important;
+    font-family: monospace !important;
+  }
+
+  /* 모바일 테이블 헤더 스타일 조정 */
+  .report-container th {
+    font-size: 6px !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    padding: 2px 0.5px !important;
+    line-height: 1.1 !important;
+    word-break: keep-all !important;
+  }
+
+  /* 모바일에서 보고서 제목 영역 컴팩트화 */
+  .report-container>div:first-child {
+    margin-bottom: 4px !important;
   }
 }
 
 /* 일반 화면에서 보고서 중앙 정렬 */
 @media screen {
   .report-container {
-    margin: 0 auto;
-    max-width: min(100%, 210mm);
+    margin: 0 auto !important;
+    max-width: min(100%, 210mm) !important;
+    display: block !important;
   }
 
   /* 다이얼로그 내부 테이블 overflow 처리 */
@@ -152,180 +271,214 @@
 
   .report-container table {
     min-width: 600px;
-    /* 최소 너비 보장 */
     width: 100%;
+    margin: 0 auto;
   }
 }
 
-/* 🎯 개선된 인쇄용 스타일 */
+/* 🎯 수정된 인쇄용 스타일 - 페이지 분할 지원 + CSS 경고 해결 */
 @media print {
+
+  /* 인쇄용 기본 설정 - color-adjust 경고 해결 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    /* color-adjust 대신 print-color-adjust 사용 */
+  }
+
   html {
-    font-size: 12px;
+    font-size: 12px !important;
   }
 
-  /* 인쇄 시 body에 printing 클래스가 있을 때만 적용 */
-  body.printing * {
-    visibility: hidden !important;
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
   }
 
-  /* 보고서 컨테이너만 보이도록 */
-  body.printing .report-container,
-  body.printing .report-container * {
-    visibility: visible !important;
+  /* 페이지 설정 */
+  @page {
+    margin: 15mm !important;
+    size: A4 !important;
   }
 
-  /* 다이얼로그 관련 완전히 제거 */
-  body.printing [data-radix-dialog-overlay],
-  body.printing [data-radix-dialog-content] {
+  /* 인쇄 시 숨길 요소들 */
+  .no-print,
+  [data-radix-dialog-overlay],
+  header,
+  nav,
+  button:not(.report-container button),
+  .tabs-list,
+  .tab-navigation,
+  .navigation,
+  .mobile-navigation,
+  [data-radix-tabs-list],
+  .dialog-close-button {
+    display: none !important;
+  }
+
+  /* 다이얼로그 컨테이너 재설정 */
+  [data-radix-dialog-content] {
     position: static !important;
     transform: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
     box-shadow: none !important;
     border: none !important;
     background: white !important;
-    max-width: none !important;
-    max-height: none !important;
-    width: 100% !important;
-    height: auto !important;
     border-radius: 0 !important;
-    overflow: visible !important;
   }
 
-  /* 기존 인쇄 숨김 스타일 강화 */
-  body.printing .no-print,
-  body.printing .no-print *,
-  body.printing header,
-  body.printing nav,
-  body.printing .tabs-list,
-  body.printing .tab-navigation,
-  body.printing .navigation,
-  body.printing .mobile-navigation,
-  body.printing [data-radix-tabs-list],
-  body.printing [data-radix-dialog-overlay],
-  body.printing button[aria-label*="닫기"],
-  body.printing button[aria-label*="취소"],
-  body.printing .dialog-close-button {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
-  /* 전체 레이아웃 정리 */
-  body.printing {
-    background: white !important;
-    color: black !important;
+  /* 보고서 컨테이너 인쇄 최적화 */
+  .report-container {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-
-  /* 보고서만 표시 */
-  body.printing .report-container {
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 15mm !important;
     font-size: 11px !important;
     background: white !important;
     color: black !important;
     box-shadow: none !important;
     border: none !important;
-    position: relative !important;
+    transform: none !important;
+    left: auto !important;
+    top: auto !important;
+    page-break-inside: auto !important;
+    /* 페이지 분할 허용 */
   }
 
-  /* 테이블 인쇄 최적화 */
-  body.printing table {
+  /* 🎯 테이블 페이지 분할 최적화 */
+  .report-container table {
     border-collapse: collapse !important;
     width: 100% !important;
     page-break-inside: auto !important;
+    /* 테이블 내부 페이지 분할 허용 */
+    margin: 0 !important;
   }
 
-  body.printing th,
-  body.printing td {
+  /* 테이블 헤더는 각 페이지에 반복 표시 */
+  .report-container thead {
+    display: table-header-group !important;
+  }
+
+  .report-container tbody {
+    display: table-row-group !important;
+  }
+
+  /* 테이블 행 페이지 분할 최적화 */
+  .report-container tr {
+    page-break-inside: avoid !important;
+    /* 행 내부 분할 방지 */
+    page-break-after: auto !important;
+    /* 행 간 분할 허용 */
+  }
+
+  /* 테이블 헤더 행은 분할 방지 */
+  .report-container thead tr {
+    page-break-after: avoid !important;
+  }
+
+  .report-container th,
+  .report-container td {
     border: 1px solid #000 !important;
-    padding: 4px !important;
+    padding: 3px !important;
     text-align: left !important;
     font-size: 10px !important;
+    page-break-inside: avoid !important;
+    vertical-align: top !important;
   }
 
-  body.printing th {
+  .report-container th {
     background-color: #f0f0f0 !important;
     font-weight: bold !important;
   }
 
-  /* 페이지 여백 설정 */
-  @page {
-    margin: 15mm;
-    size: A4;
+  /* 보고서 제목과 헤더 정보는 첫 페이지에만 */
+  .report-container>div:first-child {
+    page-break-after: avoid !important;
+  }
+
+  /* 통합 정보 라인은 테이블과 함께 유지 */
+  .report-container .bg-blue-50,
+  .report-container .bg-gray-50 {
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* 텍스트 정렬 유지 */
+  .report-container .text-center {
+    text-align: center !important;
+  }
+
+  .report-container .text-right {
+    text-align: right !important;
   }
 
   /* 색상 조정 */
-  body.printing .text-blue-600,
-  body.printing .text-blue-700,
-  body.printing .text-blue-800,
-  body.printing .text-green-600,
-  body.printing .text-green-700,
-  body.printing .text-green-800,
-  body.printing .text-red-600,
-  body.printing .text-red-700,
-  body.printing .text-red-800 {
+  .report-container .text-blue-600,
+  .report-container .text-blue-700,
+  .report-container .text-blue-800,
+  .report-container .text-green-600,
+  .report-container .text-green-700,
+  .report-container .text-green-800,
+  .report-container .text-red-600,
+  .report-container .text-red-700,
+  .report-container .text-red-800 {
     color: #000 !important;
   }
 
   /* 배경색 제거 */
-  body.printing .bg-blue-50,
-  body.printing .bg-green-50,
-  body.printing .bg-red-50,
-  body.printing .bg-gray-50 {
+  .report-container .bg-blue-50,
+  .report-container .bg-green-50,
+  .report-container .bg-red-50,
+  .report-container .bg-gray-50 {
     background-color: transparent !important;
   }
 
   /* 그라데이션 배경 제거 */
-  body.printing .bg-gradient-to-r,
-  body.printing .bg-gradient-to-br,
-  body.printing .bg-gradient-to-l {
+  .report-container .bg-gradient-to-r,
+  .report-container .bg-gradient-to-br,
+  .report-container .bg-gradient-to-l {
     background: white !important;
     color: black !important;
   }
 
-  body.printing .text-white {
+  .report-container .text-white {
     color: black !important;
   }
 
   /* 테두리 색상 정리 */
-  body.printing .border-blue-200,
-  body.printing .border-green-200,
-  body.printing .border-purple-200,
-  body.printing .border-amber-200,
-  body.printing .border-orange-200 {
+  .report-container .border-blue-200,
+  .report-container .border-green-200,
+  .report-container .border-purple-200,
+  .report-container .border-amber-200,
+  .report-container .border-orange-200 {
     border-color: #000 !important;
   }
 
   /* 그림자 제거 */
-  body.printing .shadow-sm,
-  body.printing .shadow-lg,
-  body.printing .shadow-xl {
+  .report-container .shadow-sm,
+  .report-container .shadow-lg,
+  .report-container .shadow-xl {
     box-shadow: none !important;
   }
 
-  /* 고정 위치 해제 */
-  body.printing .sticky,
-  body.printing .fixed {
-    position: static !important;
-  }
-
   /* 스크롤 해제 */
-  body.printing .overflow-y-auto,
-  body.printing .overflow-x-auto {
+  .report-container .overflow-y-auto,
+  .report-container .overflow-x-auto {
     overflow: visible !important;
   }
 
-  body.printing .max-h-\[90vh\],
-  body.printing .max-h-\[95vh\] {
+  .report-container .max-h-\[90vh\],
+  .report-container .max-h-\[95vh\] {
     max-height: none !important;
-  }
-
-  /* 드롭다운 숨기기 */
-  body.printing .unified-input-dropdown {
-    display: none !important;
   }
 }
 
