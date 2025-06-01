@@ -1,3 +1,4 @@
+// src/components/notepad/NoteList.tsx
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -62,8 +63,9 @@ const NoteList: React.FC<NoteListProps> = ({
                 <div className="flex items-center gap-2">
                   <FileText className="h-3 w-3" />
                   <span>{note.title}</span>
+                  {/* 수정일시 제거하고 생성일시만 표시 */}
                   <Badge variant="outline" className="text-[10px] px-1">
-                    {format(new Date(note.updated_at || note.created_at), 'MM/dd')}
+                    {format(new Date(note.created_at), 'MM/dd')}
                   </Badge>
                 </div>
               </SelectItem>

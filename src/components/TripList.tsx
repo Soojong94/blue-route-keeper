@@ -878,11 +878,6 @@ const TripGroupCard: React.FC<TripGroupCardProps> = ({
                   {/* 저장 시간 */}
                   <div className="text-[10px] text-gray-400">
                     저장: {format(new Date(trip.createdAt), 'MM/dd HH:mm')}
-                    {trip.updatedAt && (
-                      <span className="text-blue-500 ml-2">
-                        (수정: {format(new Date(trip.updatedAt), 'MM/dd HH:mm')})
-                      </span>
-                    )}
                   </div>
                 </div>
 

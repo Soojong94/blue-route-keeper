@@ -6,47 +6,38 @@
 @layer base {
   html {
     font-size: 16px;
-    /* 8px에서 16px로 복원 */
   }
 
   body {
     font-size: 1rem;
-    /* 14px 효과 */
   }
 
   h1 {
     font-size: 2rem;
-    /* 32px */
   }
 
   h2 {
     font-size: 1.5rem;
-    /* 24px */
   }
 
   h3 {
     font-size: 1.25rem;
-    /* 20px */
   }
 
   h4 {
     font-size: 1.125rem;
-    /* 18px */
   }
 
   h5 {
     font-size: 1rem;
-    /* 16px */
   }
 
   h6 {
     font-size: 0.875rem;
-    /* 14px */
   }
 
   small {
     font-size: 0.75rem;
-    /* 12px */
   }
 }
 
@@ -97,6 +88,38 @@
 
 .report-container .text-xl {
   font-size: 1.25rem;
+}
+
+/* 모바일 보고서 레이아웃 개선 */
+@media (max-width: 768px) {
+  .report-container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    font-size: 9px !important;
+    overflow-x: auto;
+  }
+
+  .report-container table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    min-width: 600px;
+  }
+
+  .report-container th,
+  .report-container td {
+    padding: 4px 2px !important;
+    font-size: 8px !important;
+    word-wrap: break-word;
+  }
+
+  .report-container .text-lg {
+    font-size: 14px !important;
+  }
+
+  .report-container .text-xl {
+    font-size: 16px !important;
+  }
 }
 
 /* 기존 드롭다운 z-index 스타일들 유지 */
@@ -278,17 +301,28 @@
   border-color: #93c5fd !important;
 }
 
-/* src/index.css 수정 - @media print 부분을 다음으로 교체 */
-
-/* 인쇄용 스타일 */
+/* 🎯 개선된 인쇄용 스타일 */
 @media print {
   html {
     font-size: 12px;
   }
 
-  /* 인쇄 시 숨길 요소들 */
-  .no-print {
+  /* 인쇄 시 숨길 요소들 - 더 강력하게 */
+  .no-print,
+  .no-print *,
+  header,
+  nav,
+  .tabs-list,
+  .tab-navigation,
+  .navigation,
+  .mobile-navigation,
+  [data-radix-tabs-list],
+  [data-radix-dialog-overlay],
+  button[aria-label*="닫기"],
+  button[aria-label*="취소"],
+  .dialog-close-button {
     display: none !important;
+    visibility: hidden !important;
   }
 
   /* 전체 레이아웃 정리 */
@@ -299,11 +333,7 @@
     padding: 0 !important;
   }
 
-  /* 다이얼로그 관련 숨기기 */
-  [data-radix-dialog-overlay] {
-    display: none !important;
-  }
-
+  /* 다이얼로그 관련 완전히 제거 */
   [data-radix-dialog-content] {
     position: static !important;
     transform: none !important;
@@ -316,28 +346,25 @@
     max-height: none !important;
     width: 100% !important;
     height: auto !important;
-  }
-
-  /* 헤더, 탭, 네비게이션 숨기기 */
-  header,
-  .tabs-list,
-  nav,
-  .navigation,
-  .tab-navigation {
-    display: none !important;
+    border-radius: 0 !important;
   }
 
   /* 보고서만 표시 */
   .report-container {
     width: 100% !important;
     margin: 0 !important;
-    padding: 20px !important;
-    font-size: 12px !important;
+    padding: 15mm !important;
+    font-size: 11px !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
   }
 
   /* 그라데이션 배경 제거 */
   .bg-gradient-to-r,
-  .bg-gradient-to-br {
+  .bg-gradient-to-br,
+  .bg-gradient-to-l {
     background: white !important;
     color: black !important;
   }
@@ -350,7 +377,8 @@
   .border-blue-200,
   .border-green-200,
   .border-purple-200,
-  .border-amber-200 {
+  .border-amber-200,
+  .border-orange-200 {
     border-color: #000 !important;
   }
 
@@ -358,13 +386,16 @@
   .bg-blue-50,
   .bg-green-50,
   .bg-purple-50,
-  .bg-amber-50 {
-    background-color: #f5f5f5 !important;
+  .bg-amber-50,
+  .bg-orange-50,
+  .bg-gray-50 {
+    background-color: #f9f9f9 !important;
   }
 
   /* 그림자 제거 */
   .shadow-sm,
-  .shadow-lg {
+  .shadow-lg,
+  .shadow-xl {
     box-shadow: none !important;
   }
 
@@ -375,11 +406,13 @@
   }
 
   /* 스크롤 해제 */
-  .overflow-y-auto {
+  .overflow-y-auto,
+  .overflow-x-auto {
     overflow: visible !important;
   }
 
-  .max-h-\[90vh\] {
+  .max-h-\[90vh\],
+  .max-h-\[95vh\] {
     max-height: none !important;
   }
 
@@ -388,10 +421,47 @@
     display: none !important;
   }
 
+  /* 테이블 인쇄 최적화 */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #000 !important;
+    padding: 4px !important;
+    text-align: left !important;
+  }
+
+  th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold !important;
+  }
+
   /* 페이지 여백 설정 */
   @page {
-    margin: 1cm;
+    margin: 15mm;
     size: A4;
+  }
+
+  /* 인쇄용 컬러 조정 */
+  .text-blue-600,
+  .text-blue-700,
+  .text-blue-800 {
+    color: #000 !important;
+  }
+
+  .text-green-600,
+  .text-green-700,
+  .text-green-800 {
+    color: #000 !important;
+  }
+
+  .text-red-600,
+  .text-red-700,
+  .text-red-800 {
+    color: #000 !important;
   }
 }
 

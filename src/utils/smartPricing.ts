@@ -15,43 +15,29 @@ const CACHE_TTL = 5 * 60 * 1000; // 5분 캐시 유효 시간
 export const getRecentUnitPrice = async (departure: string, destination: string): Promise<number | null> => {
   const cacheKey = `${departure}-${destination}`;
   
-  console.log('🔍 Looking for recent unit price:', { departure, destination });
-  
   // 캐시 TTL 체크
   if (routePriceCache.has(cacheKey)) {
     const cached = routePriceCache.get(cacheKey)!;
     const now = Date.now();
     
     if (now - cached.timestamp < CACHE_TTL) {
-      console.log('💰 Found valid cached price:', cached.unitPrice);
       return cached.unitPrice;
     } else {
-      console.log('🕐 Cache expired, removing from cache');
       routePriceCache.delete(cacheKey);
     }
   }
 
   try {
-    // ✅ 사용자 인증 확인
+    // 사용자 인증 확인
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log('❌ User not authenticated for smart pricing');
       return null;
     }
-
-    console.log('👤 User authenticated:', user.id);
 
     // 3개월 이내의 데이터만 조회
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const threeMonthsAgoStr = threeMonthsAgo.toISOString().split('T')[0];
-
-    console.log('🔍 Querying database for:', {
-      departure,
-      destination,
-      userId: user.id,
-      sinceDate: threeMonthsAgoStr
-    });
 
     const { data, error } = await supabase
       .from('trips')
@@ -60,24 +46,15 @@ export const getRecentUnitPrice = async (departure: string, destination: string)
       .eq('departure', departure)
       .eq('destination', destination)
       .gte('date', threeMonthsAgoStr)
-      .order('created_at', { ascending: false }) // ✅ 생성 시간 기준 최신순
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (error) {
-      console.error('❌ Supabase query error:', error);
       throw error;
     }
 
-    console.log('📊 Query result:', { 
-      resultCount: data?.length || 0, 
-      data: data?.[0] || null 
-    });
-
     if (data && data.length > 0) {
       const unitPrice = data[0].unit_price;
-      
-      console.log('✅ Found recent price:', unitPrice);
-      console.log('📅 From date:', data[0].created_at);
       
       // 캐시에 저장 (타임스탬프와 함께)
       routePriceCache.set(cacheKey, {
@@ -91,10 +68,9 @@ export const getRecentUnitPrice = async (departure: string, destination: string)
       return unitPrice;
     }
 
-    console.log('🚫 No recent price found for this route');
     return null;
   } catch (error) {
-    console.error('❌ Error fetching recent unit price:', error);
+    console.error('Error fetching recent unit price:', error);
     return null;
   }
 };
@@ -103,10 +79,8 @@ export const getRecentUnitPrice = async (departure: string, destination: string)
 export const clearRoutePriceCache = (departure?: string, destination?: string) => {
   if (departure && destination) {
     const cacheKey = `${departure}-${destination}`;
-    console.log('🧹 Clearing specific route cache:', cacheKey);
     routePriceCache.delete(cacheKey);
   } else {
-    console.log('🧹 Clearing all route price cache');
     routePriceCache.clear();
   }
 };
@@ -121,10 +95,6 @@ export const cleanExpiredCache = () => {
       routePriceCache.delete(key);
       cleanedCount++;
     }
-  }
-  
-  if (cleanedCount > 0) {
-    console.log(`🧹 Cleaned ${cleanedCount} expired cache entries`);
   }
 };
 

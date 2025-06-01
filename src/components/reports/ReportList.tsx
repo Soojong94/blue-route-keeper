@@ -1,3 +1,4 @@
+// src/components/reports/ReportList.tsx
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -128,13 +129,9 @@ const ReportList: React.FC<ReportListProps> = ({
                       )}
                     </div>
 
+                    {/* 수정일시 제거하고 생성일시만 표시 */}
                     <div className="text-sm text-gray-500">
                       생성: {format(new Date(report.created_at), 'yyyy.MM.dd HH:mm')}
-                      {report.updated_at && (
-                        <span className="text-blue-500 ml-2">
-                          (수정: {format(new Date(report.updated_at), 'MM.dd HH:mm')})
-                        </span>
-                      )}
                     </div>
                   </div>
 

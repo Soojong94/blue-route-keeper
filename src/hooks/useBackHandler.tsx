@@ -16,9 +16,8 @@ export const useBackHandler = () => {
   // 모달 등록
   const registerModal = useCallback((modal: ModalState) => {
     setModalStack(prev => [...prev, modal]);
-
-    // 히스토리에 상태 추가
-    window.history.pushState({ modalId: modal.id }, '', window.location.href);
+    // 히스토리에 상태 추가 (간소화)
+    window.history.pushState({ modalId: modal.id }, '');
   }, []);
 
   // 모달 해제
@@ -37,14 +36,14 @@ export const useBackHandler = () => {
     return false;
   }, [modalStack]);
 
-  // 메인 탭에서 종료 처리
+  // 메인 탭에서 종료 처리 (간소화)
   const handleMainTabExit = useCallback(() => {
     if (exitWarningShown) {
       // 두 번째 뒤로가기 - 실제 종료
       if (exitTimerRef.current) {
         clearTimeout(exitTimerRef.current);
       }
-      window.history.back();
+      // 브라우저 뒤로가기 허용
       return;
     }
 
@@ -56,8 +55,8 @@ export const useBackHandler = () => {
       duration: 2000,
     });
 
-    // 히스토리에 상태 추가 (두 번째 뒤로가기 감지용)
-    window.history.pushState({ exitWarning: true }, '', window.location.href);
+    // 히스토리에 더미 상태 추가 (단순화)
+    window.history.pushState({ exitWarning: true }, '');
 
     // 2초 후 경고 상태 해제
     exitTimerRef.current = setTimeout(() => {
@@ -65,19 +64,25 @@ export const useBackHandler = () => {
     }, 2000);
   }, [exitWarningShown, toast]);
 
-  // popstate 이벤트 리스너
+  // popstate 이벤트 리스너 (간소화)
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      event.preventDefault();
-
       // 모달이 열려있으면 모달 닫기
       if (modalStack.length > 0) {
+        event.preventDefault();
         closeTopModal();
         return;
       }
 
-      // 메인 탭에서 종료 처리
-      handleMainTabExit();
+      // 종료 경고 상태가 아니면 종료 처리
+      if (!exitWarningShown) {
+        event.preventDefault();
+        handleMainTabExit();
+        return;
+      }
+
+      // 두 번째 뒤로가기면 실제 종료 허용
+      // (아무것도 하지 않음 - 브라우저가 처리)
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -88,7 +93,7 @@ export const useBackHandler = () => {
         clearTimeout(exitTimerRef.current);
       }
     };
-  }, [modalStack, closeTopModal, handleMainTabExit]);
+  }, [modalStack, closeTopModal, handleMainTabExit, exitWarningShown]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {

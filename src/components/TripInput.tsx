@@ -94,7 +94,7 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       metadata: {
         vehicleId: vehicle.id,
         vehicle,
-        category: vehicle.defaultUnitPrice ? `${vehicle.defaultUnitPrice.toLocaleString()}원` : undefined
+        additionalInfo: vehicle.defaultUnitPrice ? `${vehicle.defaultUnitPrice.toLocaleString()}원` : undefined
       }
     }));
   }, [vehicles]);
@@ -348,8 +348,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
     smartPriceTimeouts.current.set(rowId, timeoutId);
   }, [rows, toast]);
 
-  // 기존 코드는 그대로 유지하고, saveAllRows 함수만 수정
-
   const saveAllRows = async () => {
     setLoading(true);
     let savedCount = 0;
@@ -461,7 +459,6 @@ const TripInput: React.FC<TripInputProps> = ({ onTripSaved }) => {
       });
     }
   };
-
 
   const totalAmount = useMemo(() => {
     return rows.reduce((sum, row) => {
@@ -682,7 +679,6 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
               "text-xs h-8 w-full pr-8",
               row.isPriceAutoLoaded && "bg-blue-50 border-blue-200"
             )}
-
             step="1000"
           />
           {isPriceLoading && (
@@ -705,7 +701,6 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
           onChange={(e) => onUpdate(row.id, 'count', e.target.value)}
           placeholder="횟수"
           className="text-xs h-8"
-
         />
       </td>
 

@@ -59,13 +59,15 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
       link.click();
       URL.revokeObjectURL(url);
     } else {
-      const csvData = report.data.departureStats.map((stat: any) => [
-        stat.departure,
-        stat.totalCount,
-        stat.totalAmount
-      ]);
+      const csvData = report.data.rows?.map((row: any) => [
+        row.date,
+        row.item,
+        row.count,
+        row.unitPrice,
+        row.totalAmount
+      ]) || [];
 
-      const headers = ['출발지', '횟수', '총액'];
+      const headers = ['날짜', '품목', '횟수', '단가', '총액'];
       const csvContent = [headers, ...csvData]
         .map(row => row.join(','))
         .join('\n');
@@ -98,6 +100,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
               variant="outline"
               size="sm"
               onClick={handlePrint}
+              className="no-print"
             >
               <Printer className="h-4 w-4 mr-2" />
               인쇄
@@ -106,6 +109,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
               variant="outline"
               size="sm"
               onClick={handleExport}
+              className="no-print"
             >
               <Download className="h-4 w-4 mr-2" />
               CSV 내보내기
@@ -126,13 +130,13 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
                 onDateChange={() => { }}
                 onVehicleChange={() => { }}
                 onRefresh={() => { }}
-                viewMode="view" // 뷰 모드 추가
-                savedSettings={report.settings} // 저장된 설정 전달
+                viewMode="view"
+                savedSettings={report.settings}
               />
             ) : (
               <MonthlyReport
                 data={report.data}
-                viewMode="view" // 뷰 모드 추가
+                viewMode="view"
               />
             )}
           </div>
