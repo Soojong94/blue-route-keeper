@@ -1,4 +1,4 @@
-// src/components/reports/MonthlyReport.tsx
+// src/components/reports/MonthlyReport.tsx - 편집 모드 개선
 import React, { useState, useEffect } from 'react';
 import { MonthlyReportData, MonthlyReportRow } from '@/utils/reportUtils';
 import MonthlyReportGrid from './MonthlyReportGrid';
@@ -44,6 +44,15 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({
       {showTitle && (
         <div className="text-center border-b pb-4">
           <h2 className="text-xl font-bold text-gray-900">{reportData.period}</h2>
+        </div>
+      )}
+
+      {/* 편집 모드 안내 */}
+      {viewMode === 'edit' && (
+        <div className="bg-blue-50 p-3 rounded mb-4">
+          <p className="text-sm text-blue-700">
+            💡 <strong>편집 모드:</strong> 아래 표를 직접 클릭하여 수정할 수 있습니다. 행 추가/삭제도 가능합니다.
+          </p>
         </div>
       )}
 

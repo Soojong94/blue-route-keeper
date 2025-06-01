@@ -129,12 +129,12 @@
   font-size: 1.25rem;
 }
 
-/* 🎯 모바일 보고서 레이아웃 개선 - 가로 스크롤 대폭 최소화 */
+/* 🎯 개선된 모바일 보고서 레이아웃 - 가로 스크롤 최소화 */
 @media (max-width: 768px) {
   .report-container {
     width: 100% !important;
-    margin: 0 auto !important;
-    padding: 2px !important;
+    margin: 0 !important;
+    padding: 1px !important;
     font-size: 7px !important;
     overflow-x: auto;
   }
@@ -143,15 +143,15 @@
   .report-container table {
     width: 100% !important;
     table-layout: fixed !important;
-    min-width: 360px !important;
-    /* 480px에서 360px로 대폭 줄임 */
+    min-width: 300px !important;
+    /* 320px에서 300px로 더 줄임 */
   }
 
-  /* 모바일 테이블 셀 너비 비율 재조정 - 더 컴팩트하게 */
+  /* 모바일 테이블 셀 너비 비율 재조정 - 금액 컬럼 대폭 축소 */
   .report-container th:nth-child(1),
   /* 날짜 */
   .report-container td:nth-child(1) {
-    width: 7% !important;
+    width: 10% !important;
     padding: 1px 0.5px !important;
     font-size: 6px !important;
   }
@@ -159,7 +159,7 @@
   .report-container th:nth-child(2),
   /* 차량번호 */
   .report-container td:nth-child(2) {
-    width: 10% !important;
+    width: 12% !important;
     padding: 1px 0.5px !important;
     font-size: 6px !important;
   }
@@ -167,7 +167,7 @@
   .report-container th:nth-child(3),
   /* 출발지 */
   .report-container td:nth-child(3) {
-    width: 16% !important;
+    width: 22% !important;
     padding: 1px 0.5px !important;
     font-size: 6px !important;
   }
@@ -175,7 +175,7 @@
   .report-container th:nth-child(4),
   /* 목적지 */
   .report-container td:nth-child(4) {
-    width: 16% !important;
+    width: 22% !important;
     padding: 1px 0.5px !important;
     font-size: 6px !important;
   }
@@ -183,7 +183,7 @@
   .report-container th:nth-child(5),
   /* 단가 */
   .report-container td:nth-child(5) {
-    width: 13% !important;
+    width: 12% !important;
     padding: 1px 0.5px !important;
     font-size: 6px !important;
   }
@@ -197,61 +197,66 @@
   }
 
   .report-container th:nth-child(7),
-  /* 총액 */
+  /* 총액 - 대폭 축소 */
   .report-container td:nth-child(7) {
-    width: 32% !important;
+    width: 16% !important;
+    /* 32%에서 16%로 대폭 축소 */
     padding: 1px 0.5px !important;
     font-size: 6px !important;
     font-weight: bold !important;
   }
 
-  /* 모바일에서 헤더와 제목 크기 조정 */
-  .report-container .text-lg {
-    font-size: 10px !important;
-  }
-
-  .report-container .text-xl {
-    font-size: 12px !important;
-  }
-
-  /* 모바일에서 통합 정보 라인 간격 조정 */
-  .report-container .bg-blue-50 {
-    padding: 4px 2px !important;
-    font-size: 6px !important;
-  }
-
-  /* 숫자 포맷팅 최적화 */
-  .report-container td {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  /* 모바일에서 차량번호는 뒤 4자리만 표시 */
-  .report-container td:nth-child(2) {
-    font-family: monospace !important;
-  }
-
-  /* 모바일에서 금액은 천원 단위로 축약 표시 고려 */
+  /* 모바일에서 금액 표시 최적화 */
   .report-container td:nth-child(5),
   .report-container td:nth-child(7) {
     text-align: right !important;
     font-family: monospace !important;
   }
 
-  /* 모바일 테이블 헤더 스타일 조정 */
+  /* 모바일에서 차량번호 축약 표시 */
+  .report-container td:nth-child(2) {
+    font-family: monospace !important;
+    font-weight: bold !important;
+  }
+
+  /* 기타 모바일 최적화 */
+  .report-container .text-lg {
+    font-size: 9px !important;
+  }
+
+  .report-container .text-xl {
+    font-size: 11px !important;
+  }
+
+  .report-container .bg-blue-50 {
+    padding: 2px 1px !important;
+    font-size: 6px !important;
+  }
+
   .report-container th {
     font-size: 6px !important;
     font-weight: bold !important;
     text-align: center !important;
-    padding: 2px 0.5px !important;
+    padding: 1px 0.5px !important;
     line-height: 1.1 !important;
     word-break: keep-all !important;
   }
 
+  .report-container td {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
+  }
+
   /* 모바일에서 보고서 제목 영역 컴팩트화 */
   .report-container>div:first-child {
-    margin-bottom: 4px !important;
+    margin-bottom: 2px !important;
+  }
+
+  /* 모바일에서 통합 정보 라인 간격 조정 */
+  .report-container .space-y-2>*+* {
+    margin-top: 1px !important;
   }
 }
 
@@ -279,11 +284,10 @@
 /* 🎯 수정된 인쇄용 스타일 - 페이지 분할 지원 + CSS 경고 해결 */
 @media print {
 
-  /* 인쇄용 기본 설정 - color-adjust 경고 해결 */
+  /* 인쇄용 기본 설정 */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    /* color-adjust 대신 print-color-adjust 사용 */
   }
 
   html {
@@ -351,19 +355,16 @@
     left: auto !important;
     top: auto !important;
     page-break-inside: auto !important;
-    /* 페이지 분할 허용 */
   }
 
-  /* 🎯 테이블 페이지 분할 최적화 */
+  /* 테이블 페이지 분할 최적화 */
   .report-container table {
     border-collapse: collapse !important;
     width: 100% !important;
     page-break-inside: auto !important;
-    /* 테이블 내부 페이지 분할 허용 */
     margin: 0 !important;
   }
 
-  /* 테이블 헤더는 각 페이지에 반복 표시 */
   .report-container thead {
     display: table-header-group !important;
   }
@@ -372,15 +373,11 @@
     display: table-row-group !important;
   }
 
-  /* 테이블 행 페이지 분할 최적화 */
   .report-container tr {
     page-break-inside: avoid !important;
-    /* 행 내부 분할 방지 */
     page-break-after: auto !important;
-    /* 행 간 분할 허용 */
   }
 
-  /* 테이블 헤더 행은 분할 방지 */
   .report-container thead tr {
     page-break-after: avoid !important;
   }
@@ -400,19 +397,7 @@
     font-weight: bold !important;
   }
 
-  /* 보고서 제목과 헤더 정보는 첫 페이지에만 */
-  .report-container>div:first-child {
-    page-break-after: avoid !important;
-  }
-
-  /* 통합 정보 라인은 테이블과 함께 유지 */
-  .report-container .bg-blue-50,
-  .report-container .bg-gray-50 {
-    page-break-after: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
-  /* 텍스트 정렬 유지 */
+  /* 기타 인쇄 스타일들 */
   .report-container .text-center {
     text-align: center !important;
   }
@@ -421,7 +406,6 @@
     text-align: right !important;
   }
 
-  /* 색상 조정 */
   .report-container .text-blue-600,
   .report-container .text-blue-700,
   .report-container .text-blue-800,
@@ -434,7 +418,6 @@
     color: #000 !important;
   }
 
-  /* 배경색 제거 */
   .report-container .bg-blue-50,
   .report-container .bg-green-50,
   .report-container .bg-red-50,
@@ -442,7 +425,6 @@
     background-color: transparent !important;
   }
 
-  /* 그라데이션 배경 제거 */
   .report-container .bg-gradient-to-r,
   .report-container .bg-gradient-to-br,
   .report-container .bg-gradient-to-l {
@@ -454,7 +436,6 @@
     color: black !important;
   }
 
-  /* 테두리 색상 정리 */
   .report-container .border-blue-200,
   .report-container .border-green-200,
   .report-container .border-purple-200,
@@ -463,14 +444,12 @@
     border-color: #000 !important;
   }
 
-  /* 그림자 제거 */
   .report-container .shadow-sm,
   .report-container .shadow-lg,
   .report-container .shadow-xl {
     box-shadow: none !important;
   }
 
-  /* 스크롤 해제 */
   .report-container .overflow-y-auto,
   .report-container .overflow-x-auto {
     overflow: visible !important;

@@ -205,6 +205,7 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
               mode="single"
               selected={dateValue}
               onSelect={(date) => handleDateSelect(rowIndex, date)}
+              locale={ko}  // 👈 이 부분 추가
               initialFocus
             />
           </PopoverContent>

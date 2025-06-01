@@ -457,6 +457,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                         }
                       }
                     }}
+                    locale={ko}
                     initialFocus
                   />
                 </PopoverContent>
@@ -492,6 +493,7 @@ const TripList: React.FC<TripListProps> = ({ refreshTrigger }) => {
                         }
                       }
                     }}
+                    locale={ko}
                     initialFocus
                   />
                 </PopoverContent>

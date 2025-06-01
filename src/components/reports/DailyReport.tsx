@@ -1,4 +1,4 @@
-/* src/components/reports/DailyReport.tsx 수정 */
+/* src/components/reports/DailyReport.tsx - formatAmount 함수 제거 */
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,8 +22,8 @@ interface DailyReportProps {
   onDateChange: (startDate: Date, endDate: Date) => void;
   onVehicleChange: (vehicleId: string) => void;
   onRefresh: () => void;
-  viewMode?: 'edit' | 'preview' | 'view'; // 모드 추가
-  savedSettings?: any; // 저장된 설정 추가
+  viewMode?: 'edit' | 'preview' | 'view';
+  savedSettings?: any;
 }
 
 const DailyReport: React.FC<DailyReportProps> = ({
@@ -157,10 +157,14 @@ const DailyReport: React.FC<DailyReportProps> = ({
     return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
   };
 
-  // 차량번호 축약 (뒤 4자리만)
+  // 📱 차량번호 축약 (모바일에서 뒤 4자리만)
   const getShortVehicleNumber = (vehicleNumber: string) => {
     const plateOnly = vehicleNumber.split(' ')[0];
-    return plateOnly.length > 4 ? plateOnly.slice(-4) : plateOnly;
+    // 모바일 환경에서는 뒤 4자리만 표시
+    if (window.innerWidth <= 768) {
+      return plateOnly.length > 4 ? plateOnly.slice(-4) : plateOnly;
+    }
+    return plateOnly;
   };
 
   return (
@@ -182,7 +186,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   )}
                 >
                   <CalendarIcon className="mr-1 h-3 w-3" />
-                  {localStartDate ? format(localStartDate, "MM/dd") : "시작일"}
+                  {localStartDate ? format(localStartDate, "MM/dd", { locale: ko }) : "시작일"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -200,6 +204,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       onRefresh();
                     }
                   }}
+                  locale={ko}
                   initialFocus
                 />
               </PopoverContent>
@@ -220,7 +225,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                   )}
                 >
                   <CalendarIcon className="mr-1 h-3 w-3" />
-                  {localEndDate ? format(localEndDate, "MM/dd") : "종료일"}
+                  {localEndDate ? format(localEndDate, "MM/dd", { locale: ko }) : "종료일"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -238,6 +243,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       onRefresh();
                     }
                   }}
+                  locale={ko}
                   initialFocus
                 />
               </PopoverContent>
@@ -286,6 +292,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
             <Input
               value={additionalText}
               onChange={(e) => setAdditionalText(e.target.value)}
+              placeholder="추가 텍스트 입력 (선택사항)"
               className="text-center text-sm h-8 max-w-md mx-auto border-gray-200"
             />
           ) : (
@@ -403,16 +410,16 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
           {/* 운행 내역 테이블 */}
           <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse border border-gray-200 min-w-[600px]">
+            <table className="w-full text-xs border-collapse border border-gray-200 min-w-[300px]">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[12%]">날짜</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[15%]">차량번호</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[20%]">출발지</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[20%]">목적지</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[10%]">날짜</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[12%]">차량</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[22%]">출발지</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[22%]">목적지</th>
                   <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[12%]">단가</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[8%]">횟수</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[13%]">일 총액</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[6%]">횟수</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[16%]">총액</th>
                 </tr>
               </thead>
               <tbody>
@@ -435,7 +442,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                     </td>
                     <td className="border border-gray-200 px-2 py-0.5 text-center">{trip.count}</td>
                     <td className="border border-gray-200 px-2 py-0.5 text-right font-medium text-blue-600">
-                      {trip.dailyTotal.toLocaleString()}
+                      {trip.dailyTotal.toLocaleString()}원
                     </td>
                   </tr>
                 ))}

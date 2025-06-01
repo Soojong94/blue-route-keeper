@@ -1,4 +1,4 @@
-/* src/components/ReportManagement.tsx 수정 - handleGenerateMonthlyReport 함수 수정 */
+/* src/components/ReportManagement.tsx 수정 - onReportUpdated 콜백 추가 */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -122,7 +122,6 @@ const ReportManagement: React.FC = () => {
     }
   };
 
-  // src/components/ReportManagement.tsx에서 handleGenerateMonthlyReport 함수 수정
   const handleGenerateMonthlyReport = async (settings: {
     title: string;
     reportData: MonthlyReportData;
@@ -164,11 +163,14 @@ const ReportManagement: React.FC = () => {
   };
 
   const handleEditReport = (report: SavedReport) => {
-    // 편집 기능은 제목 변경 정도로 간단하게 구현
-    const newTitle = prompt('새 제목을 입력하세요:', report.title);
-    if (newTitle && newTitle !== report.title) {
-      updateReportTitle(report.id, newTitle);
-    }
+    // 편집 기능은 SavedReportViewer에서 처리하므로 단순히 보기로 이동
+    setViewingReport(report);
+    setIsReportViewerOpen(true);
+  };
+
+  // 📝 보고서 업데이트 후 목록 새로고침
+  const handleReportUpdated = async () => {
+    await loadReports();
   };
 
   const updateReportTitle = async (id: string, title: string) => {
@@ -264,6 +266,7 @@ const ReportManagement: React.FC = () => {
         open={isReportViewerOpen}
         onOpenChange={setIsReportViewerOpen}
         report={viewingReport}
+        onReportUpdated={handleReportUpdated} // 📝 콜백 추가
       />
     </div>
   );

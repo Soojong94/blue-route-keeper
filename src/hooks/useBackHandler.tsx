@@ -1,3 +1,4 @@
+// src/hooks/useBackHandler.tsx - 뒤로가기 개선
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,7 +17,6 @@ export const useBackHandler = () => {
   // 모달 등록
   const registerModal = useCallback((modal: ModalState) => {
     setModalStack(prev => [...prev, modal]);
-    // 히스토리에 상태 추가 (간소화)
     window.history.pushState({ modalId: modal.id }, '');
   }, []);
 
@@ -36,14 +36,15 @@ export const useBackHandler = () => {
     return false;
   }, [modalStack]);
 
-  // 메인 탭에서 종료 처리 (간소화)
+  // 📱 개선된 메인 탭 종료 처리 - 두 번 눌러야 종료
   const handleMainTabExit = useCallback(() => {
     if (exitWarningShown) {
-      // 두 번째 뒤로가기 - 실제 종료
+      // 두 번째 뒤로가기 - 실제 종료 허용
       if (exitTimerRef.current) {
         clearTimeout(exitTimerRef.current);
       }
-      // 브라우저 뒤로가기 허용
+      setExitWarningShown(false);
+      // 브라우저 뒤로가기 허용하여 앱 종료
       return;
     }
 
@@ -51,11 +52,11 @@ export const useBackHandler = () => {
     setExitWarningShown(true);
     toast({
       title: "앱 종료",
-      description: "한 번 더 누르면 앱을 종료합니다",
+      description: "한 번 더 뒤로가기를 누르면 앱을 종료합니다",
       duration: 2000,
     });
 
-    // 히스토리에 더미 상태 추가 (단순화)
+    // 히스토리에 더미 상태 추가하여 뒤로가기 가능하게 함
     window.history.pushState({ exitWarning: true }, '');
 
     // 2초 후 경고 상태 해제
@@ -64,17 +65,17 @@ export const useBackHandler = () => {
     }, 2000);
   }, [exitWarningShown, toast]);
 
-  // popstate 이벤트 리스너 (간소화)
+  // popstate 이벤트 리스너
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      // 모달이 열려있으면 모달 닫기
+      // 모달이 열려있으면 모달 닫기 우선
       if (modalStack.length > 0) {
         event.preventDefault();
         closeTopModal();
         return;
       }
 
-      // 종료 경고 상태가 아니면 종료 처리
+      // 종료 경고 상태가 아니면 첫 번째 뒤로가기 처리
       if (!exitWarningShown) {
         event.preventDefault();
         handleMainTabExit();
@@ -82,7 +83,7 @@ export const useBackHandler = () => {
       }
 
       // 두 번째 뒤로가기면 실제 종료 허용
-      // (아무것도 하지 않음 - 브라우저가 처리)
+      // 추가 처리 없이 브라우저가 자연스럽게 처리하도록 함
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -112,7 +113,7 @@ export const useBackHandler = () => {
   };
 };
 
-// 개별 모달에서 사용할 훅
+// 개별 모달에서 사용할 훅 (기존 유지)
 export const useModalBackHandler = (
   isOpen: boolean,
   onClose: () => void,

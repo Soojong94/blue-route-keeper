@@ -30,6 +30,7 @@ import {
 } from '@/utils/smartSearch';
 
 
+
 interface TripRow {
   id: string;
   date: Date;
@@ -806,6 +807,7 @@ const MobileTripCard: React.FC<TripRowProps> = ({
                     onUpdate(row.id, 'date', localDate);
                   }
                 }}
+                locale={ko}  // 👈 이 부분 추가
                 initialFocus
               />
             </PopoverContent>

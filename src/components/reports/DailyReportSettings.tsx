@@ -279,6 +279,7 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
                         }));
                       }
                     }}
+                    locale={ko}
                     initialFocus
                   />
                 </PopoverContent>
@@ -314,6 +315,7 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
                         }));
                       }
                     }}
+                    locale={ko}
                     initialFocus
                   />
                 </PopoverContent>

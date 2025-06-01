@@ -1,4 +1,4 @@
-// src/components/reports/ReportList.tsx
+// src/components/reports/ReportList.tsx - 편집 버튼 개선
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -129,7 +129,6 @@ const ReportList: React.FC<ReportListProps> = ({
                       )}
                     </div>
 
-                    {/* 수정일시 제거하고 생성일시만 표시 */}
                     <div className="text-sm text-gray-500">
                       생성: {format(new Date(report.created_at), 'yyyy.MM.dd HH:mm')}
                     </div>
@@ -151,7 +150,7 @@ const ReportList: React.FC<ReportListProps> = ({
                       size="sm"
                       onClick={() => onEdit(report)}
                       className="text-green-500 hover:text-green-700 hover:bg-green-50"
-                      title="수정"
+                      title="보기 및 편집"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
