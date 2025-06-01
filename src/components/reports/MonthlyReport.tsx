@@ -39,7 +39,7 @@ const MonthlyReport: React.FC<MonthlyReportProps> = ({
   };
 
   return (
-    <div className="space-y-4 p-4 bg-white report-container">
+    <div className="space-y-4 p-4 bg-white report-container mx-auto" style={{ maxWidth: '210mm' }}>
       {/* 헤더 - showTitle이 true일 때만 표시 */}
       {showTitle && (
         <div className="text-center border-b pb-4">

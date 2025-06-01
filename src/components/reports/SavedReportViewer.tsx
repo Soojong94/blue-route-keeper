@@ -30,7 +30,15 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   if (!report) return null;
 
   const handlePrint = () => {
-    window.print();
+    // 인쇄 전에 body에 printing 클래스 추가
+    document.body.classList.add('printing');
+    setTimeout(() => {
+      window.print();
+      // 인쇄 후 클래스 제거
+      setTimeout(() => {
+        document.body.classList.remove('printing');
+      }, 1000);
+    }, 100);
   };
 
   const handleExport = () => {
@@ -84,7 +92,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto mx-auto">
         {/* 다이얼로그 헤더 - 인쇄 시 숨김 */}
         <DialogHeader className="no-print">
           <DialogTitle className="flex items-center gap-2">
@@ -119,7 +127,8 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
         {/* 보고서 내용 - 인쇄 시 이 부분만 출력 */}
         <div className="py-4">
-          <div className="report-container">
+          {/* 보고서 컨테이너에 중앙 정렬 및 최대 너비 설정 */}
+          <div className="report-container mx-auto" style={{ maxWidth: '210mm' }}>
             {report.type === 'daily' ? (
               <DailyReport
                 data={report.data}

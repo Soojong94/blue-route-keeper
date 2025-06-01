@@ -403,16 +403,16 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
           {/* 운행 내역 테이블 */}
           <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse border border-gray-200">
+            <table className="w-full text-xs border-collapse border border-gray-200 min-w-[600px]">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700">날짜</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700">차량번호</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700">출발지</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700">목적지</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700">단가</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700">횟수</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700">일 총액</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[12%]">날짜</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[15%]">차량번호</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[20%]">출발지</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[20%]">목적지</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[12%]">단가</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[8%]">횟수</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-medium text-gray-700 w-[13%]">일 총액</th>
                 </tr>
               </thead>
               <tbody>

@@ -259,7 +259,7 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
 
       {/* 그리드 테이블 */}
       <div className="border rounded-lg overflow-auto">
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full border-collapse text-xs min-w-[600px]">
           <thead className="bg-gray-50 sticky top-0">
             <tr>
               <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '15%' }}>날짜</th>

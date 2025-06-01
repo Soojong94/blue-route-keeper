@@ -205,7 +205,7 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto mx-auto">
         {/* 상단: 설정 폼 */}
         <DialogHeader>
           <DialogTitle>운행 보고서 설정</DialogTitle>
@@ -357,7 +357,7 @@ const DailyReportSettings: React.FC<DailyReportSettingsProps> = ({
               <p className="mt-2 text-gray-500">보고서 생성 중...</p>
             </div>
           ) : previewData ? (
-            <div className="max-h-96 overflow-y-auto border rounded-lg report-container">
+            <div className="max-h-96 overflow-y-auto border rounded-lg report-container mx-auto" style={{ maxWidth: '210mm' }}>
               <DailyReport
                 data={previewData}
                 vehicles={vehicles}

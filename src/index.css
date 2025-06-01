@@ -41,6 +41,21 @@
   }
 }
 
+/* 🎯 다이얼로그 중앙 정렬 강화 */
+[data-radix-dialog-content] {
+  margin: 0 auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+/* 보고서 컨테이너 중앙 정렬 */
+.report-container {
+  margin: 0 auto !important;
+  width: 100% !important;
+  max-width: 210mm;
+  /* A4 용지 너비 */
+}
+
 /* 보고서 컴포넌트만 작은 크기 유지 */
 .report-container {
   font-size: 10px;
@@ -119,6 +134,198 @@
 
   .report-container .text-xl {
     font-size: 16px !important;
+  }
+}
+
+/* 일반 화면에서 보고서 중앙 정렬 */
+@media screen {
+  .report-container {
+    margin: 0 auto;
+    max-width: min(100%, 210mm);
+  }
+
+  /* 다이얼로그 내부 테이블 overflow 처리 */
+  .report-container .overflow-x-auto {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .report-container table {
+    min-width: 600px;
+    /* 최소 너비 보장 */
+    width: 100%;
+  }
+}
+
+/* 🎯 개선된 인쇄용 스타일 */
+@media print {
+  html {
+    font-size: 12px;
+  }
+
+  /* 인쇄 시 body에 printing 클래스가 있을 때만 적용 */
+  body.printing * {
+    visibility: hidden !important;
+  }
+
+  /* 보고서 컨테이너만 보이도록 */
+  body.printing .report-container,
+  body.printing .report-container * {
+    visibility: visible !important;
+  }
+
+  /* 다이얼로그 관련 완전히 제거 */
+  body.printing [data-radix-dialog-overlay],
+  body.printing [data-radix-dialog-content] {
+    position: static !important;
+    transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    max-width: none !important;
+    max-height: none !important;
+    width: 100% !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* 기존 인쇄 숨김 스타일 강화 */
+  body.printing .no-print,
+  body.printing .no-print *,
+  body.printing header,
+  body.printing nav,
+  body.printing .tabs-list,
+  body.printing .tab-navigation,
+  body.printing .navigation,
+  body.printing .mobile-navigation,
+  body.printing [data-radix-tabs-list],
+  body.printing [data-radix-dialog-overlay],
+  body.printing button[aria-label*="닫기"],
+  body.printing button[aria-label*="취소"],
+  body.printing .dialog-close-button {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 전체 레이아웃 정리 */
+  body.printing {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 보고서만 표시 */
+  body.printing .report-container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+    font-size: 11px !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
+    position: relative !important;
+  }
+
+  /* 테이블 인쇄 최적화 */
+  body.printing table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    page-break-inside: auto !important;
+  }
+
+  body.printing th,
+  body.printing td {
+    border: 1px solid #000 !important;
+    padding: 4px !important;
+    text-align: left !important;
+    font-size: 10px !important;
+  }
+
+  body.printing th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold !important;
+  }
+
+  /* 페이지 여백 설정 */
+  @page {
+    margin: 15mm;
+    size: A4;
+  }
+
+  /* 색상 조정 */
+  body.printing .text-blue-600,
+  body.printing .text-blue-700,
+  body.printing .text-blue-800,
+  body.printing .text-green-600,
+  body.printing .text-green-700,
+  body.printing .text-green-800,
+  body.printing .text-red-600,
+  body.printing .text-red-700,
+  body.printing .text-red-800 {
+    color: #000 !important;
+  }
+
+  /* 배경색 제거 */
+  body.printing .bg-blue-50,
+  body.printing .bg-green-50,
+  body.printing .bg-red-50,
+  body.printing .bg-gray-50 {
+    background-color: transparent !important;
+  }
+
+  /* 그라데이션 배경 제거 */
+  body.printing .bg-gradient-to-r,
+  body.printing .bg-gradient-to-br,
+  body.printing .bg-gradient-to-l {
+    background: white !important;
+    color: black !important;
+  }
+
+  body.printing .text-white {
+    color: black !important;
+  }
+
+  /* 테두리 색상 정리 */
+  body.printing .border-blue-200,
+  body.printing .border-green-200,
+  body.printing .border-purple-200,
+  body.printing .border-amber-200,
+  body.printing .border-orange-200 {
+    border-color: #000 !important;
+  }
+
+  /* 그림자 제거 */
+  body.printing .shadow-sm,
+  body.printing .shadow-lg,
+  body.printing .shadow-xl {
+    box-shadow: none !important;
+  }
+
+  /* 고정 위치 해제 */
+  body.printing .sticky,
+  body.printing .fixed {
+    position: static !important;
+  }
+
+  /* 스크롤 해제 */
+  body.printing .overflow-y-auto,
+  body.printing .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  body.printing .max-h-\[90vh\],
+  body.printing .max-h-\[95vh\] {
+    max-height: none !important;
+  }
+
+  /* 드롭다운 숨기기 */
+  body.printing .unified-input-dropdown {
+    display: none !important;
   }
 }
 
@@ -299,170 +506,6 @@
 .smart-price-input {
   background-color: #eff6ff !important;
   border-color: #93c5fd !important;
-}
-
-/* 🎯 개선된 인쇄용 스타일 */
-@media print {
-  html {
-    font-size: 12px;
-  }
-
-  /* 인쇄 시 숨길 요소들 - 더 강력하게 */
-  .no-print,
-  .no-print *,
-  header,
-  nav,
-  .tabs-list,
-  .tab-navigation,
-  .navigation,
-  .mobile-navigation,
-  [data-radix-tabs-list],
-  [data-radix-dialog-overlay],
-  button[aria-label*="닫기"],
-  button[aria-label*="취소"],
-  .dialog-close-button {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
-  /* 전체 레이아웃 정리 */
-  body {
-    background: white !important;
-    color: black !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  /* 다이얼로그 관련 완전히 제거 */
-  [data-radix-dialog-content] {
-    position: static !important;
-    transform: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: white !important;
-    max-width: none !important;
-    max-height: none !important;
-    width: 100% !important;
-    height: auto !important;
-    border-radius: 0 !important;
-  }
-
-  /* 보고서만 표시 */
-  .report-container {
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 15mm !important;
-    font-size: 11px !important;
-    background: white !important;
-    color: black !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
-
-  /* 그라데이션 배경 제거 */
-  .bg-gradient-to-r,
-  .bg-gradient-to-br,
-  .bg-gradient-to-l {
-    background: white !important;
-    color: black !important;
-  }
-
-  .text-white {
-    color: black !important;
-  }
-
-  /* 테두리 색상 정리 */
-  .border-blue-200,
-  .border-green-200,
-  .border-purple-200,
-  .border-amber-200,
-  .border-orange-200 {
-    border-color: #000 !important;
-  }
-
-  /* 배경색 정리 */
-  .bg-blue-50,
-  .bg-green-50,
-  .bg-purple-50,
-  .bg-amber-50,
-  .bg-orange-50,
-  .bg-gray-50 {
-    background-color: #f9f9f9 !important;
-  }
-
-  /* 그림자 제거 */
-  .shadow-sm,
-  .shadow-lg,
-  .shadow-xl {
-    box-shadow: none !important;
-  }
-
-  /* 고정 위치 해제 */
-  .sticky,
-  .fixed {
-    position: static !important;
-  }
-
-  /* 스크롤 해제 */
-  .overflow-y-auto,
-  .overflow-x-auto {
-    overflow: visible !important;
-  }
-
-  .max-h-\[90vh\],
-  .max-h-\[95vh\] {
-    max-height: none !important;
-  }
-
-  /* 드롭다운 숨기기 */
-  .unified-input-dropdown {
-    display: none !important;
-  }
-
-  /* 테이블 인쇄 최적화 */
-  table {
-    border-collapse: collapse !important;
-    width: 100% !important;
-  }
-
-  th,
-  td {
-    border: 1px solid #000 !important;
-    padding: 4px !important;
-    text-align: left !important;
-  }
-
-  th {
-    background-color: #f0f0f0 !important;
-    font-weight: bold !important;
-  }
-
-  /* 페이지 여백 설정 */
-  @page {
-    margin: 15mm;
-    size: A4;
-  }
-
-  /* 인쇄용 컬러 조정 */
-  .text-blue-600,
-  .text-blue-700,
-  .text-blue-800 {
-    color: #000 !important;
-  }
-
-  .text-green-600,
-  .text-green-700,
-  .text-green-800 {
-    color: #000 !important;
-  }
-
-  .text-red-600,
-  .text-red-700,
-  .text-red-800 {
-    color: #000 !important;
-  }
 }
 
 @layer base {
