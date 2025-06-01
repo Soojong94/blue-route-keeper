@@ -1,4 +1,4 @@
-/* src/components/reports/DailyReport.tsx - formatAmount 함수 제거 */
+/* src/components/reports/DailyReport.tsx - 저장 방식 변경 */
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,15 +123,34 @@ const DailyReport: React.FC<DailyReportProps> = ({
     ];
   }, [vehicles]);
 
+  // 🔥 변경사항 추적 함수들 - 편집 모드에서만 호출
+  const handleDateChangeWithTracking = (startDate: Date, endDate: Date) => {
+    if (viewMode === 'edit' && onDateChange) {
+      onDateChange(startDate, endDate);
+    }
+  };
+
+  const handleVehicleChangeWithTracking = (vehicleId: string) => {
+    if (viewMode === 'edit' && onVehicleChange) {
+      onVehicleChange(vehicleId);
+    }
+  };
+
+  const handleRefreshWithTracking = () => {
+    if (viewMode === 'edit' && onRefresh) {
+      onRefresh();
+    }
+  };
+
   // 차량 선택 처리
   const handleVehicleSelect = useCallback((result: SearchResult) => {
     if (viewMode !== 'view' && result.metadata?.vehicleId) {
-      onVehicleChange(result.metadata.vehicleId);
+      handleVehicleChangeWithTracking(result.metadata.vehicleId);
       if (result.value) {
         addRecentVehicle(result.value);
       }
     }
-  }, [onVehicleChange, viewMode]);
+  }, [viewMode]);
 
   // 차량 입력값 변경 처리
   const handleVehicleInputChange = useCallback((value: string) => {
@@ -139,18 +158,18 @@ const DailyReport: React.FC<DailyReportProps> = ({
       setVehicleInput(value);
 
       if (!value.trim()) {
-        onVehicleChange('all');
+        handleVehicleChangeWithTracking('all');
         return;
       }
 
       const matchingVehicle = vehicles.find(v => v.licensePlate === value);
       if (matchingVehicle) {
-        onVehicleChange(matchingVehicle.id);
+        handleVehicleChangeWithTracking(matchingVehicle.id);
       } else {
-        onVehicleChange('all');
+        handleVehicleChangeWithTracking('all');
       }
     }
-  }, [vehicles, onVehicleChange, viewMode]);
+  }, [vehicles, viewMode]);
 
   // 날짜 포맷팅 함수 (월/일 통합)
   const formatTripDate = (month: number, day: number) => {
@@ -200,8 +219,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       if (localDate > localEndDate) {
                         setLocalEndDate(localDate);
                       }
-                      onDateChange(localDate, localDate > localEndDate ? localDate : localEndDate);
-                      onRefresh();
+                      handleDateChangeWithTracking(localDate, localDate > localEndDate ? localDate : localEndDate);
+                      handleRefreshWithTracking();
                     }
                   }}
                   locale={ko}
@@ -239,8 +258,8 @@ const DailyReport: React.FC<DailyReportProps> = ({
                       if (localDate < localStartDate) {
                         setLocalStartDate(localDate);
                       }
-                      onDateChange(localDate < localStartDate ? localDate : localStartDate, localDate);
-                      onRefresh();
+                      handleDateChangeWithTracking(localDate < localStartDate ? localDate : localStartDate, localDate);
+                      handleRefreshWithTracking();
                     }
                   }}
                   locale={ko}
@@ -258,9 +277,9 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 variant={selectedVehicleId === 'all' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
-                  onVehicleChange('all');
+                  handleVehicleChangeWithTracking('all');
                   setVehicleInput('');
-                  onRefresh();
+                  handleRefreshWithTracking();
                 }}
                 className="shrink-0 h-8 text-xs px-2"
               >
@@ -271,7 +290,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 onChange={handleVehicleInputChange}
                 onSelect={(result) => {
                   handleVehicleSelect(result);
-                  onRefresh();
+                  handleRefreshWithTracking();
                 }}
                 placeholder="차량번호"
                 className="text-xs h-8"

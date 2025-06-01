@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { FileText, BarChart3, Download, Printer, Edit, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateReport } from '@/utils/reportStorage';
+import { Vehicle } from '@/types/trip'; // 🔥 Vehicle 타입 import
 import DailyReport from '@/components/reports/DailyReport';
 import MonthlyReport from '@/components/reports/MonthlyReport';
 import { MonthlyReportData } from '@/utils/reportUtils';
-import { cn } from '@/lib/utils'; // 👈 이 import 추가
+import { cn } from '@/lib/utils';
 
 interface SavedReport {
   id: string;
@@ -24,6 +25,7 @@ interface SavedReportViewerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   report: SavedReport | null;
+  vehicles: Vehicle[]; // 🔥 vehicles prop 추가
   onReportUpdated?: () => void;
 }
 
@@ -31,23 +33,28 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   open,
   onOpenChange,
   report,
+  vehicles, // 🔥 vehicles prop 받기
   onReportUpdated
 }) => {
+  // 🔥 모든 hooks를 조건문 밖에서 먼저 선언
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editedData, setEditedData] = useState<any>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // 📝 변경사항 추적
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { toast } = useToast();
 
-  if (!report) return null;
-
-  // 📝 데이터 초기화
+  // 📝 데이터 초기화 - report가 없어도 실행되도록 수정
   useEffect(() => {
     if (report && isEditing) {
       setEditedData(JSON.parse(JSON.stringify(report.data))); // 깊은 복사
       setHasUnsavedChanges(false);
     }
   }, [report, isEditing]);
+
+  // 🔥 조건부 return을 hooks 선언 후로 이동
+  if (!report) {
+    return null;
+  }
 
   // 편집 모드 진입
   const handleStartEdit = () => {
@@ -123,6 +130,11 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   const handleMonthlyDataChange = (newData: MonthlyReportData) => {
     setEditedData(newData);
     setHasUnsavedChanges(true); // 변경사항 발생 표시
+  };
+
+  // 🔥 일간 보고서 데이터 변경 처리 추가 (새로운 함수)
+  const handleDailyDataChange = () => {
+    setHasUnsavedChanges(true);
   };
 
   const handlePrint = () => {
@@ -280,13 +292,13 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
             {report.type === 'daily' ? (
               <DailyReport
                 data={isEditing ? editedData : report.data}
-                vehicles={[]}
+                vehicles={vehicles} // 🔥 실제 차량 데이터 전달
                 selectedVehicleId={report.settings.vehicleId || 'all'}
                 startDate={new Date(report.settings.startDate)}
                 endDate={new Date(report.settings.endDate)}
-                onDateChange={() => { }}
-                onVehicleChange={() => { }}
-                onRefresh={() => { }}
+                onDateChange={handleDailyDataChange} // 🔥 변경사항 추적
+                onVehicleChange={handleDailyDataChange} // 🔥 변경사항 추적
+                onRefresh={handleDailyDataChange} // 🔥 변경사항 추적
                 viewMode={isEditing ? "edit" : "view"}
                 savedSettings={report.settings}
               />

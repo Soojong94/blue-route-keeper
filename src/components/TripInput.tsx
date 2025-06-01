@@ -621,6 +621,7 @@ const DesktopTripRow: React.FC<TripRowProps> = ({
                   onUpdate(row.id, 'date', localDate);
                 }
               }}
+              locale={ko}  // 👈 이 부분 추가
               initialFocus
             />
           </PopoverContent>

@@ -1,4 +1,4 @@
-/* src/components/ReportManagement.tsx 수정 - onReportUpdated 콜백 추가 */
+/* src/components/ReportManagement.tsx 수정 - 차량 데이터 전달 */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getTripsByDateRange, getVehicles } from '@/utils/storage';
 import { generateDailyReport, generateMonthlyReport, MonthlyReportData } from '@/utils/reportUtils';
 import { saveReport, getReports, updateReport, deleteReport, SavedReport } from '@/utils/reportStorage';
+import { Vehicle } from '@/types/trip'; // 🔥 Vehicle 타입 import
 import ReportTypeSelector from '@/components/reports/ReportTypeSelector';
 import DailyReportSettings from '@/components/reports/DailyReportSettings';
 import MonthlyReportSettings from '@/components/reports/MonthlyReportSettings';
@@ -15,6 +16,7 @@ import SavedReportViewer from '@/components/reports/SavedReportViewer';
 
 const ReportManagement: React.FC = () => {
   const [reports, setReports] = useState<SavedReport[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]); // 🔥 차량 데이터 상태 추가
   const [loading, setLoading] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState<'daily' | 'monthly' | null>(null);
   const [viewingReport, setViewingReport] = useState<SavedReport | null>(null);
@@ -29,6 +31,7 @@ const ReportManagement: React.FC = () => {
 
   useEffect(() => {
     loadReports();
+    loadVehicles(); // 🔥 차량 데이터 로드
   }, []);
 
   const loadReports = async () => {
@@ -45,6 +48,16 @@ const ReportManagement: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🔥 차량 데이터 로드 함수 추가
+  const loadVehicles = async () => {
+    try {
+      const vehiclesData = await getVehicles();
+      setVehicles(vehiclesData);
+    } catch (error) {
+      console.error('Error loading vehicles:', error);
     }
   };
 
@@ -262,11 +275,13 @@ const ReportManagement: React.FC = () => {
         onGenerate={handleGenerateMonthlyReport}
       />
 
+      {/* 🔥 SavedReportViewer에 vehicles prop 전달 */}
       <SavedReportViewer
         open={isReportViewerOpen}
         onOpenChange={setIsReportViewerOpen}
         report={viewingReport}
-        onReportUpdated={handleReportUpdated} // 📝 콜백 추가
+        vehicles={vehicles}
+        onReportUpdated={handleReportUpdated}
       />
     </div>
   );

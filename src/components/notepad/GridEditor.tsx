@@ -1,4 +1,4 @@
-/* src/components/notepad/GridEditor.tsx 최종 수정 */
+/* src/components/notepad/GridEditor.tsx - 즉시 저장 방식으로 심플화 */
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,13 +27,10 @@ const GridEditor: React.FC<GridEditorProps> = ({
   rows: initialRows = 10,
   cols: initialCols = 5
 }) => {
-  // 컴포넌트가 마운트될 때마다 완전히 새로운 데이터로 초기화
   const [data, setData] = useState<CellData[][]>(() => {
-    if (initialData && initialData.length > 0) {
-      // 깊은 복사로 완전히 새로운 객체 생성
+    if (initialData && initialData.length > 0 && Array.isArray(initialData[0])) {
       return JSON.parse(JSON.stringify(initialData));
     }
-    // 초기 데이터 생성
     return Array(initialRows).fill(null).map(() =>
       Array(initialCols).fill(null).map(() => ({ value: '' }))
     );
@@ -45,34 +42,33 @@ const GridEditor: React.FC<GridEditorProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 데이터 변경 알림 함수
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      setData(JSON.parse(JSON.stringify(initialData)));
+    }
+  }, [initialData]);
+
+  // 🔥 즉시 상위 컴포넌트에 알림
   const notifyDataChange = useCallback((newData: CellData[][]) => {
-    // 다음 틱에서 실행하여 렌더링 사이클과 분리
-    setTimeout(() => {
-      onDataChange(JSON.parse(JSON.stringify(newData)));
-    }, 0);
+    onDataChange(newData);
   }, [onDataChange]);
 
   const updateCell = useCallback((row: number, col: number, value: string) => {
-    setData(prev => {
-      // 완전히 새로운 배열 생성
-      const newData = prev.map((rowData, rowIndex) => {
-        if (rowIndex === row) {
-          return rowData.map((cell, colIndex) => {
-            if (colIndex === col) {
-              return { ...cell, value };
-            }
-            return { ...cell };
-          });
-        }
-        return rowData.map(cell => ({ ...cell }));
-      });
-
-      // 부모에게 변경 알림
-      notifyDataChange(newData);
-      return newData;
+    const newData = data.map((rowData, rowIndex) => {
+      if (rowIndex === row) {
+        return rowData.map((cell, colIndex) => {
+          if (colIndex === col) {
+            return { ...cell, value };
+          }
+          return { ...cell };
+        });
+      }
+      return rowData.map(cell => ({ ...cell }));
     });
-  }, [notifyDataChange]);
+
+    setData(newData);
+    notifyDataChange(newData);
+  }, [data, notifyDataChange]);
 
   const handleCellClick = (row: number, col: number) => {
     setSelectedCell({ row, col });
@@ -134,41 +130,33 @@ const GridEditor: React.FC<GridEditorProps> = ({
   };
 
   const addRow = () => {
-    setData(prev => {
-      const newData = [
-        ...prev,
-        Array(prev[0]?.length || initialCols).fill(null).map(() => ({ value: '' }))
-      ];
-      notifyDataChange(newData);
-      return newData;
-    });
+    const newData = [
+      ...data,
+      Array(data[0]?.length || initialCols).fill(null).map(() => ({ value: '' }))
+    ];
+    setData(newData);
+    notifyDataChange(newData);
   };
 
   const addColumn = () => {
-    setData(prev => {
-      const newData = prev.map(row => [...row, { value: '' }]);
-      notifyDataChange(newData);
-      return newData;
-    });
+    const newData = data.map(row => [...row, { value: '' }]);
+    setData(newData);
+    notifyDataChange(newData);
   };
 
   const removeRow = () => {
     if (data.length > 1) {
-      setData(prev => {
-        const newData = prev.slice(0, -1);
-        notifyDataChange(newData);
-        return newData;
-      });
+      const newData = data.slice(0, -1);
+      setData(newData);
+      notifyDataChange(newData);
     }
   };
 
   const removeColumn = () => {
     if (data[0]?.length > 1) {
-      setData(prev => {
-        const newData = prev.map(row => row.slice(0, -1));
-        notifyDataChange(newData);
-        return newData;
-      });
+      const newData = data.map(row => row.slice(0, -1));
+      setData(newData);
+      notifyDataChange(newData);
     }
   };
 

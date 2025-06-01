@@ -1,8 +1,8 @@
-/* src/components/Notepad.tsx 수정 */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+/* src/components/Notepad.tsx - 즉시 저장 방식으로 변경 */
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Edit3, Download, Plus, Edit, Trash2, Save } from 'lucide-react';
+import { Edit3, Download, Plus, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { saveNote, getNotes, updateNote, deleteNote, Note } from '@/utils/noteStorage';
 import GridEditor from '@/components/notepad/GridEditor';
@@ -15,17 +15,12 @@ const Notepad: React.FC = () => {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [currentNoteData, setCurrentNoteData] = useState<any[][]>([]);
   const [loading, setLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
 
-  // 자동 저장을 위한 ref
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
-  const hasUnsavedChangesRef = useRef(false);
-
   const { toast } = useToast();
 
-  // 빈 그리드 데이터 생성 (10행 5열로 변경)
+  // 빈 그리드 데이터 생성 (10행 5열)
   const getEmptyGrid = useCallback(() => {
     return Array(10).fill(null).map(() =>
       Array(5).fill(null).map(() => ({ value: '' }))
@@ -39,15 +34,6 @@ const Notepad: React.FC = () => {
 
   useEffect(() => {
     loadNotes();
-  }, []);
-
-  // 컴포넌트 언마운트 시 자동 저장 타이머 정리
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
   }, []);
 
   const loadNotes = async () => {
@@ -78,12 +64,9 @@ const Notepad: React.FC = () => {
     const note = notes.find(n => n.id === noteId);
     if (note) {
       setSelectedNoteId(noteId);
-      // 완전히 새로운 데이터 객체 생성
       const noteContent = note.content && note.content.length > 0 ? note.content : getEmptyGrid();
       const newData = deepCopy(noteContent);
       setCurrentNoteData(newData);
-      hasUnsavedChangesRef.current = false;
-      // 데이터 버전 증가로 강제 리렌더링
       setDataVersion(prev => prev + 1);
     }
   }, [notes, getEmptyGrid, deepCopy]);
@@ -99,10 +82,8 @@ const Notepad: React.FC = () => {
 
       setNotes(prev => [newNote, ...prev]);
       setSelectedNoteId(newNote.id);
-      // 완전히 새로운 빈 그리드 생성
       const newData = deepCopy(emptyGrid);
       setCurrentNoteData(newData);
-      hasUnsavedChangesRef.current = false;
       setDataVersion(prev => prev + 1);
 
       toast({
@@ -119,90 +100,29 @@ const Notepad: React.FC = () => {
     }
   };
 
-  // 자동 저장 함수
-  const autoSave = useCallback(async () => {
-    if (!selectedNoteId || !hasUnsavedChangesRef.current || isSaving) return;
+  // 🔥 즉시 저장 함수 (onChange마다 호출)
+  const handleDataChange = useCallback(async (newData: any[][]) => {
+    if (!selectedNoteId) return;
 
     try {
-      setIsSaving(true);
-      await updateNote(selectedNoteId, { content: deepCopy(currentNoteData) });
-      hasUnsavedChangesRef.current = false;
+      const freshData = deepCopy(newData);
+      setCurrentNoteData(freshData);
+
+      // 즉시 저장
+      await updateNote(selectedNoteId, { content: freshData });
 
       // 메모 목록 새로고침 (조용히)
       const updatedNotes = await getNotes();
       setNotes(updatedNotes);
     } catch (error) {
-      console.error('Auto save error:', error);
-    } finally {
-      setIsSaving(false);
+      console.error('Save error:', error);
+      // 에러가 발생해도 UI는 업데이트
+      setCurrentNoteData(deepCopy(newData));
     }
-  }, [selectedNoteId, currentNoteData, deepCopy, isSaving]);
-
-  // 수동 저장 함수 (저장 버튼용)
-  const manualSave = async () => {
-    if (!selectedNoteId || !hasUnsavedChangesRef.current) {
-      toast({
-        title: "저장 완료",
-        description: "저장할 변경사항이 없습니다.",
-      });
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      await updateNote(selectedNoteId, { content: deepCopy(currentNoteData) });
-      hasUnsavedChangesRef.current = false;
-
-      const updatedNotes = await getNotes();
-      setNotes(updatedNotes);
-
-      toast({
-        title: "저장 완료",
-        description: "메모가 저장되었습니다.",
-      });
-    } catch (error) {
-      console.error('Error saving note:', error);
-      toast({
-        title: "저장 실패",
-        description: "메모 저장 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // 데이터 변경 처리 - 자동 저장 트리거
-  const handleDataChange = useCallback((newData: any[][]) => {
-    const freshData = deepCopy(newData);
-    setCurrentNoteData(freshData);
-    hasUnsavedChangesRef.current = true;
-
-    // 기존 타이머 취소
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-
-    // 2초 후 자동 저장 (디바운싱)
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      autoSave();
-    }, 2000);
-  }, [deepCopy, autoSave]);
+  }, [selectedNoteId, deepCopy]);
 
   const handleSelectNote = (noteId: string) => {
-    if (hasUnsavedChangesRef.current) {
-      if (confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) {
-        // 현재 메모 자동 저장 후 이동
-        if (autoSaveTimeoutRef.current) {
-          clearTimeout(autoSaveTimeoutRef.current);
-        }
-        autoSave().finally(() => {
-          selectNote(noteId);
-        });
-      }
-    } else {
-      selectNote(noteId);
-    }
+    selectNote(noteId);
   };
 
   const handleRenameNote = async (noteId: string) => {
@@ -275,9 +195,6 @@ const Notepad: React.FC = () => {
           <CardTitle className="flex items-center gap-2">
             <Edit3 className="h-5 w-5" />
             메모장
-            {isSaving && (
-              <span className="text-xs bg-white/20 px-2 py-1 rounded">자동 저장 중...</span>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
@@ -356,17 +273,9 @@ const Notepad: React.FC = () => {
                   <h3 className="font-medium">
                     {selectedNote?.title || '메모 없음'}
                   </h3>
-                  <div className="flex items-center gap-2">
-                    {hasUnsavedChangesRef.current && !isSaving && (
-                      <span className="text-xs text-orange-500">● 자동 저장 대기 중</span>
-                    )}
-                    {isSaving && (
-                      <span className="text-xs text-blue-500">● 저장 중...</span>
-                    )}
-                    {!hasUnsavedChangesRef.current && !isSaving && (
-                      <span className="text-xs text-green-500">● 저장됨</span>
-                    )}
-                  </div>
+                  <p className="text-xs text-gray-500">
+                    변경사항은 자동으로 저장됩니다
+                  </p>
                 </div>
 
                 <div className="flex gap-2">
@@ -379,23 +288,7 @@ const Notepad: React.FC = () => {
                     <Download className="h-4 w-4 mr-1" />
                     내보내기
                   </Button>
-                  <Button
-                    onClick={manualSave}
-                    size="sm"
-                    disabled={!hasUnsavedChangesRef.current || isSaving}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    <Save className="h-4 w-4 mr-1" />
-                    {isSaving ? '저장 중...' : '수동 저장'}
-                  </Button>
                 </div>
-              </div>
-
-              {/* 자동 저장 안내 */}
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs text-blue-700">
-                  💡 <strong>자동 저장:</strong> 변경사항은 2초 후 자동으로 저장됩니다. 수동 저장 버튼으로 즉시 저장할 수도 있습니다.
-                </p>
               </div>
 
               {/* 그리드 에디터 */}
@@ -404,8 +297,8 @@ const Notepad: React.FC = () => {
                   key={`${selectedNoteId}-${dataVersion}`}
                   data={currentNoteData}
                   onDataChange={handleDataChange}
-                  rows={10} // 기본 10행
-                  cols={5}  // 기본 5열
+                  rows={10}
+                  cols={5}
                 />
               ) : (
                 <div className="text-center py-12 text-gray-500">
