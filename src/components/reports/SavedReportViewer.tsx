@@ -1,6 +1,6 @@
-// src/components/reports/SavedReportViewer.tsx (수정된 부분)
+// src/components/reports/SavedReportViewer.tsx
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { FileText, BarChart3, Edit, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +22,6 @@ interface ReportSettings {
   additionalText: string;
   driverName: string;
   contact: string;
-  // 🔥 새로 추가된 필터링 옵션
   departureFilter?: string;
   destinationFilter?: string;
 }
@@ -62,17 +61,15 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   const { toast } = useToast();
 
-  // 🔥 날짜 변환 헬퍼 함수 추가
   const convertStringToDate = (dateStr: string | Date): Date => {
     if (dateStr instanceof Date && !isNaN(dateStr.getTime())) return dateStr;
     if (typeof dateStr === 'string') {
       const parsed = new Date(dateStr);
       if (!isNaN(parsed.getTime())) return parsed;
     }
-    return new Date(); // 기본값
+    return new Date();
   };
 
-  // 🔥 설정 변환 함수 추가
   const convertSettings = (settings: any): ReportSettings => {
     return {
       title: settings.title || '',
@@ -82,17 +79,14 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
       additionalText: settings.additionalText || '',
       driverName: settings.driverName || '',
       contact: settings.contact || '',
-      // 🔥 필터링 옵션 추가
       departureFilter: settings.departureFilter || '',
       destinationFilter: settings.destinationFilter || ''
     };
   };
 
-  // 데이터 초기화
   useEffect(() => {
     if (report && isEditing) {
       setEditedData(JSON.parse(JSON.stringify(report.data)));
-      // 🔥 설정도 날짜 변환하여 설정
       setEditedSettings(convertSettings(report.settings));
       setHasUnsavedChanges(false);
     }
@@ -102,16 +96,13 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     return null;
   }
 
-  // 편집 모드 진입
   const handleStartEdit = () => {
     setIsEditing(true);
     setEditedData(JSON.parse(JSON.stringify(report.data)));
-    // 🔥 설정도 날짜 변환하여 설정
     setEditedSettings(convertSettings(report.settings));
     setHasUnsavedChanges(false);
   };
 
-  // 편집 취소
   const handleCancelEdit = () => {
     if (hasUnsavedChanges) {
       if (confirm('저장하지 않은 변경사항이 있습니다. 정말로 취소하시겠습니까?')) {
@@ -128,14 +119,11 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   };
 
-  // 🔥 일간 보고서 설정 변경 처리 수정
   const handleDailySettingsChange = (newSettings: ReportSettings) => {
-    // 이미 Date 객체로 변환된 상태이므로 그대로 저장
     setEditedSettings(newSettings);
     setHasUnsavedChanges(true);
   };
 
-  // 🔥 일간 보고서 데이터 재생성 (필터링 포함)
   const handleRegenerateDaily = async () => {
     if (!editedSettings) return;
 
@@ -146,7 +134,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
         editedSettings.endDate
       );
 
-      // 🔥 필터링 옵션 전달
       const filters = {
         departureFilter: editedSettings.departureFilter,
         destinationFilter: editedSettings.destinationFilter
@@ -180,13 +167,11 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   };
 
-  // 월간 보고서 데이터 변경 처리
   const handleMonthlyDataChange = (newData: MonthlyReportData) => {
     setEditedData(newData);
     setHasUnsavedChanges(true);
   };
 
-  // 변경사항 저장
   const handleSaveChanges = async () => {
     if (!hasUnsavedChanges) {
       toast({
@@ -202,7 +187,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
         data: editedData
       };
 
-      // 설정도 변경된 경우 - 날짜를 문자열로 변환하여 저장
       if (editedSettings) {
         updateData.settings = {
           ...editedSettings,
@@ -211,7 +195,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
         };
       }
 
-      // 월간 보고서의 경우 편집 가능한 행도 저장
       if (report.type === 'monthly') {
         updateData.editableRows = editedData.rows;
       }
@@ -228,7 +211,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
       setEditedSettings(null);
       setHasUnsavedChanges(false);
 
-      // 🔥 실시간 반영을 위해 부모 컴포넌트에 즉시 알림
       if (onReportUpdated) {
         onReportUpdated();
       }
@@ -244,17 +226,13 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   };
 
-  // 현재 표시할 데이터와 설정 결정
   const displayData = isEditing ? editedData : report.data;
   const displaySettings = isEditing ? editedSettings : convertSettings(report.settings);
-
-  // 🔥 다운로드용 고유 ID 생성
   const reportElementId = `report-content-${report.id}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
-        {/* 다이얼로그 헤더 - 인쇄 시 숨김 */}
         <DialogHeader className="no-print">
           <DialogTitle className="flex items-center gap-2">
             {report.type === 'daily' ? (
@@ -270,6 +248,14 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
             )}
           </DialogTitle>
 
+          {/* 🔥 DialogDescription 추가하여 경고 해결 */}
+          <DialogDescription className="text-sm text-gray-600">
+            {isEditing
+              ? "보고서를 편집하고 있습니다. 변경사항을 저장하거나 취소할 수 있습니다."
+              : "저장된 보고서를 확인하고 필요시 편집하거나 다운로드할 수 있습니다."
+            }
+          </DialogDescription>
+
           <div className="flex gap-2 pt-2">
             {!isEditing ? (
               <>
@@ -282,7 +268,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
                   <Edit className="h-4 w-4 mr-2" />
                   편집
                 </Button>
-                {/* 🔥 다운로드 컴포넌트로 교체 */}
                 <ReportDownloader
                   targetElementId={reportElementId}
                   filename={report.title}
@@ -317,7 +302,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
             )}
           </div>
 
-          {/* 편집 모드 안내 */}
           {isEditing && (
             <div className="bg-orange-50 p-3 rounded mt-2">
               <p className="text-sm text-orange-700">
@@ -334,7 +318,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
           )}
         </DialogHeader>
 
-        {/* 🔥 보고서 내용 - 다운로드용 ID 추가 */}
         <div className="py-4">
           <div className="report-container" id={reportElementId}>
             {report.type === 'daily' ? (

@@ -1,4 +1,4 @@
-// src/components/reports/DailyReport.tsx (수정)
+// src/components/reports/DailyReport.tsx (필터 표시 부분 제거)
 import React, { useState, useEffect, useCallback } from 'react';
 import { DailyReportData } from '@/utils/reportUtils';
 import { Vehicle } from '@/types/trip';
@@ -14,7 +14,6 @@ interface ReportSettings {
   additionalText: string;
   driverName: string;
   contact: string;
-  // 🔥 새로 추가된 필터링 옵션
   departureFilter?: string;
   destinationFilter?: string;
 }
@@ -36,7 +35,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
   onSettingsChange,
   onRegenerate
 }) => {
-  // 🔥 날짜 변환 및 검증 함수 추가
   const ensureDate = (date: any): Date => {
     if (date instanceof Date && !isNaN(date.getTime())) {
       return date;
@@ -47,7 +45,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
         return parsed;
       }
     }
-    return new Date(); // 기본값
+    return new Date();
   };
 
   const [settings, setSettings] = useState<ReportSettings>({
@@ -58,12 +56,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
     additionalText: initialSettings.additionalText || '',
     driverName: initialSettings.driverName || '',
     contact: initialSettings.contact || '',
-    // 🔥 필터링 옵션 초기화
     departureFilter: initialSettings.departureFilter || '',
     destinationFilter: initialSettings.destinationFilter || ''
   });
 
-  // 설정 변경 처리
   const handleSettingsChange = useCallback((field: keyof ReportSettings, value: any) => {
     const newSettings = { ...settings, [field]: value };
     setSettings(newSettings);
@@ -73,7 +69,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
     }
   }, [settings, onSettingsChange]);
 
-  // 🔥 props 변경 시 설정 동기화 (날짜 변환 포함)
   useEffect(() => {
     if (initialSettings) {
       setSettings(prev => ({
@@ -93,7 +88,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
     return vehicle ? vehicle.licensePlate : '알 수 없음';
   };
 
-  // 🔥 날짜 범위 포맷팅 (에러 방지)
   const getDateRangeString = () => {
     try {
       const startDate = ensureDate(settings.startDate);
@@ -114,12 +108,10 @@ const DailyReport: React.FC<DailyReportProps> = ({
     }
   };
 
-  // 날짜 포맷팅 함수 (월/일 통합)
   const formatTripDate = (month: number, day: number) => {
     return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
   };
 
-  // 📱 차량번호 축약 (모바일에서 뒤 4자리만)
   const getShortVehicleNumber = (vehicleNumber: string) => {
     const plateOnly = vehicleNumber.split(' ')[0];
     if (window.innerWidth <= 768) {
@@ -225,25 +217,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
             </div>
           </div>
 
-          {/* 🔥 필터 상태 표시 (편집 모드가 아닐 때) */}
-          {viewMode !== 'edit' && (settings.departureFilter || settings.destinationFilter) && (
-            <div className="bg-amber-50 px-3 py-2 rounded border border-amber-200 text-xs">
-              <div className="text-amber-700 font-medium mb-1">적용된 필터:</div>
-              <div className="flex gap-2">
-                {settings.departureFilter && (
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
-                    출발지: {settings.departureFilter}
-                  </span>
-                )}
-                {settings.destinationFilter && (
-                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded">
-                    목적지: {settings.destinationFilter}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* 운행 내역 테이블 */}
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse border border-gray-200 min-w-[300px]">
@@ -273,7 +246,6 @@ const DailyReport: React.FC<DailyReportProps> = ({
                     <td className="border border-gray-200 px-2 py-0.5 text-center bg-red-50 text-red-800 font-medium">
                       {trip.destination}
                     </td>
-
                     <td className="border border-gray-200 px-2 py-0.5 text-right">
                       {trip.unitPrice.toLocaleString()}
                     </td>

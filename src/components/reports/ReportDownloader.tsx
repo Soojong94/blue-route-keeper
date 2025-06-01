@@ -31,19 +31,22 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
         throw new Error('요소를 찾을 수 없습니다.');
       }
 
+      // 🔥 모바일에서 더 높은 해상도로 캡처
       const canvas = await html2canvas(element, {
-        scale: 2, // 고해상도
+        scale: window.innerWidth <= 768 ? 3 : 2, // 모바일에서 더 높은 스케일
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         removeContainer: true,
         scrollX: 0,
-        scrollY: 0
+        scrollY: 0,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        foreignObjectRendering: true
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
 
-      // 이미지 다운로드
       const link = document.createElement('a');
       link.download = `${filename}.png`;
       link.href = imgData;
@@ -75,34 +78,66 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
         throw new Error('요소를 찾을 수 없습니다.');
       }
 
+      // 🔥 모바일 PDF 생성 최적화
+      const isMobile = window.innerWidth <= 768;
+
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: isMobile ? 3 : 2, // 모바일에서 더 높은 해상도
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         removeContainer: true,
         scrollX: 0,
-        scrollY: 0
+        scrollY: 0,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        foreignObjectRendering: true,
+        // 🔥 모바일에서 테이블 렌더링 개선
+        onclone: (clonedDoc) => {
+          if (isMobile) {
+            const tables = clonedDoc.querySelectorAll('.report-container table');
+            tables.forEach(table => {
+              (table as HTMLElement).style.minWidth = '400px';
+              (table as HTMLElement).style.width = '100%';
+              (table as HTMLElement).style.tableLayout = 'fixed';
+
+              const cells = table.querySelectorAll('th, td');
+              cells.forEach((cell, index) => {
+                const cellElement = cell as HTMLElement;
+                cellElement.style.border = '1px solid #000';
+                cellElement.style.padding = '2px';
+                cellElement.style.fontSize = '8px';
+                cellElement.style.lineHeight = '1.2';
+                cellElement.style.wordWrap = 'break-word';
+                cellElement.style.overflow = 'visible';
+                cellElement.style.whiteSpace = 'normal';
+              });
+            });
+          }
+        }
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
 
-      // A4 크기로 PDF 생성
+      // 🔥 PDF 생성 최적화
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      // 이미지 비율 계산
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+
+      // 🔥 모바일에서 더 나은 비율 계산
+      const ratio = Math.min(
+        (pdfWidth - 10) / imgWidth,
+        (pdfHeight - 10) / imgHeight
+      );
 
       const finalWidth = imgWidth * ratio;
       const finalHeight = imgHeight * ratio;
 
-      // 중앙 정렬
       const x = (pdfWidth - finalWidth) / 2;
-      const y = (pdfHeight - finalHeight) / 2;
+      const y = 5; // 상단 여백
 
       pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
       pdf.save(`${filename}.pdf`);
@@ -131,11 +166,9 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
     setIsDialogOpen(false);
   };
 
-  // 모바일 기기 감지
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   if (isMobile) {
-    // 모바일에서는 다운로드 옵션 다이얼로그
     return (
       <>
         <Button
@@ -169,7 +202,7 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
                 className="w-full justify-start"
               >
                 <FileText className="h-4 w-4 mr-2" />
-                PDF로 다운로드
+                PDF로 다운로드 (권장)
               </Button>
               <Button
                 variant="outline"
@@ -185,7 +218,6 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
     );
   }
 
-  // 데스크톱에서는 기존 인쇄 버튼
   return (
     <Button
       variant="outline"

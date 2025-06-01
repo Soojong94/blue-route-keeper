@@ -1,4 +1,4 @@
-// src/components/reports/MonthlyReportGrid.tsx 수정
+// src/components/reports/MonthlyReportGrid.tsx (컬럼 너비 수정)
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,6 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
 
   const notifyRowsChange = useCallback((newRows: MonthlyReportRow[]) => {
     setRows(newRows);
-    // 즉시 상위 컴포넌트에 알림
     onRowsChange(newRows);
   }, [onRowsChange]);
 
@@ -193,7 +192,7 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
               {displayDate || (
                 <div className="flex items-center gap-1 text-gray-400">
                   <CalendarIcon className="h-3 w-3" />
-                  <span>날짜선택</span>
+                  <span>날짜</span>
                 </div>
               )}
             </div>
@@ -240,7 +239,6 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
         onClick={() => handleCellClick(rowIndex, field)}
       >
         {displayValue}
-
       </div>
     );
   };
@@ -256,27 +254,27 @@ const MonthlyReportGrid: React.FC<MonthlyReportGridProps> = ({
         </div>
       )}
 
-      {/* 🔥 수정된 컬럼 너비 - 횟수 컬럼을 4%로 축소, min-width도 축소 */}
+      {/* 🔥 수정된 컬럼 너비 - 날짜 20%, 품목 35%, 횟수 6%, 단가/금액 동일하게 */}
       <div className="border rounded-lg overflow-auto">
         <table className="w-full border-collapse text-xs min-w-[500px]" style={{ tableLayout: 'fixed' }}>
           <thead className="bg-gray-50 sticky top-0">
             <tr>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '15%' }}>날짜</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '42%' }}>품목</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '4%' }}>횟수</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '22%' }}>단가</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '17%' }}>금액</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '20%' }}>날짜</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '35%' }}>품목</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '6%' }}>횟수</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '19.5%' }}>단가</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '19.5%' }}>금액</th>
               {!readonly && <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '5%' }}>삭제</th>}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, rowIndex) => (
               <tr key={row.id} className="hover:bg-gray-50">
-                <td className="border" style={{ width: '15%' }}>{renderCell(row, rowIndex, 'date')}</td>
-                <td className="border" style={{ width: '42%' }}>{renderCell(row, rowIndex, 'item')}</td>
-                <td className="border" style={{ width: '4%' }}>{renderCell(row, rowIndex, 'count')}</td>
-                <td className="border" style={{ width: '22%' }}>{renderCell(row, rowIndex, 'unitPrice')}</td>
-                <td className="border" style={{ width: '17%' }}>{renderCell(row, rowIndex, 'totalAmount')}</td>
+                <td className="border" style={{ width: '20%' }}>{renderCell(row, rowIndex, 'date')}</td>
+                <td className="border" style={{ width: '35%' }}>{renderCell(row, rowIndex, 'item')}</td>
+                <td className="border" style={{ width: '6%' }}>{renderCell(row, rowIndex, 'count')}</td>
+                <td className="border" style={{ width: '19.5%' }}>{renderCell(row, rowIndex, 'unitPrice')}</td>
+                <td className="border" style={{ width: '19.5%' }}>{renderCell(row, rowIndex, 'totalAmount')}</td>
                 {!readonly && (
                   <td className="border text-center" style={{ width: '5%' }}>
                     <Button
