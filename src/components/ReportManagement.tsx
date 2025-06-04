@@ -1,16 +1,17 @@
-// src/components/ReportManagement.tsx (실시간 반영 수정)
+// src/components/ReportManagement.tsx (수정)
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getTripsByDateRange, getVehicles } from '@/utils/storage';
-import { generateDailyReport, generateMonthlyReport, MonthlyReportData } from '@/utils/reportUtils';
+import { generateDailyReport, generateMonthlyReport, MonthlyReportData, InvoiceReportData } from '@/utils/reportUtils';
 import { saveReport, getReports, updateReport, deleteReport, SavedReport } from '@/utils/reportStorage';
 import { Vehicle } from '@/types/trip';
 import ReportTypeSelector from '@/components/reports/ReportTypeSelector';
 import DailyReportSettings from '@/components/reports/DailyReportSettings';
 import MonthlyReportSettings from '@/components/reports/MonthlyReportSettings';
+import InvoiceReportSettings from '@/components/reports/InvoiceReportSettings';
 import ReportList from '@/components/reports/ReportList';
 import SavedReportViewer from '@/components/reports/SavedReportViewer';
 
@@ -22,7 +23,6 @@ interface ReportSettings {
   additionalText: string;
   driverName: string;
   contact: string;
-  // 🔥 새로 추가된 필터링 옵션
   departureFilter?: string;
   destinationFilter?: string;
 }
@@ -31,13 +31,14 @@ const ReportManagement: React.FC = () => {
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedReportType, setSelectedReportType] = useState<'daily' | 'monthly' | null>(null);
+  const [selectedReportType, setSelectedReportType] = useState<'daily' | 'monthly' | 'invoice' | null>(null);
   const [viewingReport, setViewingReport] = useState<SavedReport | null>(null);
 
   // 다이얼로그 상태
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isDailySettingsOpen, setIsDailySettingsOpen] = useState(false);
   const [isMonthlySettingsOpen, setIsMonthlySettingsOpen] = useState(false);
+  const [isInvoiceSettingsOpen, setIsInvoiceSettingsOpen] = useState(false); // 새로 추가
   const [isReportViewerOpen, setIsReportViewerOpen] = useState(false);
 
   const { toast } = useToast();
@@ -77,33 +78,31 @@ const ReportManagement: React.FC = () => {
     setIsTypeSelectorOpen(true);
   };
 
-  const handleSelectType = (type: 'daily' | 'monthly') => {
+  const handleSelectType = (type: 'daily' | 'monthly' | 'invoice') => {
     setSelectedReportType(type);
     if (type === 'daily') {
       setIsDailySettingsOpen(true);
-    } else {
+    } else if (type === 'monthly') {
       setIsMonthlySettingsOpen(true);
+    } else if (type === 'invoice') {
+      setIsInvoiceSettingsOpen(true);
     }
   };
 
-  // 🔥 수정된 handleGenerateDailyReport - 필터링 포함
   const handleGenerateDailyReport = async (settings: ReportSettings) => {
     try {
       setLoading(true);
 
-      // 데이터 가져오기
       const [trips, vehicles] = await Promise.all([
         getTripsByDateRange(settings.startDate, settings.endDate),
         getVehicles()
       ]);
 
-      // 🔥 필터링 옵션 전달
       const filters = {
         departureFilter: settings.departureFilter,
         destinationFilter: settings.destinationFilter
       };
 
-      // 보고서 생성
       const reportData = generateDailyReport(
         trips,
         vehicles,
@@ -113,7 +112,6 @@ const ReportManagement: React.FC = () => {
         filters
       );
 
-      // 저장 - 모든 설정 포함
       await saveReport({
         title: settings.title,
         type: 'daily',
@@ -125,7 +123,6 @@ const ReportManagement: React.FC = () => {
           additionalText: settings.additionalText,
           driverName: settings.driverName,
           contact: settings.contact,
-          // 🔥 필터링 옵션도 저장
           departureFilter: settings.departureFilter,
           destinationFilter: settings.destinationFilter
         },
@@ -185,6 +182,42 @@ const ReportManagement: React.FC = () => {
     }
   };
 
+  // 🔥 새로운 청구서 생성 핸들러
+  const handleGenerateInvoiceReport = async (settings: {
+    title: string;
+    reportData: InvoiceReportData;
+  }) => {
+    try {
+      setLoading(true);
+
+      await saveReport({
+        title: settings.title,
+        type: 'invoice' as any, // 새로운 타입이므로 임시로 as any 사용
+        settings: {
+          title: settings.title
+        },
+        data: settings.reportData,
+        editableRows: settings.reportData.rows
+      });
+
+      toast({
+        title: "청구서 생성 완료",
+        description: `"${settings.title}" 청구서가 생성되어 저장되었습니다.`,
+      });
+
+      await loadReports();
+    } catch (error) {
+      console.error('Generate invoice report error:', error);
+      toast({
+        title: "청구서 생성 실패",
+        description: "청구서 생성 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleViewReport = (report: SavedReport) => {
     setViewingReport(report);
     setIsReportViewerOpen(true);
@@ -195,12 +228,9 @@ const ReportManagement: React.FC = () => {
     setIsReportViewerOpen(true);
   };
 
-  // 🔥 실시간 반영을 위한 수정된 함수
   const handleReportUpdated = async () => {
-    // 보고서 목록을 새로고침하여 실시간 반영
     await loadReports();
 
-    // 현재 보고 있는 보고서도 업데이트
     if (viewingReport) {
       try {
         const updatedReports = await getReports();
@@ -262,7 +292,7 @@ const ReportManagement: React.FC = () => {
             onEdit={handleEditReport}
             onDelete={handleDeleteReport}
             loading={loading}
-            vehicles={vehicles} // 🔥 vehicles prop 추가
+            vehicles={vehicles}
           />
         </CardContent>
       </Card>
@@ -284,6 +314,13 @@ const ReportManagement: React.FC = () => {
         open={isMonthlySettingsOpen}
         onOpenChange={setIsMonthlySettingsOpen}
         onGenerate={handleGenerateMonthlyReport}
+      />
+
+      {/* 🔥 새로운 청구서 설정 다이얼로그 */}
+      <InvoiceReportSettings
+        open={isInvoiceSettingsOpen}
+        onOpenChange={setIsInvoiceSettingsOpen}
+        onGenerate={handleGenerateInvoiceReport}
       />
 
       <SavedReportViewer

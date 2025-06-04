@@ -1,13 +1,14 @@
+// src/components/reports/ReportTypeSelector.tsx (수정)
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, BarChart3 } from 'lucide-react';
+import { FileText, BarChart3, Receipt } from 'lucide-react';
 
 interface ReportTypeSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectType: (type: 'daily' | 'monthly') => void;
+  onSelectType: (type: 'daily' | 'monthly' | 'invoice') => void; // 'invoice' 타입 추가
 }
 
 const ReportTypeSelector: React.FC<ReportTypeSelectorProps> = ({
@@ -15,7 +16,7 @@ const ReportTypeSelector: React.FC<ReportTypeSelectorProps> = ({
   onOpenChange,
   onSelectType
 }) => {
-  const handleSelect = (type: 'daily' | 'monthly') => {
+  const handleSelect = (type: 'daily' | 'monthly' | 'invoice') => {
     onSelectType(type);
     onOpenChange(false);
   };
@@ -57,6 +58,24 @@ const ReportTypeSelector: React.FC<ReportTypeSelectorProps> = ({
                 <div>
                   <h3 className="text-sm font-medium">월간 보고서</h3>
                   <p className="text-xs text-gray-500">월별 출발지 통계 보고서</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 🔥 새로운 청구서 타입 추가 */}
+          <Card
+            className="cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => handleSelect('invoice')}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Receipt className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium">청구서</h3>
+                  <p className="text-xs text-gray-500">현장별 청구서 작성</p>
                 </div>
               </div>
             </CardContent>

@@ -1,10 +1,10 @@
-// src/components/reports/ReportList.tsx 수정
+// src/components/reports/ReportList.tsx (수정)
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { FileText, BarChart3, Eye, Edit, Trash2, Search, Car, MapPin } from 'lucide-react';
+import { FileText, BarChart3, Receipt, Eye, Edit, Trash2, Search, Car, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 interface SavedReport {
   id: string;
   title: string;
-  type: 'daily' | 'monthly';
+  type: 'daily' | 'monthly' | 'invoice'; // 'invoice' 타입 추가
   settings: any;
   data: any;
   created_at: string;
@@ -25,7 +25,7 @@ interface ReportListProps {
   onEdit: (report: SavedReport) => void;
   onDelete: (id: string) => void;
   loading: boolean;
-  vehicles?: any[]; // 차량 목록 추가
+  vehicles?: any[];
 }
 
 const ReportList: React.FC<ReportListProps> = ({
@@ -59,24 +59,44 @@ const ReportList: React.FC<ReportListProps> = ({
   };
 
   const getTypeIcon = (type: string) => {
-    return type === 'daily' ? (
-      <FileText className="h-4 w-4 text-blue-600" />
-    ) : (
-      <BarChart3 className="h-4 w-4 text-green-600" />
-    );
+    switch (type) {
+      case 'daily':
+        return <FileText className="h-4 w-4 text-blue-600" />;
+      case 'monthly':
+        return <BarChart3 className="h-4 w-4 text-green-600" />;
+      case 'invoice':
+        return <Receipt className="h-4 w-4 text-purple-600" />;
+      default:
+        return <FileText className="h-4 w-4 text-gray-600" />;
+    }
   };
 
   const getTypeLabel = (type: string) => {
-    return type === 'daily' ? '운행보고서' : '월간보고서';
+    switch (type) {
+      case 'daily':
+        return '운행보고서';
+      case 'monthly':
+        return '월간보고서';
+      case 'invoice':
+        return '청구서';
+      default:
+        return '보고서';
+    }
   };
 
   const getTypeBadgeColor = (type: string) => {
-    return type === 'daily'
-      ? 'bg-blue-100 text-blue-800 border-blue-300'
-      : 'bg-green-100 text-green-800 border-green-300';
+    switch (type) {
+      case 'daily':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'monthly':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'invoice':
+        return 'bg-purple-100 text-purple-800 border-purple-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
   };
 
-  // 🔥 차량 정보 표시 함수 추가
   const getVehicleInfo = (report: SavedReport) => {
     if (report.type !== 'daily' || !report.settings) return null;
 
@@ -98,7 +118,6 @@ const ReportList: React.FC<ReportListProps> = ({
     return null;
   };
 
-  // 🔥 장소 필터 정보 표시 함수 추가
   const getLocationFilters = (report: SavedReport) => {
     if (report.type !== 'daily' || !report.settings) return null;
 
@@ -123,6 +142,23 @@ const ReportList: React.FC<ReportListProps> = ({
     }
 
     return filters.length > 0 ? filters : null;
+  };
+
+  // 🔥 청구서 현장 정보 표시 함수 추가
+  const getSiteInfo = (report: SavedReport) => {
+    if (report.type !== 'invoice' || !report.data?.siteInfo) return null;
+
+    const siteInfo = report.data.siteInfo;
+    if (siteInfo.siteName) {
+      return (
+        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+          <Receipt className="h-3 w-3 mr-1" />
+          {siteInfo.siteName}
+        </Badge>
+      );
+    }
+
+    return null;
   };
 
   if (loading) {
@@ -173,12 +209,16 @@ const ReportList: React.FC<ReportListProps> = ({
                         {getTypeLabel(report.type)}
                       </Badge>
 
-                      {/* 🔥 차량 정보 표시 */}
+                      {/* 차량 정보 표시 (일간보고서만) */}
                       {getVehicleInfo(report)}
 
-                      {/* 🔥 장소 필터 정보 표시 */}
+                      {/* 장소 필터 정보 표시 (일간보고서만) */}
                       {getLocationFilters(report)}
 
+                      {/* 🔥 청구서 현장 정보 표시 */}
+                      {getSiteInfo(report)}
+
+                      {/* 날짜 정보 표시 (일간보고서만) */}
                       {report.settings?.startDate && report.settings?.endDate && (
                         <Badge variant="outline" className="text-xs">
                           {format(new Date(report.settings.startDate), 'yyyy.MM.dd')} ~

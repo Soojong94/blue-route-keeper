@@ -1,8 +1,8 @@
-// src/components/reports/SavedReportViewer.tsx - 완전히 수정된 버전
+// src/components/reports/SavedReportViewer.tsx (수정)
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, BarChart3, Edit, Save, X } from 'lucide-react';
+import { FileText, BarChart3, Receipt, Edit, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateReport } from '@/utils/reportStorage';
 import { getTripsByDateRange } from '@/utils/storage';
@@ -10,8 +10,9 @@ import { generateDailyReport } from '@/utils/reportUtils';
 import { Vehicle } from '@/types/trip';
 import DailyReport from '@/components/reports/DailyReport';
 import MonthlyReport from '@/components/reports/MonthlyReport';
+import InvoiceReport from '@/components/reports/InvoiceReport';
 import ReportDownloader from '@/components/reports/ReportDownloader';
-import { MonthlyReportData } from '@/utils/reportUtils';
+import { MonthlyReportData, InvoiceReportData } from '@/utils/reportUtils';
 import { cn } from '@/lib/utils';
 
 interface ReportSettings {
@@ -29,7 +30,7 @@ interface ReportSettings {
 interface SavedReport {
   id: string;
   title: string;
-  type: 'daily' | 'monthly';
+  type: 'daily' | 'monthly' | 'invoice'; // 'invoice' 타입 추가
   settings: any;
   data: any;
   editable_rows?: any;
@@ -84,10 +85,8 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     };
   };
 
-  // 🔥 모달이 열릴 때마다 상태 초기화
   useEffect(() => {
     if (open && report) {
-      // 새로운 보고서가 열릴 때 항상 초기 상태로 설정
       setIsEditing(false);
       setEditedData(null);
       setEditedSettings(null);
@@ -95,12 +94,10 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
       setSaving(false);
       setRegenerating(false);
     }
-  }, [open, report?.id]); // report?.id 추가로 다른 보고서 열 때도 초기화
+  }, [open, report?.id]);
 
-  // 🔥 모달이 닫힐 때 상태 초기화
   useEffect(() => {
     if (!open) {
-      // 모달이 닫힐 때 모든 편집 상태 초기화
       setIsEditing(false);
       setEditedData(null);
       setEditedSettings(null);
@@ -110,18 +107,42 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   }, [open]);
 
-  // 🔥 편집 모드 진입 시에만 데이터 설정 - 안전한 초기화
   useEffect(() => {
     if (report && isEditing && !editedData) {
-      // 안전한 데이터 복사
-      const safeData = report.data ? JSON.parse(JSON.stringify(report.data)) : {
-        period: report.title || '',
-        rows: [],
-        totalAmount: 0
-      };
+      let safeData;
+
+      // 🔥 타입별로 안전한 데이터 생성
+      if (report.type === 'invoice') {
+        safeData = report.data || {
+          title: report.title || '',
+          siteInfo: {
+            siteName: '',
+            registrationNumber: '',
+            companyName: '',
+            ownerName: '',
+            address: '',
+            businessType: '',
+            businessCategory: ''
+          },
+          rows: [],
+          totalCount: 0,
+          totalAmount: 0
+        };
+      } else {
+        safeData = report.data ? JSON.parse(JSON.stringify(report.data)) : {
+          period: report.title || '',
+          rows: [],
+          totalAmount: 0
+        };
+      }
 
       setEditedData(safeData);
-      setEditedSettings(convertSettings(report.settings));
+
+      // 일간보고서인 경우에만 설정 변환
+      if (report.type === 'daily') {
+        setEditedSettings(convertSettings(report.settings));
+      }
+
       setHasUnsavedChanges(false);
     }
   }, [report, isEditing]);
@@ -132,7 +153,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   const handleStartEdit = () => {
     setIsEditing(true);
-    // editedData와 editedSettings는 useEffect에서 설정됨
   };
 
   const handleCancelEdit = () => {
@@ -151,11 +171,9 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   };
 
-  // 🔥 모달을 닫을 때 편집 상태 확인
   const handleCloseModal = (shouldClose: boolean) => {
     if (isEditing && hasUnsavedChanges) {
       if (confirm('저장하지 않은 변경사항이 있습니다. 정말로 닫으시겠습니까?')) {
-        // 상태 초기화 후 모달 닫기
         setIsEditing(false);
         setEditedData(null);
         setEditedSettings(null);
@@ -163,7 +181,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
         onOpenChange(shouldClose);
       }
     } else {
-      // 변경사항이 없으면 바로 닫기
       onOpenChange(shouldClose);
     }
   };
@@ -219,7 +236,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   const handleMonthlyDataChange = (newData: MonthlyReportData) => {
     setEditedData(newData);
 
-    // 🔥 월간보고서에서 제목이 변경된 경우 설정도 업데이트
     if (editedSettings && newData.period !== editedSettings.title) {
       setEditedSettings({
         ...editedSettings,
@@ -227,6 +243,12 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
       });
     }
 
+    setHasUnsavedChanges(true);
+  };
+
+  // 🔥 새로운 청구서 데이터 변경 핸들러
+  const handleInvoiceDataChange = (newData: InvoiceReportData) => {
+    setEditedData(newData);
     setHasUnsavedChanges(true);
   };
 
@@ -245,23 +267,27 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
         data: editedData
       };
 
-      // 🔥 월간보고서의 경우 제목 업데이트 처리
+      // 타입별로 다른 저장 로직
       if (report.type === 'monthly' && editedData.period) {
         updateData.title = editedData.period;
         updateData.settings = {
           ...report.settings,
           title: editedData.period
         };
+        updateData.editableRows = editedData.rows;
+      } else if (report.type === 'invoice' && editedData.title) {
+        updateData.title = editedData.title;
+        updateData.settings = {
+          ...report.settings,
+          title: editedData.title
+        };
+        updateData.editableRows = editedData.rows;
       } else if (editedSettings) {
         updateData.settings = {
           ...editedSettings,
           startDate: editedSettings.startDate.toISOString(),
           endDate: editedSettings.endDate.toISOString()
         };
-      }
-
-      if (report.type === 'monthly') {
-        updateData.editableRows = editedData.rows;
       }
 
       await updateReport(report.id, updateData);
@@ -292,14 +318,70 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   };
 
   const displayData = isEditing ? editedData : report.data;
-  const displaySettings = isEditing ? editedSettings : convertSettings(report.settings);
+  const displaySettings = isEditing ? editedSettings : (report.type === 'daily' ? convertSettings(report.settings) : null);
   const reportElementId = `report-content-${report.id}`;
 
-  // 🔥 안전한 데이터 확인
-  const safeDisplayData = displayData || {
-    period: report.title || '',
-    rows: [],
-    totalAmount: 0
+  // 타입별 안전한 데이터 처리
+  const getSafeDisplayData = () => {
+    if (report.type === 'invoice') {
+      return displayData || {
+        title: report.title || '',
+        siteInfo: {
+          siteName: '',
+          registrationNumber: '',
+          companyName: '',
+          ownerName: '',
+          address: '',
+          businessType: '',
+          businessCategory: ''
+        },
+        rows: [],
+        totalCount: 0,
+        totalAmount: 0
+      };
+    } else {
+      return displayData || {
+        period: report.title || '',
+        rows: [],
+        totalAmount: 0
+      };
+    }
+  };
+
+  const safeDisplayData = getSafeDisplayData();
+
+  // 🔥 타입별 아이콘 표시
+  const getReportIcon = () => {
+    switch (report.type) {
+      case 'daily':
+        return <FileText className="h-5 w-5" />;
+      case 'monthly':
+        return <BarChart3 className="h-5 w-5" />;
+      case 'invoice':
+        return <Receipt className="h-5 w-5" />;
+      default:
+        return <FileText className="h-5 w-5" />;
+    }
+  };
+
+  // 🔥 타입별 설명 표시
+  const getReportDescription = () => {
+    switch (report.type) {
+      case 'daily':
+        return isEditing
+          ? "운행보고서를 편집하고 있습니다. 설정을 변경하고 데이터를 새로고침할 수 있습니다."
+          : "저장된 운행보고서를 확인하고 필요시 편집하거나 다운로드할 수 있습니다.";
+      case 'monthly':
+        return isEditing
+          ? "월간보고서를 편집하고 있습니다. 표를 직접 편집할 수 있습니다."
+          : "저장된 월간보고서를 확인하고 필요시 편집하거나 다운로드할 수 있습니다.";
+      case 'invoice':
+        return isEditing
+          ? "청구서를 편집하고 있습니다. 현장 정보와 청구 항목을 수정할 수 있습니다."
+          : "저장된 청구서를 확인하고 필요시 편집하거나 다운로드할 수 있습니다.";
+      default:
+        return "저장된 보고서를 확인하고 필요시 편집하거나 다운로드할 수 있습니다.";
+    }
   };
 
   return (
@@ -307,11 +389,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader className="no-print">
           <DialogTitle className="flex items-center gap-2">
-            {report.type === 'daily' ? (
-              <FileText className="h-5 w-5" />
-            ) : (
-              <BarChart3 className="h-5 w-5" />
-            )}
+            {getReportIcon()}
             {isEditing ? (displaySettings?.title || report.title) : report.title}
             {isEditing && (
               <span className="text-sm font-normal text-orange-600 ml-2">
@@ -321,10 +399,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
           </DialogTitle>
 
           <DialogDescription className="text-sm text-gray-600">
-            {isEditing
-              ? "보고서를 편집하고 있습니다. 변경사항을 저장하거나 취소할 수 있습니다."
-              : "저장된 보고서를 확인하고 필요시 편집하거나 다운로드할 수 있습니다."
-            }
+            {getReportDescription()}
           </DialogDescription>
 
           <div className="flex gap-2 pt-2">
@@ -377,10 +452,9 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
             <div className="bg-orange-50 p-3 rounded mt-2">
               <p className="text-sm text-orange-700">
                 💡 <strong>편집 모드:</strong>
-                {report.type === 'daily' ?
-                  ' 설정을 변경하고 "데이터 새로고침" 버튼을 누르면 최신 데이터로 보고서가 업데이트됩니다.' :
-                  ' 표를 직접 편집할 수 있습니다.'
-                }
+                {report.type === 'daily' && ' 설정을 변경하고 "데이터 새로고침" 버튼을 누르면 최신 데이터로 보고서가 업데이트됩니다.'}
+                {report.type === 'monthly' && ' 표를 직접 편집할 수 있습니다.'}
+                {report.type === 'invoice' && ' 현장 정보와 청구 항목을 직접 편집할 수 있습니다.'}
                 {hasUnsavedChanges && (
                   <span className="font-bold text-orange-800"> 현재 저장되지 않은 변경사항이 있습니다!</span>
                 )}
@@ -400,12 +474,23 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
                 onSettingsChange={isEditing ? handleDailySettingsChange : undefined}
                 onRegenerate={isEditing ? handleRegenerateDaily : undefined}
               />
-            ) : (
+            ) : report.type === 'monthly' ? (
               <MonthlyReport
                 data={safeDisplayData}
                 viewMode={isEditing ? "edit" : "view"}
                 onDataChange={isEditing ? handleMonthlyDataChange : undefined}
               />
+            ) : report.type === 'invoice' ? (
+              // 🔥 새로운 청구서 렌더링
+              <InvoiceReport
+                data={safeDisplayData}
+                viewMode={isEditing ? "edit" : "view"}
+                onDataChange={isEditing ? handleInvoiceDataChange : undefined}
+              />
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                지원하지 않는 보고서 타입입니다.
+              </div>
             )}
           </div>
         </div>
