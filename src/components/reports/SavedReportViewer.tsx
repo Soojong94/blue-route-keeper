@@ -1,4 +1,4 @@
-// src/components/reports/SavedReportViewer.tsx
+// src/components/reports/SavedReportViewer.tsx - 완전히 수정된 버전
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -84,9 +84,43 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     };
   };
 
+  // 🔥 모달이 열릴 때마다 상태 초기화
   useEffect(() => {
-    if (report && isEditing) {
-      setEditedData(JSON.parse(JSON.stringify(report.data)));
+    if (open && report) {
+      // 새로운 보고서가 열릴 때 항상 초기 상태로 설정
+      setIsEditing(false);
+      setEditedData(null);
+      setEditedSettings(null);
+      setHasUnsavedChanges(false);
+      setSaving(false);
+      setRegenerating(false);
+    }
+  }, [open, report?.id]); // report?.id 추가로 다른 보고서 열 때도 초기화
+
+  // 🔥 모달이 닫힐 때 상태 초기화
+  useEffect(() => {
+    if (!open) {
+      // 모달이 닫힐 때 모든 편집 상태 초기화
+      setIsEditing(false);
+      setEditedData(null);
+      setEditedSettings(null);
+      setHasUnsavedChanges(false);
+      setSaving(false);
+      setRegenerating(false);
+    }
+  }, [open]);
+
+  // 🔥 편집 모드 진입 시에만 데이터 설정 - 안전한 초기화
+  useEffect(() => {
+    if (report && isEditing && !editedData) {
+      // 안전한 데이터 복사
+      const safeData = report.data ? JSON.parse(JSON.stringify(report.data)) : {
+        period: report.title || '',
+        rows: [],
+        totalAmount: 0
+      };
+
+      setEditedData(safeData);
       setEditedSettings(convertSettings(report.settings));
       setHasUnsavedChanges(false);
     }
@@ -98,9 +132,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   const handleStartEdit = () => {
     setIsEditing(true);
-    setEditedData(JSON.parse(JSON.stringify(report.data)));
-    setEditedSettings(convertSettings(report.settings));
-    setHasUnsavedChanges(false);
+    // editedData와 editedSettings는 useEffect에서 설정됨
   };
 
   const handleCancelEdit = () => {
@@ -116,6 +148,23 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
       setEditedData(null);
       setEditedSettings(null);
       setHasUnsavedChanges(false);
+    }
+  };
+
+  // 🔥 모달을 닫을 때 편집 상태 확인
+  const handleCloseModal = (shouldClose: boolean) => {
+    if (isEditing && hasUnsavedChanges) {
+      if (confirm('저장하지 않은 변경사항이 있습니다. 정말로 닫으시겠습니까?')) {
+        // 상태 초기화 후 모달 닫기
+        setIsEditing(false);
+        setEditedData(null);
+        setEditedSettings(null);
+        setHasUnsavedChanges(false);
+        onOpenChange(shouldClose);
+      }
+    } else {
+      // 변경사항이 없으면 바로 닫기
+      onOpenChange(shouldClose);
     }
   };
 
@@ -246,8 +295,15 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   const displaySettings = isEditing ? editedSettings : convertSettings(report.settings);
   const reportElementId = `report-content-${report.id}`;
 
+  // 🔥 안전한 데이터 확인
+  const safeDisplayData = displayData || {
+    period: report.title || '',
+    rows: [],
+    totalAmount: 0
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleCloseModal}>
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader className="no-print">
           <DialogTitle className="flex items-center gap-2">
@@ -264,7 +320,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
             )}
           </DialogTitle>
 
-          {/* 🔥 DialogDescription 추가하여 경고 해결 */}
           <DialogDescription className="text-sm text-gray-600">
             {isEditing
               ? "보고서를 편집하고 있습니다. 변경사항을 저장하거나 취소할 수 있습니다."
@@ -338,7 +393,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
           <div className="report-container" id={reportElementId}>
             {report.type === 'daily' ? (
               <DailyReport
-                data={displayData}
+                data={safeDisplayData}
                 vehicles={vehicles}
                 viewMode={isEditing ? "edit" : "view"}
                 initialSettings={displaySettings}
@@ -347,7 +402,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
               />
             ) : (
               <MonthlyReport
-                data={displayData}
+                data={safeDisplayData}
                 viewMode={isEditing ? "edit" : "view"}
                 onDataChange={isEditing ? handleMonthlyDataChange : undefined}
               />

@@ -1,4 +1,4 @@
-// src/components/reports/DailyReport.tsx (필터 표시 부분 제거)
+// src/components/reports/DailyReport.tsx 수정
 import React, { useState, useEffect, useCallback } from 'react';
 import { DailyReportData } from '@/utils/reportUtils';
 import { Vehicle } from '@/types/trip';
@@ -48,17 +48,22 @@ const DailyReport: React.FC<DailyReportProps> = ({
     return new Date();
   };
 
-  const [settings, setSettings] = useState<ReportSettings>({
-    title: initialSettings.title || '운행 보고서',
-    startDate: ensureDate(initialSettings.startDate),
-    endDate: ensureDate(initialSettings.endDate),
-    vehicleId: initialSettings.vehicleId || 'all',
-    additionalText: initialSettings.additionalText || '',
-    driverName: initialSettings.driverName || '',
-    contact: initialSettings.contact || '',
-    departureFilter: initialSettings.departureFilter || '',
-    destinationFilter: initialSettings.destinationFilter || ''
+  // 🔥 안전한 초기 설정 생성
+  const createSafeSettings = (settings: Partial<ReportSettings> = {}): ReportSettings => ({
+    title: settings.title || '운행 보고서',
+    startDate: ensureDate(settings.startDate),
+    endDate: ensureDate(settings.endDate),
+    vehicleId: settings.vehicleId || 'all',
+    additionalText: settings.additionalText || '',
+    driverName: settings.driverName || '',
+    contact: settings.contact || '',
+    departureFilter: settings.departureFilter || '',
+    destinationFilter: settings.destinationFilter || ''
   });
+
+  const [settings, setSettings] = useState<ReportSettings>(() =>
+    createSafeSettings(initialSettings)
+  );
 
   const handleSettingsChange = useCallback((field: keyof ReportSettings, value: any) => {
     const newSettings = { ...settings, [field]: value };
@@ -71,16 +76,21 @@ const DailyReport: React.FC<DailyReportProps> = ({
 
   useEffect(() => {
     if (initialSettings) {
-      setSettings(prev => ({
-        ...prev,
-        ...initialSettings,
-        startDate: ensureDate(initialSettings.startDate),
-        endDate: ensureDate(initialSettings.endDate),
-        departureFilter: initialSettings.departureFilter || '',
-        destinationFilter: initialSettings.destinationFilter || ''
-      }));
+      const safeSettings = createSafeSettings(initialSettings);
+      setSettings(safeSettings);
     }
   }, [initialSettings]);
+
+  // 🔥 data가 없으면 로딩 상태 표시
+  if (!data) {
+    return (
+      <div className="space-y-4 p-3 bg-white report-container" id="daily-report-content">
+        <div className="text-center py-8 text-gray-500">
+          보고서 데이터를 불러오는 중입니다...
+        </div>
+      </div>
+    );
+  }
 
   const getVehicleDisplayName = (vehicleId: string) => {
     if (vehicleId === 'all') return '전체 차량';
@@ -161,7 +171,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
       </div>
 
       {/* 운행 내역이 없는 경우 */}
-      {!data.dailyTrips.length ? (
+      {!data.dailyTrips || !data.dailyTrips.length ? (
         <div className="text-center py-6 text-gray-500 text-sm">
           선택한 조건에 운행 기록이 없습니다.
         </div>
@@ -177,7 +187,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 총 {data.dailyTrips.reduce((sum, trip) => sum + trip.count, 0)}회 운행
               </span>
               <span className="font-bold text-blue-800">
-                총 금액: {data.monthlyTotal.toLocaleString()}원
+                총 금액: {(data.monthlyTotal || 0).toLocaleString()}원
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -202,7 +212,7 @@ const DailyReport: React.FC<DailyReportProps> = ({
                 총 {data.dailyTrips.reduce((sum, trip) => sum + trip.count, 0)}회
               </span>
               <span className="font-bold text-blue-800">
-                {data.monthlyTotal.toLocaleString()}원
+                {(data.monthlyTotal || 0).toLocaleString()}원
               </span>
             </div>
             <div className="flex items-center gap-3 text-xs">
