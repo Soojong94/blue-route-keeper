@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { FileText, BarChart3, Receipt, Eye, Edit, Trash2, Search, Car, MapPin } from 'lucide-react';
+import { FileText, Receipt, Eye, Edit, Trash2, Search, Car, MapPin } from 'lucide-react'; // BarChart3 제거
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 interface SavedReport {
   id: string;
   title: string;
-  type: 'daily' | 'monthly' | 'invoice'; // 'invoice' 타입 추가
+  type: 'daily' | 'invoice'; // 'monthly' 제거
   settings: any;
   data: any;
   created_at: string;
@@ -62,8 +62,6 @@ const ReportList: React.FC<ReportListProps> = ({
     switch (type) {
       case 'daily':
         return <FileText className="h-4 w-4 text-blue-600" />;
-      case 'monthly':
-        return <BarChart3 className="h-4 w-4 text-green-600" />;
       case 'invoice':
         return <Receipt className="h-4 w-4 text-purple-600" />;
       default:
@@ -75,8 +73,6 @@ const ReportList: React.FC<ReportListProps> = ({
     switch (type) {
       case 'daily':
         return '운행보고서';
-      case 'monthly':
-        return '월간보고서';
       case 'invoice':
         return '청구서';
       default:
@@ -88,8 +84,6 @@ const ReportList: React.FC<ReportListProps> = ({
     switch (type) {
       case 'daily':
         return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'monthly':
-        return 'bg-green-100 text-green-800 border-green-300';
       case 'invoice':
         return 'bg-purple-100 text-purple-800 border-purple-300';
       default:
@@ -97,6 +91,7 @@ const ReportList: React.FC<ReportListProps> = ({
     }
   };
 
+  // 나머지 함수들은 동일하게 유지...
   const getVehicleInfo = (report: SavedReport) => {
     if (report.type !== 'daily' || !report.settings) return null;
 
@@ -144,7 +139,6 @@ const ReportList: React.FC<ReportListProps> = ({
     return filters.length > 0 ? filters : null;
   };
 
-  // 🔥 청구서 현장 정보 표시 함수 추가
   const getSiteInfo = (report: SavedReport) => {
     if (report.type !== 'invoice' || !report.data?.siteInfo) return null;
 
@@ -215,7 +209,7 @@ const ReportList: React.FC<ReportListProps> = ({
                       {/* 장소 필터 정보 표시 (일간보고서만) */}
                       {getLocationFilters(report)}
 
-                      {/* 🔥 청구서 현장 정보 표시 */}
+                      {/* 청구서 현장 정보 표시 */}
                       {getSiteInfo(report)}
 
                       {/* 날짜 정보 표시 (일간보고서만) */}

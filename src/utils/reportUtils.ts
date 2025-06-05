@@ -1,4 +1,4 @@
-// src/utils/reportUtils.ts (완전 새로운 버전)
+// src/utils/reportUtils.ts (월간보고서 관련 코드 제거)
 import { Trip, Vehicle } from '@/types/trip';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -20,7 +20,7 @@ export interface DailyReportData {
   monthlyTotal: number;
 }
 
-// 🔥 새로운 청구서 인터페이스들
+// 청구서 인터페이스들
 export interface InvoiceReportRow {
   id: string;
   date: string;          // 날짜 (YYYY-MM-DD)
@@ -48,23 +48,6 @@ export interface InvoiceReportData {
   rows: InvoiceReportRow[];
   totalCount: number;    // 총 횟수
   totalAmount: number;   // 총액
-}
-
-// 기존 월간보고서 인터페이스 유지 (기존 시스템과 호환성)
-export interface MonthlyReportRow {
-  id: string;
-  date: string;
-  item: string;
-  count: number;
-  unitPrice: number;
-  totalAmount: number;
-}
-
-export interface MonthlyReportData {
-  period: string;
-  rows: MonthlyReportRow[];
-  totalAmount: number;
-  originalDepartureStats?: any[];
 }
 
 // 청구서 관련 유틸리티 함수들
@@ -104,7 +87,7 @@ export const createEmptyInvoiceData = (title: string = ''): InvoiceReportData =>
   totalAmount: 0
 });
 
-// 기존 일간보고서 생성 함수 유지
+// 일간보고서 생성 함수 유지
 export const generateDailyReport = (
   trips: Trip[], 
   vehicles: Vehicle[], 
@@ -191,108 +174,3 @@ export const generateDailyReport = (
     monthlyTotal
   };
 };
-
-// 기존 월간보고서 생성 함수 유지
-export const generateMonthlyReport = (trips: Trip[]): MonthlyReportData => {
-  if (trips.length === 0) {
-    return {
-      period: '',
-      rows: [],
-      totalAmount: 0,
-      originalDepartureStats: []
-    };
-  }
-
-  const departureStats = new Map<string, { totalCount: number; totalAmount: number }>();
-
-  trips.forEach(trip => {
-    if (departureStats.has(trip.departure)) {
-      const existing = departureStats.get(trip.departure)!;
-      existing.totalCount += trip.count;
-      existing.totalAmount += trip.totalAmount;
-    } else {
-      departureStats.set(trip.departure, {
-        totalCount: trip.count,
-        totalAmount: trip.totalAmount
-      });
-    }
-  });
-
-  const originalDepartureStats = Array.from(departureStats.entries()).map(([departure, stats]) => ({
-    departure,
-    totalCount: stats.totalCount,
-    totalAmount: stats.totalAmount
-  })).sort((a, b) => b.totalAmount - a.totalAmount);
-
-  const sortedTrips = trips.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const rows: MonthlyReportRow[] = [];
-
-  const dateGroups = new Map<string, Trip[]>();
-  sortedTrips.forEach(trip => {
-    const date = trip.date;
-    if (!dateGroups.has(date)) {
-      dateGroups.set(date, []);
-    }
-    dateGroups.get(date)!.push(trip);
-  });
-
-  Array.from(dateGroups.entries()).forEach(([date, tripsOnDate]) => {
-    tripsOnDate.forEach((trip, index) => {
-      const item = `${trip.departure} → ${trip.destination}`;
-      rows.push({
-        id: `${trip.id}-${index}`,
-        date: date,
-        item: item,
-        count: trip.count,
-        unitPrice: trip.unitPrice,
-        totalAmount: trip.totalAmount
-      });
-    });
-  });
-
-  for (let i = 0; i < 3; i++) {
-    rows.push({
-      id: `empty-${Date.now()}-${i}`,
-      date: '',
-      item: '',
-      count: 0,
-      unitPrice: 0,
-      totalAmount: 0
-    });
-  }
-
-  const dates = trips.map(t => new Date(t.date)).sort((a, b) => a.getTime() - b.getTime());
-  const startDate = dates[0];
-  const endDate = dates[dates.length - 1];
-  const period = startDate.getMonth() === endDate.getMonth() 
-    ? format(startDate, 'yyyy년 MM월', { locale: ko })
-    : `${format(startDate, 'yyyy년 MM월', { locale: ko })} ~ ${format(endDate, 'yyyy년 MM월', { locale: ko })}`;
-
-  const totalAmount = rows.reduce((sum, row) => sum + row.totalAmount, 0);
-
-  return {
-    period,
-    rows,
-    totalAmount,
-    originalDepartureStats
-  };
-};
-
-// 기존 월간보고서 유틸리티 함수들 유지
-export const createEmptyMonthlyReportRow = (): MonthlyReportRow => ({
-  id: `empty-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  date: '',
-  item: '',
-  count: 0,
-  unitPrice: 0,
-  totalAmount: 0
-});
-
-export const calculateRowTotal = (count: number, unitPrice: number): number => {
-  return count * unitPrice;
-};
-
-export const updateRowCalculation = (row: MonthlyReportRow): MonthlyReportRow => ({
-  ...row,
-  totalAmount: calculateRowTotal(row.count, row.unitPrice)
-});

@@ -1,3 +1,4 @@
+// src/integrations/supabase/types.ts (수정)
 export type Json =
   | string
   | number
@@ -14,10 +15,10 @@ export type Database = {
           id: string
           user_id: string
           title: string
-          type: string
+          type: string // 'daily' | 'invoice' 만 지원
           settings: Json
           data: Json
-          editable_rows: Json | null  // 새로 추가된 필드
+          editable_rows: Json | null
           created_at: string
           updated_at: string | null
         }
@@ -25,10 +26,10 @@ export type Database = {
           id?: string
           user_id: string
           title: string
-          type: string
+          type: string // 'daily' | 'invoice' 만 지원
           settings: Json
           data: Json
-          editable_rows?: Json | null  // 새로 추가된 필드
+          editable_rows?: Json | null
           created_at?: string
           updated_at?: string | null
         }
@@ -36,15 +37,16 @@ export type Database = {
           id?: string
           user_id?: string
           title?: string
-          type?: string
+          type?: string // 'daily' | 'invoice' 만 지원
           settings?: Json
           data?: Json
-          editable_rows?: Json | null  // 새로 추가된 필드
+          editable_rows?: Json | null
           created_at?: string
           updated_at?: string | null
         }
         Relationships: []
       }
+      // 나머지 테이블들은 동일하게 유지...
       notes: {
         Row: {
           id: string
@@ -72,7 +74,6 @@ export type Database = {
         }
         Relationships: []
       }
-    
       locations: {
         Row: {
           category: string
@@ -222,6 +223,8 @@ export type Database = {
     }
   }
 }
+
+// 나머지 타입 정의들은 동일하게 유지...
 
 type DefaultSchema = Database[Extract<keyof Database, "public">]
 

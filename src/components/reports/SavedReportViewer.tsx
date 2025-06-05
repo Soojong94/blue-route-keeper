@@ -1,18 +1,17 @@
-// src/components/reports/SavedReportViewer.tsx (수정)
+// src/components/reports/SavedReportViewer.tsx (수정 - monthly 관련 코드 제거)
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, BarChart3, Receipt, Edit, Save, X } from 'lucide-react';
+import { FileText, Receipt, Edit, Save, X } from 'lucide-react'; // BarChart3 제거
 import { useToast } from '@/hooks/use-toast';
 import { updateReport } from '@/utils/reportStorage';
 import { getTripsByDateRange } from '@/utils/storage';
 import { generateDailyReport } from '@/utils/reportUtils';
 import { Vehicle } from '@/types/trip';
 import DailyReport from '@/components/reports/DailyReport';
-import MonthlyReport from '@/components/reports/MonthlyReport';
 import InvoiceReport from '@/components/reports/InvoiceReport';
 import ReportDownloader from '@/components/reports/ReportDownloader';
-import { MonthlyReportData, InvoiceReportData } from '@/utils/reportUtils';
+import { InvoiceReportData } from '@/utils/reportUtils';
 import { cn } from '@/lib/utils';
 
 interface ReportSettings {
@@ -30,7 +29,7 @@ interface ReportSettings {
 interface SavedReport {
   id: string;
   title: string;
-  type: 'daily' | 'monthly' | 'invoice'; // 'invoice' 타입 추가
+  type: 'daily' | 'invoice'; // 'monthly' 제거
   settings: any;
   data: any;
   editable_rows?: any;
@@ -111,7 +110,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     if (report && isEditing && !editedData) {
       let safeData;
 
-      // 🔥 타입별로 안전한 데이터 생성
+      // 타입별로 안전한 데이터 생성 (monthly 제거)
       if (report.type === 'invoice') {
         safeData = report.data || {
           title: report.title || '',
@@ -233,20 +232,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   };
 
-  const handleMonthlyDataChange = (newData: MonthlyReportData) => {
-    setEditedData(newData);
-
-    if (editedSettings && newData.period !== editedSettings.title) {
-      setEditedSettings({
-        ...editedSettings,
-        title: newData.period
-      });
-    }
-
-    setHasUnsavedChanges(true);
-  };
-
-  // 🔥 새로운 청구서 데이터 변경 핸들러
+  // 청구서 데이터 변경 핸들러
   const handleInvoiceDataChange = (newData: InvoiceReportData) => {
     setEditedData(newData);
     setHasUnsavedChanges(true);
@@ -267,15 +253,8 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
         data: editedData
       };
 
-      // 타입별로 다른 저장 로직
-      if (report.type === 'monthly' && editedData.period) {
-        updateData.title = editedData.period;
-        updateData.settings = {
-          ...report.settings,
-          title: editedData.period
-        };
-        updateData.editableRows = editedData.rows;
-      } else if (report.type === 'invoice' && editedData.title) {
+      // 타입별로 다른 저장 로직 (monthly 제거)
+      if (report.type === 'invoice' && editedData.title) {
         updateData.title = editedData.title;
         updateData.settings = {
           ...report.settings,
@@ -321,7 +300,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
   const displaySettings = isEditing ? editedSettings : (report.type === 'daily' ? convertSettings(report.settings) : null);
   const reportElementId = `report-content-${report.id}`;
 
-  // 타입별 안전한 데이터 처리
+  // 타입별 안전한 데이터 처리 (monthly 제거)
   const getSafeDisplayData = () => {
     if (report.type === 'invoice') {
       return displayData || {
@@ -350,13 +329,11 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
 
   const safeDisplayData = getSafeDisplayData();
 
-  // 🔥 타입별 아이콘 표시
+  // 타입별 아이콘 표시 (monthly 제거)
   const getReportIcon = () => {
     switch (report.type) {
       case 'daily':
         return <FileText className="h-5 w-5" />;
-      case 'monthly':
-        return <BarChart3 className="h-5 w-5" />;
       case 'invoice':
         return <Receipt className="h-5 w-5" />;
       default:
@@ -364,17 +341,13 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
     }
   };
 
-  // 🔥 타입별 설명 표시
+  // 타입별 설명 표시 (monthly 제거)
   const getReportDescription = () => {
     switch (report.type) {
       case 'daily':
         return isEditing
           ? "운행보고서를 편집하고 있습니다. 설정을 변경하고 데이터를 새로고침할 수 있습니다."
           : "저장된 운행보고서를 확인하고 필요시 편집하거나 다운로드할 수 있습니다.";
-      case 'monthly':
-        return isEditing
-          ? "월간보고서를 편집하고 있습니다. 표를 직접 편집할 수 있습니다."
-          : "저장된 월간보고서를 확인하고 필요시 편집하거나 다운로드할 수 있습니다.";
       case 'invoice':
         return isEditing
           ? "청구서를 편집하고 있습니다. 현장 정보와 청구 항목을 수정할 수 있습니다."
@@ -453,7 +426,6 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
               <p className="text-sm text-orange-700">
                 💡 <strong>편집 모드:</strong>
                 {report.type === 'daily' && ' 설정을 변경하고 "데이터 새로고침" 버튼을 누르면 최신 데이터로 보고서가 업데이트됩니다.'}
-                {report.type === 'monthly' && ' 표를 직접 편집할 수 있습니다.'}
                 {report.type === 'invoice' && ' 현장 정보와 청구 항목을 직접 편집할 수 있습니다.'}
                 {hasUnsavedChanges && (
                   <span className="font-bold text-orange-800"> 현재 저장되지 않은 변경사항이 있습니다!</span>
@@ -474,14 +446,7 @@ const SavedReportViewer: React.FC<SavedReportViewerProps> = ({
                 onSettingsChange={isEditing ? handleDailySettingsChange : undefined}
                 onRegenerate={isEditing ? handleRegenerateDaily : undefined}
               />
-            ) : report.type === 'monthly' ? (
-              <MonthlyReport
-                data={safeDisplayData}
-                viewMode={isEditing ? "edit" : "view"}
-                onDataChange={isEditing ? handleMonthlyDataChange : undefined}
-              />
             ) : report.type === 'invoice' ? (
-              // 🔥 새로운 청구서 렌더링
               <InvoiceReport
                 data={safeDisplayData}
                 viewMode={isEditing ? "edit" : "view"}

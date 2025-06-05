@@ -1,10 +1,10 @@
-// src/utils/reportStorage.ts (타입 수정)
+// src/utils/reportStorage.ts (수정)
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SavedReport {
   id: string;
   title: string;
-  type: 'daily' | 'monthly' | 'invoice'; // 'invoice' 타입 추가
+  type: 'daily' | 'invoice'; // 'monthly' 제거
   settings: any;
   data: any;
   editable_rows?: any;
@@ -14,7 +14,7 @@ export interface SavedReport {
 
 export const saveReport = async (reportData: {
   title: string;
-  type: 'daily' | 'monthly' | 'invoice'; // 'invoice' 타입 추가
+  type: 'daily' | 'invoice'; // 'monthly' 제거
   settings: any;
   data: any;
   editableRows?: any[];
@@ -40,7 +40,7 @@ export const saveReport = async (reportData: {
   return {
     id: data.id,
     title: data.title,
-    type: data.type as 'daily' | 'monthly' | 'invoice',
+    type: data.type as 'daily' | 'invoice', // 'monthly' 제거
     settings: data.settings,
     data: data.data,
     editable_rows: data.editable_rows || undefined,
@@ -64,7 +64,7 @@ export const getReports = async (): Promise<SavedReport[]> => {
   return data.map(report => ({
     id: report.id,
     title: report.title,
-    type: report.type as 'daily' | 'monthly' | 'invoice',
+    type: report.type as 'daily' | 'invoice', // 'monthly' 제거
     settings: report.settings,
     data: report.data,
     editable_rows: report.editable_rows || undefined,
@@ -100,7 +100,7 @@ export const updateReport = async (id: string, updates: {
   return {
     id: data.id,
     title: data.title,
-    type: data.type as 'daily' | 'monthly' | 'invoice',
+    type: data.type as 'daily' | 'invoice', // 'monthly' 제거
     settings: data.settings,
     data: data.data,
     editable_rows: data.editable_rows || undefined,
