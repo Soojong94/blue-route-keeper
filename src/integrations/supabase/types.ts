@@ -1,4 +1,4 @@
-// src/integrations/supabase/types.ts (수정)
+// src/integrations/supabase/types.ts
 export type Json =
   | string
   | number
@@ -15,7 +15,7 @@ export type Database = {
           id: string
           user_id: string
           title: string
-          type: string // 'daily' | 'invoice' 만 지원
+          type: 'daily' | 'invoice' // monthly 제거
           settings: Json
           data: Json
           editable_rows: Json | null
@@ -26,7 +26,7 @@ export type Database = {
           id?: string
           user_id: string
           title: string
-          type: string // 'daily' | 'invoice' 만 지원
+          type: 'daily' | 'invoice' // monthly 제거
           settings: Json
           data: Json
           editable_rows?: Json | null
@@ -37,7 +37,7 @@ export type Database = {
           id?: string
           user_id?: string
           title?: string
-          type?: string // 'daily' | 'invoice' 만 지원
+          type?: 'daily' | 'invoice' // monthly 제거
           settings?: Json
           data?: Json
           editable_rows?: Json | null
@@ -46,7 +46,6 @@ export type Database = {
         }
         Relationships: []
       }
-      // 나머지 테이블들은 동일하게 유지...
       notes: {
         Row: {
           id: string
@@ -224,11 +223,9 @@ export type Database = {
   }
 }
 
-// 나머지 타입 정의들은 동일하게 유지...
-
 type DefaultSchema = Database[Extract<keyof Database, "public">]
 
-export type Tables<
+export type Tables
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof Database },
@@ -255,7 +252,7 @@ export type Tables<
       : never
     : never
 
-export type TablesInsert<
+export type TablesInsert
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof Database },
@@ -278,7 +275,7 @@ export type TablesInsert<
       : never
     : never
 
-export type TablesUpdate<
+export type TablesUpdate
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof Database },
@@ -301,7 +298,7 @@ export type TablesUpdate<
       : never
     : never
 
-export type Enums<
+export type Enums
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof Database },
@@ -316,7 +313,7 @@ export type Enums<
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
-export type CompositeTypes<
+export type CompositeTypes
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof Database },

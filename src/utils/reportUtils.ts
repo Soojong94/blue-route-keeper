@@ -1,9 +1,9 @@
-// src/utils/reportUtils.ts (월간보고서 관련 코드 제거)
+// src/utils/reportUtils.ts
 import { Trip, Vehicle } from '@/types/trip';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
-// 기존 일간보고서 인터페이스 유지
+// 일간보고서 인터페이스
 export interface DailyReportData {
   period: string;
   vehicleName: string;
@@ -71,23 +71,28 @@ export const updateInvoiceRowCalculation = (row: InvoiceReportRow): InvoiceRepor
   amount: calculateInvoiceRowAmount(row.count, row.unitPrice)
 });
 
-export const createEmptyInvoiceData = (title: string = ''): InvoiceReportData => ({
-  title: title || `${new Date().getMonth() + 1}월 청구서`,
-  siteInfo: {
-    siteName: '',
-    registrationNumber: '',
-    companyName: '',
-    ownerName: '',
-    address: '',
-    businessType: '',
-    businessCategory: ''
-  },
-  rows: Array(10).fill(null).map(() => createEmptyInvoiceRow()), // 기본 10행
-  totalCount: 0,
-  totalAmount: 0
-});
+export const createEmptyInvoiceData = (title: string = ''): InvoiceReportData => {
+  const now = new Date();
+  const defaultTitle = title || `${now.getMonth() + 1}월 청구서`;
+  
+  return {
+    title: defaultTitle,
+    siteInfo: {
+      siteName: '',
+      registrationNumber: '',
+      companyName: '',
+      ownerName: '',
+      address: '',
+      businessType: '',
+      businessCategory: ''
+    },
+    rows: Array(10).fill(null).map(() => createEmptyInvoiceRow()), // 기본 10행
+    totalCount: 0,
+    totalAmount: 0
+  };
+};
 
-// 일간보고서 생성 함수 유지
+// 일간보고서 생성 함수 (기존 유지)
 export const generateDailyReport = (
   trips: Trip[], 
   vehicles: Vehicle[], 

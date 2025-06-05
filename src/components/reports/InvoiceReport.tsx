@@ -126,77 +126,109 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
 
   return (
     <div className="space-y-4 p-4 bg-white invoice-container mx-auto" style={{ maxWidth: '210mm' }}>
-      {/* 제목 - showTitle이 true일 때만 표시 */}
-      {showTitle && (
-        <div className="text-center border-2 border-black p-2 mb-4">
-          {viewMode === 'edit' ? (
-            <div className="flex items-center justify-center gap-2">
-              {isEditingTitle ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={editingTitle}
-                    onChange={(e) => setEditingTitle(e.target.value)}
-                    onKeyDown={handleTitleKeyDown}
-                    className="text-xl font-bold text-center border-2 border-blue-300"
-                    autoFocus
-                  />
-                  <Button
-                    size="sm"
-                    onClick={handleTitleSave}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleTitleCancel}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <h1 className="text-xl font-bold text-gray-900">{reportData.title || '제목 없음'}</h1>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleTitleEdit}
-                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
-                    title="제목 편집"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <h1 className="text-xl font-bold text-gray-900">{reportData.title || '제목 없음'}</h1>
-          )}
+      {/* 편집 모드 안내 */}
+      {viewMode === 'edit' && (
+        <div className="bg-blue-50 p-3 rounded mb-4">
+          <p className="text-sm text-blue-700">
+            💡 <strong>편집 모드:</strong> 청구서 제목과 현장 정보, 청구 항목을 직접 수정할 수 있습니다. 행 추가/삭제도 가능합니다.
+          </p>
         </div>
       )}
 
-      {/* 현장 정보 섹션 */}
+      {/* 🔥 엑셀 구조를 정확히 반영한 청구서 테이블 */}
       <div className="border-2 border-black">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-sm" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '14.29%' }} /> {/* A */}
+            <col style={{ width: '14.29%' }} /> {/* B */}
+            <col style={{ width: '14.29%' }} /> {/* C */}
+            <col style={{ width: '14.29%' }} /> {/* D */}
+            <col style={{ width: '14.29%' }} /> {/* E */}
+            <col style={{ width: '14.29%' }} /> {/* F */}
+            <col style={{ width: '14.29%' }} /> {/* G */}
+          </colgroup>
           <tbody>
+            {/* Row 1: 제목 (A1:G1 병합) */}
             <tr>
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium w-20">현장명</td>
-              <td className="border border-black px-2 py-1 w-40">
+              <td className="border border-black px-2 py-3 text-center text-xl font-bold" colSpan={7}>
+                {viewMode === 'edit' ? (
+                  <div className="flex items-center justify-center gap-2">
+                    {isEditingTitle ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={handleTitleKeyDown}
+                          className="text-xl font-bold text-center border-2 border-blue-300"
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleTitleSave}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleTitleCancel}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2">
+                        <span>{reportData.title || '제목 없음'}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleTitleEdit}
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                          title="제목 편집"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span>{reportData.title || '제목 없음'}</span>
+                )}
+              </td>
+            </tr>
+
+            {/* Row 2: 빈 행 */}
+            <tr>
+              <td className="border border-black p-0" colSpan={7} style={{ height: '2px' }}></td>
+            </tr>
+
+            {/* Row 3-5: 현장 정보 */}
+            <tr>
+              {/* 현장명 (A3:A5 병합) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center align-middle" rowSpan={3}>
+                현장명
+              </td>
+              {/* 현장명 입력칸 (B3:C5 병합) */}
+              <td className="border border-black px-2 py-1" colSpan={2} rowSpan={3}>
                 {viewMode === 'edit' ? (
                   <Input
                     value={reportData.siteInfo.siteName}
                     onChange={(e) => handleSiteInfoChange('siteName', e.target.value)}
-                    className="border-0 p-0 text-sm h-6"
+                    className="border-0 p-0 text-sm h-full"
                     placeholder="현장명 입력"
                   />
                 ) : (
                   <span>{reportData.siteInfo.siteName}</span>
                 )}
               </td>
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium w-20">등록번호</td>
-              <td className="border border-black px-2 py-1">
+              {/* 등록번호 (D3) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+                등록번호
+              </td>
+              {/* 등록번호 입력칸 (E3:G3 병합) */}
+              <td className="border border-black px-2 py-1" colSpan={3}>
                 {viewMode === 'edit' ? (
                   <Input
                     value={reportData.siteInfo.registrationNumber}
@@ -209,8 +241,14 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                 )}
               </td>
             </tr>
+
             <tr>
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium">상호</td>
+              {/* A3:A5, B3:C5는 위에서 rowSpan으로 처리됨 */}
+              {/* 상호 (D4) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+                상호
+              </td>
+              {/* 상호 입력칸 (E4) */}
               <td className="border border-black px-2 py-1">
                 {viewMode === 'edit' ? (
                   <Input
@@ -223,7 +261,11 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <span>{reportData.siteInfo.companyName}</span>
                 )}
               </td>
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium">성명</td>
+              {/* 성명 (F4) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+                성명
+              </td>
+              {/* 성명 입력칸 (G4) */}
               <td className="border border-black px-2 py-1">
                 {viewMode === 'edit' ? (
                   <Input
@@ -237,8 +279,13 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                 )}
               </td>
             </tr>
+
             <tr>
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium">사업장 주소</td>
+              {/* A3:A5, B3:C5는 위에서 rowSpan으로 처리됨 */}
+              {/* 사업장 주소 (D5:G5 병합) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+                사업장 주소
+              </td>
               <td className="border border-black px-2 py-1" colSpan={3}>
                 {viewMode === 'edit' ? (
                   <Input
@@ -252,13 +299,18 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                 )}
               </td>
             </tr>
+
+            {/* Row 6: 청구 안내 + 업태/종목 */}
             <tr>
-              <td className="border border-black px-2 py-3 text-center" colSpan={4}>
-                <span className="font-medium">아래와 같이 청구합니다.</span>
+              {/* 아래와 같이 청구합니다 (A6:C6 병합) */}
+              <td className="border border-black px-2 py-3 text-center font-medium" colSpan={3}>
+                아래와 같이 청구합니다.
               </td>
-            </tr>
-            <tr>
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium">업태</td>
+              {/* 업태 (D6) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+                업태
+              </td>
+              {/* 업태 입력칸 (E6) */}
               <td className="border border-black px-2 py-1">
                 {viewMode === 'edit' ? (
                   <Input
@@ -271,7 +323,11 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <span>{reportData.siteInfo.businessType}</span>
                 )}
               </td>
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium">종목</td>
+              {/* 종목 (F6) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+                종목
+              </td>
+              {/* 종목 입력칸 (G6) */}
               <td className="border border-black px-2 py-1">
                 {viewMode === 'edit' ? (
                   <Input
@@ -285,20 +341,14 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                 )}
               </td>
             </tr>
+
+            {/* Row 7: 메인 테이블 헤더 */}
+
           </tbody>
         </table>
       </div>
 
-      {/* 편집 모드 안내 */}
-      {viewMode === 'edit' && (
-        <div className="bg-blue-50 p-3 rounded mb-4">
-          <p className="text-sm text-blue-700">
-            💡 <strong>편집 모드:</strong> 현장 정보와 청구서 항목을 직접 수정할 수 있습니다. 행 추가/삭제도 가능합니다.
-          </p>
-        </div>
-      )}
-
-      {/* 청구서 테이블 */}
+      {/* 청구서 항목 그리드 */}
       <div className="space-y-3">
         <InvoiceReportGrid
           rows={reportData.rows || []}
@@ -307,33 +357,35 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
         />
       </div>
 
-      {/* 합계 행 */}
+      {/* 합계 행 - 7컬럼에 맞춰 조정 */}
       <div className="border-2 border-black">
         <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '14.29%' }} />
+            <col style={{ width: '14.29%' }} />
+            <col style={{ width: '14.29%' }} />
+            <col style={{ width: '14.29%' }} />
+            <col style={{ width: '14.29%' }} />
+            <col style={{ width: '14.29%' }} />
+            <col style={{ width: '14.29%' }} />
+          </colgroup>
           <tbody>
             <tr className="bg-gray-100">
-              <td className="border border-black px-2 py-2 text-center font-bold" style={{ width: '12%' }}>
-                -
+              <td className="border border-black px-2 py-2 text-center font-bold" colSpan={3}>
+                합계
               </td>
-              <td className="border border-black px-2 py-2 text-center font-bold" style={{ width: '25%' }}>
-                -
-              </td>
-              <td className="border border-black px-2 py-2 text-center font-bold" style={{ width: '10%' }}>
-                -
-              </td>
-              <td className="border border-black px-2 py-2 text-center font-bold" style={{ width: '8%' }}>
+              <td className="border border-black px-2 py-2 text-center font-bold">
                 총 횟수
               </td>
-              <td className="border border-black px-2 py-2 text-center font-bold" style={{ width: '12%' }}>
+              <td className="border border-black px-2 py-2 text-center font-bold">
                 총액
               </td>
-              <td className="border border-black px-2 py-2 text-right font-bold text-lg" style={{ width: '12%' }}>
+              <td className="border border-black px-2 py-2 text-center font-bold text-lg">
                 {getTotalCount()}
               </td>
-              <td className="border border-black px-2 py-2 text-right font-bold text-lg" style={{ width: '16%' }}>
+              <td className="border border-black px-2 py-2 text-center font-bold text-lg">
                 {getTotalAmount().toLocaleString()}원
               </td>
-              {viewMode === 'edit' && <td className="border border-black" style={{ width: '5%' }}></td>}
             </tr>
           </tbody>
         </table>
