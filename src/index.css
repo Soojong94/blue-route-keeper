@@ -1304,66 +1304,208 @@
     page-break-after: avoid !important;
   }
 
-  /* 🔥 A4 용지 크기에 맞춘 여백 */
+
+
+  /* 🔥 A4 용지 크기에 맞춘 여백 - 양옆 공백 최대한 줄이기 */
   @page {
-    margin: 10mm !important;
+    margin: 6mm 3mm !important;
+    /* 양옆 여백을 3mm로 대폭 줄임 */
     size: A4 portrait !important;
     width: 210mm !important;
     height: 297mm !important;
   }
 
-  /* 🔥 페이지 높이 계산 - 약 25-30행 정도가 한 페이지 */
-  .invoice-container tbody tr:nth-child(25n) {
-    page-break-after: auto !important;
-  }
-}
+  /* 🔥 청구서 인쇄 최적화 - 페이지 넘김 지원 */
+  @media print {
 
-/* 🔥 청구서 전용 반응형 테이블 */
-.invoice-container .overflow-x-auto {
-  overflow-x: auto;
-  max-width: 100%;
-}
+    /* 청구서 기본 설정 - 너비 최대화 */
+    .invoice-container {
+      display: block !important;
+      position: static !important;
+      width: 100% !important;
+      max-width: 204mm !important;
+      /* 198mm에서 204mm로 최대화 */
+      margin: 0 auto !important;
+      padding: 0 !important;
+      font-size: 9px !important;
+      background: white !important;
+      color: black !important;
+      box-shadow: none !important;
+      border: none !important;
+      transform: none !important;
+      left: auto !important;
+      top: auto !important;
+      page-break-inside: auto !important;
+      overflow: visible !important;
+    }
 
-.invoice-container table {
-  min-width: 700px;
-  width: 100%;
-  margin: 0 auto;
-}
+    /* 🔥 청구서 제목 영역 */
+    .invoice-container h1 {
+      font-size: 18px !important;
+      font-weight: bold !important;
+      text-align: center !important;
+      margin-bottom: 3mm !important;
+      border: 2px solid #000 !important;
+      padding: 4mm !important;
+      page-break-after: avoid !important;
+    }
 
-/* 🔥 청구서 입력 필드 스타일 */
-.invoice-container input[type="text"],
-.invoice-container input[type="number"] {
-  width: 100%;
-  border: none;
-  background: transparent;
-  padding: 2px;
-  font-size: inherit;
-  text-align: inherit;
-}
+    /* 🔥 현장 정보 테이블 */
+    .invoice-container>div:first-child table {
+      border: 2px solid #000 !important;
+      width: 100% !important;
+      margin-bottom: 3mm !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+    }
 
-.invoice-container input:focus {
-  background-color: #eff6ff;
-  outline: 1px solid #3b82f6;
-}
+    /* 🔥 청구서 메인 테이블 - 페이지 넘김 최적화 및 너비 최대화 */
+    .invoice-container table {
+      border-collapse: collapse !important;
+      width: 100% !important;
+      max-width: 200mm !important;
+      /* 195mm에서 200mm로 최대화 */
+      page-break-inside: auto !important;
+      margin: 2mm 0 !important;
+      table-layout: fixed !important;
+      font-size: 9px !important;
+      border: 2px solid #000 !important;
+    }
 
-/* 🔥 청구서 Select 스타일 */
-.invoice-container .select-trigger {
-  border: none;
-  background: transparent;
-  padding: 2px;
-  font-size: inherit;
-}
+    /* 🔥 테이블 헤더 - 각 페이지 상단에 반복 */
+    .invoice-container thead {
+      display: table-header-group !important;
+    }
 
-/* 🔥 행 추가/삭제 버튼 스타일 */
-.invoice-container .action-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin: 8px 0;
-}
+    .invoice-container thead th {
+      background: #f0f0f0 !important;
+      font-weight: bold !important;
+      font-size: 10px !important;
+      border: 1px solid #000 !important;
+      padding: 2.5mm 1mm !important;
+      text-align: center !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+    }
 
-@media print {
-  .invoice-container .action-buttons {
-    display: none !important;
+    /* 🔥 테이블 셀 최적화 */
+    .invoice-container th,
+    .invoice-container td {
+      border: 1px solid #000 !important;
+      padding: 2mm 1mm !important;
+      text-align: center !important;
+      font-size: 9px !important;
+      page-break-inside: avoid !important;
+      vertical-align: middle !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      hyphens: auto !important;
+      line-height: 1.2 !important;
+      height: auto !important;
+      min-height: 5mm !important;
+    }
+
+    /* 🔥 현장명 특별 스타일링 */
+    .invoice-container td.text-lg,
+    .invoice-container th.text-lg {
+      font-size: 14px !important;
+      font-weight: bold !important;
+      padding: 3mm 2mm !important;
+    }
+
+    /* 🔥 청구서 컬럼 너비 최적화 - 비고 칸 줄이고 금액 칸 확대 */
+    .invoice-container table[style*="table-layout: fixed"] th:nth-child(1),
+    .invoice-container table[style*="table-layout: fixed"] td:nth-child(1) {
+      width: 24mm !important;
+      /* 날짜 */
+    }
+
+    .invoice-container table[style*="table-layout: fixed"] th:nth-child(2),
+    .invoice-container table[style*="table-layout: fixed"] td:nth-child(2) {
+      width: 50mm !important;
+      /* 품목 - 48mm에서 50mm로 증가 */
+    }
+
+    .invoice-container table[style*="table-layout: fixed"] th:nth-child(3),
+    .invoice-container table[style*="table-layout: fixed"] td:nth-child(3) {
+      width: 22mm !important;
+      /* 반입/반출 - 20mm에서 22mm로 증가 */
+    }
+
+    .invoice-container table[style*="table-layout: fixed"] th:nth-child(4),
+    .invoice-container table[style*="table-layout: fixed"] td:nth-child(4) {
+      width: 18mm !important;
+      /* 횟수 - 17mm에서 18mm로 증가 */
+    }
+
+    .invoice-container table[style*="table-layout: fixed"] th:nth-child(5),
+    .invoice-container table[style*="table-layout: fixed"] td:nth-child(5) {
+      width: 28mm !important;
+      /* 단가 - 25mm에서 28mm로 증가 */
+    }
+
+    .invoice-container table[style*="table-layout: fixed"] th:nth-child(6),
+    .invoice-container table[style*="table-layout: fixed"] td:nth-child(6) {
+      width: 30mm !important;
+      /* 금액 - 25mm에서 30mm로 대폭 증가 */
+    }
+
+    .invoice-container table[style*="table-layout: fixed"] th:nth-child(7),
+    .invoice-container table[style*="table-layout: fixed"] td:nth-child(7) {
+      width: 28mm !important;
+      /* 비고 - 36mm에서 28mm로 축소 */
+    }
+
+    /* 🔥 현장 정보 테이블 셀 스타일 */
+    .invoice-container>div:first-child table th,
+    .invoice-container>div:first-child table td {
+      font-size: 10px !important;
+      padding: 2.5mm 1.5mm !important;
+      border: 1px solid #000 !important;
+    }
+
+    /* 🔥 상위 항목들 bold 강화 */
+    .invoice-container .font-bold,
+    .invoice-container th,
+    .invoice-container .bg-gray-100 {
+      font-weight: 900 !important;
+    }
+
+    /* 🔥 합계 행 스타일 강화 */
+    .invoice-container .bg-gray-100 {
+      background: #e0e0e0 !important;
+      font-size: 10px !important;
+    }
+
+    /* 🔥 합계 행 내 숫자 강조 */
+    .invoice-container .text-lg {
+      font-size: 12px !important;
+      font-weight: 900 !important;
+    }
+
+    /* 🔥 제목 테이블 셀 특별 처리 */
+    .invoice-container td[colspan="7"] {
+      font-size: 16px !important;
+      font-weight: 900 !important;
+      padding: 5mm !important;
+    }
+
+    /* 🔥 반입/반출 셀 특별 처리 - 글자 잘림 방지 */
+    .invoice-container td:nth-child(3),
+    .invoice-container th:nth-child(3) {
+      font-size: 8px !important;
+      /* 반입/반출 컬럼만 폰트 크기 줄임 */
+      word-break: keep-all !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    /* 🔥 단가 및 금액 셀 우측 정렬 */
+    .invoice-container td:nth-child(5),
+    .invoice-container td:nth-child(6) {
+      text-align: right !important;
+      padding-right: 2mm !important;
+    }
   }
 }

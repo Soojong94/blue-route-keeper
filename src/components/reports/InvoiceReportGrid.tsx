@@ -275,15 +275,20 @@ const InvoiceReportGrid: React.FC<InvoiceReportGridProps> = ({
 
     // 일반 표시 셀
     const displayValue = (() => {
-      if ((field === 'count' || field === 'unitPrice') && typeof value === 'number') {
+      if (field === 'count' && typeof value === 'number') {
         return value === 0 ? '' : value.toLocaleString();
+      }
+      // 🔥 단가에 '원' 단위 추가
+      if (field === 'unitPrice' && typeof value === 'number') {
+        return value === 0 ? '' : value.toLocaleString() + '원';
       }
       return value?.toString() || '';
     })();
 
     return (
       <div
-        className={`w-full h-8 px-2 py-1 text-xs cursor-pointer hover:bg-gray-50 ${field === 'count' || field === 'unitPrice' ? 'text-right' :
+        className={`w-full h-8 px-2 py-1 text-xs cursor-pointer hover:bg-gray-50 ${field === 'count' ? 'text-center' :
+          field === 'unitPrice' || field === 'amount' ? 'text-right' :
             field === 'memo' ? 'text-left' : 'text-center'
           }`}
         onClick={() => handleCellClick(rowIndex, field)}
@@ -304,17 +309,19 @@ const InvoiceReportGrid: React.FC<InvoiceReportGridProps> = ({
         </div>
       )}
 
+
+
       <div className="border rounded-lg overflow-auto">
         <table className="w-full border-collapse text-xs min-w-[700px]" style={{ tableLayout: 'fixed' }}>
           <thead className="bg-gray-50 sticky top-0">
             <tr>
               <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '12%' }}>날짜</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '25%' }}>품목</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '10%' }}>반입/반출</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '28%' }}>품목</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '12%' }}>반입/반출</th>
               <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '8%' }}>횟수</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '12%' }}>단가</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '12%' }}>금액</th>
-              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '16%' }}>비고</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '15%' }}>단가</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '15%' }}>금액</th>
+              <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '10%' }}>비고</th>
               {!readonly && <th className="border px-2 py-2 text-center font-medium text-gray-700" style={{ width: '5%' }}>삭제</th>}
             </tr>
           </thead>
@@ -322,12 +329,12 @@ const InvoiceReportGrid: React.FC<InvoiceReportGridProps> = ({
             {rows.map((row, rowIndex) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="border" style={{ width: '12%' }}>{renderCell(row, rowIndex, 'date')}</td>
-                <td className="border" style={{ width: '25%' }}>{renderCell(row, rowIndex, 'item')}</td>
-                <td className="border" style={{ width: '10%' }}>{renderCell(row, rowIndex, 'direction')}</td>
+                <td className="border" style={{ width: '28%' }}>{renderCell(row, rowIndex, 'item')}</td>
+                <td className="border" style={{ width: '12%' }}>{renderCell(row, rowIndex, 'direction')}</td>
                 <td className="border" style={{ width: '8%' }}>{renderCell(row, rowIndex, 'count')}</td>
-                <td className="border" style={{ width: '12%' }}>{renderCell(row, rowIndex, 'unitPrice')}</td>
-                <td className="border" style={{ width: '12%' }}>{renderCell(row, rowIndex, 'amount')}</td>
-                <td className="border" style={{ width: '16%' }}>{renderCell(row, rowIndex, 'memo')}</td>
+                <td className="border" style={{ width: '15%' }}>{renderCell(row, rowIndex, 'unitPrice')}</td>
+                <td className="border" style={{ width: '15%' }}>{renderCell(row, rowIndex, 'amount')}</td>
+                <td className="border" style={{ width: '10%' }}>{renderCell(row, rowIndex, 'memo')}</td>
                 {!readonly && (
                   <td className="border text-center" style={{ width: '5%' }}>
                     <Button

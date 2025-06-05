@@ -206,8 +206,8 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
 
             {/* Row 3-5: 현장 정보 */}
             <tr>
-              {/* 현장명 (A3:A5 병합) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center align-middle" rowSpan={3}>
+              {/* 🔥 현장명 글자 크기 증가 및 bold 적용 (A3:A5 병합) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center align-middle text-lg" rowSpan={3}>
                 현장명
               </td>
               {/* 현장명 입력칸 (B3:C5 병합) */}
@@ -216,15 +216,15 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <Input
                     value={reportData.siteInfo.siteName}
                     onChange={(e) => handleSiteInfoChange('siteName', e.target.value)}
-                    className="border-0 p-0 text-sm h-full"
+                    className="border-0 p-0 text-base h-full font-medium"
                     placeholder="현장명 입력"
                   />
                 ) : (
-                  <span>{reportData.siteInfo.siteName}</span>
+                  <span className="text-base font-medium">{reportData.siteInfo.siteName}</span>
                 )}
               </td>
-              {/* 등록번호 (D3) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+              {/* 🔥 등록번호 bold 적용 (D3) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
                 등록번호
               </td>
               {/* 등록번호 입력칸 (E3:G3 병합) */}
@@ -244,8 +244,8 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
 
             <tr>
               {/* A3:A5, B3:C5는 위에서 rowSpan으로 처리됨 */}
-              {/* 상호 (D4) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+              {/* 🔥 상호 bold 적용 (D4) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
                 상호
               </td>
               {/* 상호 입력칸 (E4) */}
@@ -261,8 +261,8 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <span>{reportData.siteInfo.companyName}</span>
                 )}
               </td>
-              {/* 성명 (F4) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+              {/* 🔥 성명 bold 적용 (F4) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
                 성명
               </td>
               {/* 성명 입력칸 (G4) */}
@@ -282,8 +282,8 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
 
             <tr>
               {/* A3:A5, B3:C5는 위에서 rowSpan으로 처리됨 */}
-              {/* 사업장 주소 (D5:G5 병합) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+              {/* 🔥 사업장 주소 bold 적용 (D5:G5 병합) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
                 사업장 주소
               </td>
               <td className="border border-black px-2 py-1" colSpan={3}>
@@ -302,12 +302,12 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
 
             {/* Row 6: 청구 안내 + 업태/종목 */}
             <tr>
-              {/* 아래와 같이 청구합니다 (A6:C6 병합) */}
-              <td className="border border-black px-2 py-3 text-center font-medium" colSpan={3}>
+              {/* 🔥 아래와 같이 청구합니다 bold 적용 (A6:C6 병합) */}
+              <td className="border border-black px-2 py-3 text-center font-bold" colSpan={3}>
                 아래와 같이 청구합니다.
               </td>
-              {/* 업태 (D6) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+              {/* 🔥 업태 bold 적용 (D6) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
                 업태
               </td>
               {/* 업태 입력칸 (E6) */}
@@ -323,8 +323,8 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <span>{reportData.siteInfo.businessType}</span>
                 )}
               </td>
-              {/* 종목 (F6) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-medium text-center">
+              {/* 🔥 종목 bold 적용 (F6) */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
                 종목
               </td>
               {/* 종목 입력칸 (G6) */}
@@ -341,9 +341,6 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                 )}
               </td>
             </tr>
-
-            {/* Row 7: 메인 테이블 헤더 */}
-
           </tbody>
         </table>
       </div>
@@ -357,7 +354,7 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
         />
       </div>
 
-      {/* 합계 행 - 7컬럼에 맞춰 조정 */}
+      {/* 🔥 수정된 합계 행 - 총 횟수(실제 횟수) 총액(실제 액수) 순서로 변경 */}
       <div className="border-2 border-black">
         <table className="w-full border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
           <colgroup>
@@ -371,19 +368,19 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
           </colgroup>
           <tbody>
             <tr className="bg-gray-100">
-              <td className="border border-black px-2 py-2 text-center font-bold" colSpan={3}>
+              <td className="border border-black px-2 py-2 text-center font-bold" colSpan={2}>
                 합계
               </td>
               <td className="border border-black px-2 py-2 text-center font-bold">
                 총 횟수
               </td>
-              <td className="border border-black px-2 py-2 text-center font-bold">
-                총액
-              </td>
               <td className="border border-black px-2 py-2 text-center font-bold text-lg">
                 {getTotalCount()}
               </td>
-              <td className="border border-black px-2 py-2 text-center font-bold text-lg">
+              <td className="border border-black px-2 py-2 text-center font-bold">
+                총액
+              </td>
+              <td className="border border-black px-2 py-2 text-center font-bold text-lg" colSpan={2}>
                 {getTotalAmount().toLocaleString()}원
               </td>
             </tr>
