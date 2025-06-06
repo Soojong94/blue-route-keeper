@@ -107,17 +107,93 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
             .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(7),
             .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(7) { width: 100px !important; }
             
-            /* 월간보고서 컬럼 너비 */
+            /* 🔥 청구서 컬럼 너비 최적화 */
             .download-optimized table[style*="table-layout: fixed"] th:nth-child(1),
-            .download-optimized table[style*="table-layout: fixed"] td:nth-child(1) { width: 100px !important; }
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(1) { width: 80px !important; }  /* 날짜 */
             .download-optimized table[style*="table-layout: fixed"] th:nth-child(2),
-            .download-optimized table[style*="table-layout: fixed"] td:nth-child(2) { width: 200px !important; }
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(2) { width: 140px !important; } /* 품목 */
             .download-optimized table[style*="table-layout: fixed"] th:nth-child(3),
-            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) { width: 80px !important; }
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) { width: 90px !important; }  /* 반입/반출 */
             .download-optimized table[style*="table-layout: fixed"] th:nth-child(4),
-            .download-optimized table[style*="table-layout: fixed"] td:nth-child(4) { width: 120px !important; }
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(4) { width: 50px !important; }  /* 횟수 */
             .download-optimized table[style*="table-layout: fixed"] th:nth-child(5),
-            .download-optimized table[style*="table-layout: fixed"] td:nth-child(5) { width: 120px !important; }
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(5) { width: 100px !important; } /* 단가 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(6),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(6) { width: 120px !important; } /* 금액 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(7),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(7) { width: 70px !important; }  /* 비고 */
+            
+            /* 🔥 Select 드롭다운 요소를 텍스트로 변환 */
+            .download-optimized select,
+            .download-optimized button[role="combobox"],
+            .download-optimized [data-radix-select-trigger] {
+              appearance: none !important;
+              background: transparent !important;
+              border: none !important;
+              outline: none !important;
+              box-shadow: none !important;
+              padding: 4px !important;
+              font-size: 12px !important;
+              font-weight: normal !important;
+              color: black !important;
+              text-align: center !important;
+              display: block !important;
+              width: 100% !important;
+              height: auto !important;
+              line-height: 1.3 !important;
+            }
+            
+            /* 🔥 Select의 화살표 및 기타 요소 숨김 */
+            .download-optimized select:after,
+            .download-optimized select:before,
+            .download-optimized button[role="combobox"]:after,
+            .download-optimized button[role="combobox"]:before,
+            .download-optimized [data-radix-select-trigger]:after,
+            .download-optimized [data-radix-select-trigger]:before,
+            .download-optimized [data-radix-select-icon],
+            .download-optimized svg {
+              display: none !important;
+              visibility: hidden !important;
+            }
+            
+            /* 🔥 청구서 반입/반출 컬럼 특별 처리 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(3),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) {
+              font-size: 11px !important;
+              padding: 6px 2px !important;
+              word-break: keep-all !important;
+              white-space: nowrap !important;
+              overflow: visible !important;
+              text-overflow: clip !important;
+              text-align: center !important;
+              vertical-align: middle !important;
+            }
+            
+            /* 🔥 반입/반출 Select 요소 특별 처리 */
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) select,
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) button[role="combobox"],
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) [data-radix-select-trigger] {
+              font-size: 11px !important;
+              font-weight: bold !important;
+              color: #000 !important;
+              background: transparent !important;
+              border: none !important;
+              text-align: center !important;
+              padding: 2px !important;
+              margin: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+              line-height: 1.2 !important;
+            }
+            
+            /* 🔥 청구서 금액/단가 컬럼 우측 정렬 */
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(5),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(6) {
+              text-align: right !important;
+              padding-right: 6px !important;
+              font-weight: bold !important;
+              font-family: monospace !important;
+            }
             
             .download-optimized .text-lg { font-size: 18px !important; font-weight: bold !important; }
             .download-optimized .text-xl { font-size: 20px !important; font-weight: bold !important; }
@@ -150,6 +226,34 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
               color: #000 !important;
             }
           `;
+
+          // 🔥 클론된 문서에서 Select 요소를 텍스트로 변환
+          const selectElements = clonedElement.querySelectorAll('select, button[role="combobox"], [data-radix-select-trigger]');
+          selectElements.forEach(select => {
+            const value = select.getAttribute('aria-label') ||
+              select.getAttribute('data-value') ||
+              select.textContent?.trim() ||
+              select.value ||
+              '반입';
+
+            const textSpan = clonedDoc.createElement('span');
+            textSpan.textContent = value;
+            textSpan.style.cssText = `
+              font-size: 11px !important;
+              font-weight: bold !important;
+              color: #000 !important;
+              text-align: center !important;
+              display: block !important;
+              width: 100% !important;
+              padding: 2px !important;
+              line-height: 1.2 !important;
+            `;
+
+            if (select.parentNode) {
+              select.parentNode.replaceChild(textSpan, select);
+            }
+          });
+
           clonedDoc.head.appendChild(style);
         }
       });
@@ -203,7 +307,7 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
         scrollY: 0,
         foreignObjectRendering: false,
         logging: false,
-        onclone: (clonedDoc) => {
+        onclone: (clonedDoc, clonedElement) => {
           // PDF용 동일한 스타일 적용
           const style = clonedDoc.createElement('style');
           style.textContent = `
@@ -249,11 +353,110 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
               font-size: 15px !important;
             }
             
+            /* 🔥 청구서 PDF 컬럼 너비 최적화 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(1),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(1) { width: 90px !important; }  /* 날짜 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(2),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(2) { width: 160px !important; } /* 품목 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(3),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) { width: 100px !important; } /* 반입/반출 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(4),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(4) { width: 60px !important; }  /* 횟수 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(5),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(5) { width: 110px !important; } /* 단가 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(6),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(6) { width: 130px !important; } /* 금액 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(7),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(7) { width: 80px !important; }  /* 비고 */
+            
+            /* 🔥 Select 드롭다운 요소를 텍스트로 변환 */
+            .download-optimized select,
+            .download-optimized button[role="combobox"],
+            .download-optimized [data-radix-select-trigger] {
+              appearance: none !important;
+              background: transparent !important;
+              border: none !important;
+              outline: none !important;
+              box-shadow: none !important;
+              padding: 6px !important;
+              font-size: 13px !important;
+              font-weight: bold !important;
+              color: black !important;
+              text-align: center !important;
+              display: block !important;
+              width: 100% !important;
+              height: auto !important;
+              line-height: 1.3 !important;
+            }
+            
+            /* 🔥 Select의 화살표 및 기타 요소 숨김 */
+            .download-optimized select:after,
+            .download-optimized select:before,
+            .download-optimized button[role="combobox"]:after,
+            .download-optimized button[role="combobox"]:before,
+            .download-optimized [data-radix-select-trigger]:after,
+            .download-optimized [data-radix-select-trigger]:before,
+            .download-optimized [data-radix-select-icon],
+            .download-optimized svg {
+              display: none !important;
+              visibility: hidden !important;
+            }
+            
+            /* 🔥 청구서 반입/반출 컬럼 텍스트 잘림 방지 */
+            .download-optimized table[style*="table-layout: fixed"] th:nth-child(3),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) {
+              font-size: 13px !important;
+              padding: 8px 4px !important;
+              word-break: keep-all !important;
+              white-space: nowrap !important;
+              overflow: visible !important;
+              text-overflow: clip !important;
+              text-align: center !important;
+              vertical-align: middle !important;
+            }
+            
+            /* 🔥 청구서 금액/단가 컬럼 우측 정렬 */
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(5),
+            .download-optimized table[style*="table-layout: fixed"] td:nth-child(6) {
+              text-align: right !important;
+              padding-right: 8px !important;
+              font-weight: bold !important;
+              font-family: monospace !important;
+            }
+            
             .download-optimized .text-lg { font-size: 20px !important; font-weight: bold !important; }
             .download-optimized .text-xl { font-size: 22px !important; font-weight: bold !important; }
             
             .download-optimized * { color: #000 !important; }
           `;
+
+          // 🔥 클론된 문서에서 Select 요소를 텍스트로 변환
+          const selectElements = clonedElement.querySelectorAll('select, button[role="combobox"], [data-radix-select-trigger]');
+          selectElements.forEach(select => {
+            const value = select.getAttribute('aria-label') ||
+              select.getAttribute('data-value') ||
+              select.textContent?.trim() ||
+              select.value ||
+              '반입';
+
+            const textSpan = clonedDoc.createElement('span');
+            textSpan.textContent = value;
+            textSpan.style.cssText = `
+              font-size: 13px !important;
+              font-weight: bold !important;
+              color: #000 !important;
+              text-align: center !important;
+              display: block !important;
+              width: 100% !important;
+              padding: 4px !important;
+              line-height: 1.3 !important;
+            `;
+
+            if (select.parentNode) {
+              select.parentNode.replaceChild(textSpan, select);
+            }
+          });
+
           clonedDoc.head.appendChild(style);
         }
       });
