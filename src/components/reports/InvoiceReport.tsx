@@ -139,13 +139,7 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
       <div className="border-2 border-black">
         <table className="w-full border-collapse text-sm" style={{ tableLayout: 'fixed' }}>
           <colgroup>
-            <col style={{ width: '14.29%' }} /> {/* A */}
-            <col style={{ width: '14.29%' }} /> {/* B */}
-            <col style={{ width: '14.29%' }} /> {/* C */}
-            <col style={{ width: '14.29%' }} /> {/* D */}
-            <col style={{ width: '14.29%' }} /> {/* E */}
-            <col style={{ width: '14.29%' }} /> {/* F */}
-            <col style={{ width: '14.29%' }} /> {/* G */}
+            <col style={{ width: '14.29%' }} /><col style={{ width: '14.29%' }} /><col style={{ width: '14.29%' }} /><col style={{ width: '14.29%' }} /><col style={{ width: '14.29%' }} /><col style={{ width: '14.29%' }} /><col style={{ width: '14.29%' }} />
           </colgroup>
           <tbody>
             {/* Row 1: 제목 (A1:G1 병합) */}
