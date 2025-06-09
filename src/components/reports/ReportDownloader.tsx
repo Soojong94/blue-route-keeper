@@ -113,37 +113,38 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
               font-size: 13px !important;
             }
 
-     /* 🔥 합계 행 기본 스타일 - 라벨은 작게 */
-.download-optimized .bg-gray-100 td,
-.download-optimized .bg-blue-50 td {
-  font-size: 14px !important;
-  font-weight: bold !important;
-  background: #e0e0e0 !important;
-  color: #000 !important;
-}
+            /* 🔥 합계 행 기본 스타일 - 라벨은 작게 */
+            .download-optimized .bg-gray-100 td,
+            .download-optimized .bg-blue-50 td {
+              font-size: 14px !important;
+              font-weight: bold !important;
+              background: #e0e0e0 !important;
+              color: #000 !important;
+            }
 
-/* 🔥 "합계", "총횟수", "총액" 라벨은 작게 유지 */
-.download-optimized .bg-gray-100 td:first-child,
-.download-optimized .bg-blue-50 td:first-child,
-.download-optimized .bg-gray-100 td:nth-child(3),
-.download-optimized .bg-blue-50 td:nth-child(3),
-.download-optimized .bg-gray-100 td:nth-child(5),
-.download-optimized .bg-blue-50 td:nth-child(5) {
-  font-size: 14px !important;
-  font-weight: bold !important;
-}
+            /* 🔥 "합계", "총횟수", "총액" 라벨은 작게 유지 */
+            .download-optimized .bg-gray-100 td:first-child,
+            .download-optimized .bg-blue-50 td:first-child,
+            .download-optimized .bg-gray-100 td:nth-child(3),
+            .download-optimized .bg-blue-50 td:nth-child(3),
+            .download-optimized .bg-gray-100 td:nth-child(5),
+            .download-optimized .bg-blue-50 td:nth-child(5) {
+              font-size: 14px !important;
+              font-weight: bold !important;
+            }
 
-/* 🔥 숫자 셀만 크게 */
-.download-optimized .bg-gray-100 td:nth-child(2),
-.download-optimized .bg-gray-100 td:nth-child(4),
-.download-optimized .bg-gray-100 td:nth-child(6),
-.download-optimized .bg-blue-50 td:nth-child(2),
-.download-optimized .bg-blue-50 td:nth-child(4),
-.download-optimized .bg-blue-50 td:nth-child(6) {
-  font-size: 24px !important;
-  font-weight: 900 !important;
-  color: #000 !important;
-}
+            /* 🔥 숫자 셀만 크게 */
+            .download-optimized .bg-gray-100 td:nth-child(2),
+            .download-optimized .bg-gray-100 td:nth-child(4),
+            .download-optimized .bg-gray-100 td:nth-child(6),
+            .download-optimized .bg-blue-50 td:nth-child(2),
+            .download-optimized .bg-blue-50 td:nth-child(4),
+            .download-optimized .bg-blue-50 td:nth-child(6) {
+              font-size: 24px !important;
+              font-weight: 900 !important;
+              color: #000 !important;
+            }
+            
             /* 일간보고서 컬럼 너비 */
             .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(1),
             .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(1) { width: 80px !important; }
@@ -280,6 +281,10 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
         throw new Error('요소를 찾을 수 없습니다.');
       }
 
+      // 🔥 모바일 디바이스 검사
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isSmallScreen = window.innerWidth <= 768;
+
       // 🔥 청구서인지 일간보고서인지 확인
       const isInvoiceReport = element.classList.contains('invoice-container') ||
         element.querySelector('.invoice-container') !== null;
@@ -297,19 +302,26 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
         return;
       }
 
-      // 🔥 행 수에 따라 페이지 분할 여부 결정
+      // 🔥 행 수에 따라 페이지 분할 여부 결정 - 모바일 고려
       const tbody = mainTable.querySelector('tbody');
       const rowCount = tbody?.children.length || 0;
 
-      // 청구서는 20행, 일간보고서는 15행 기준으로 분할
-      const maxRowsPerPage = isInvoiceReport ? 20 : 15;
+      // 🔥 모바일에서는 더 적은 행으로 분할, 데스크톱보다 보수적으로 설정
+      let maxRowsPerPage: number;
+      if (isMobile || isSmallScreen) {
+        // 모바일: 청구서 12행, 일간보고서 10행
+        maxRowsPerPage = isInvoiceReport ? 12 : 10;
+      } else {
+        // 데스크톱: 청구서 20행, 일간보고서 15행
+        maxRowsPerPage = isInvoiceReport ? 20 : 15;
+      }
 
       if (rowCount <= maxRowsPerPage) {
         // 한 페이지로 충분하면 기존 방식
         await downloadSinglePagePDF(element);
       } else {
         // 🔥 다중 페이지 PDF 생성
-        await downloadMultiPagePDF(element, mainTable, maxRowsPerPage, isInvoiceReport);
+        await downloadMultiPagePDF(element, mainTable, maxRowsPerPage, isInvoiceReport, isMobile || isSmallScreen);
       }
 
     } catch (error) {
@@ -369,11 +381,21 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
     });
   };
 
-  // 🔥 다중 페이지 PDF 다운로드
-  const downloadMultiPagePDF = async (element: HTMLElement, mainTable: Element, maxRowsPerPage: number, isInvoiceReport: boolean) => {
+  // 🔥 다중 페이지 PDF 다운로드 - 모바일 최적화
+  const downloadMultiPagePDF = async (
+    element: HTMLElement,
+    mainTable: Element,
+    maxRowsPerPage: number,
+    isInvoiceReport: boolean,
+    isMobileOrSmall: boolean
+  ) => {
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    // 🔥 모바일에서는 더 작은 여백과 최적화된 설정
+    const pageMargin = isMobileOrSmall ? 5 : 8;
+    const availableHeight = pdfHeight - (pageMargin * 2);
 
     const tbody = mainTable.querySelector('tbody');
     if (!tbody) return;
@@ -389,6 +411,11 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
       // 🔥 현재 페이지용 요소 생성
       const pageElement = element.cloneNode(true) as HTMLElement;
       pageElement.classList.add('download-optimized');
+
+      // 🔥 모바일 최적화 클래스 추가
+      if (isMobileOrSmall) {
+        pageElement.classList.add('mobile-optimized');
+      }
 
       // 🔥 헤더 정보 유지 (청구서의 경우)
       if (isInvoiceReport) {
@@ -433,17 +460,19 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
       const pageInfo = document.createElement('div');
       pageInfo.style.cssText = `
         text-align: center;
-        font-size: 12px;
+        font-size: ${isMobileOrSmall ? '10px' : '12px'};
         color: #666;
-        margin-top: 10px;
+        margin-top: 8px;
         font-weight: bold;
+        padding: 4px 0;
       `;
       pageInfo.textContent = `페이지 ${pageIndex + 1} / ${totalPages}`;
       pageElement.appendChild(pageInfo);
 
-      // 🔥 캔버스 생성
+      // 🔥 캔버스 생성 - 모바일 최적화
+      const canvasScale = isMobileOrSmall ? 1.5 : 2; // 모바일에서는 스케일 낮춤
       const canvas = await html2canvas(pageElement, {
-        scale: 2,
+        scale: canvasScale,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
@@ -452,20 +481,27 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
         scrollY: 0,
         foreignObjectRendering: false,
         logging: false,
+        width: isMobileOrSmall ? 800 : undefined, // 모바일에서는 고정 너비
+        height: undefined, // 높이는 자동
         onclone: (clonedDoc, clonedElement) => {
-          applyPDFStyles(clonedDoc, clonedElement, true);
+          applyPDFStyles(clonedDoc, clonedElement, true, isMobileOrSmall);
         }
       });
 
-      // 🔥 PDF에 이미지 추가
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      // 🔥 PDF에 이미지 추가 - 모바일 최적화
+      const imgData = canvas.toDataURL('image/png', 0.95); // 품질 약간 낮춤
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min((pdfWidth - 10) / imgWidth, (pdfHeight - 10) / imgHeight);
+
+      // 🔥 모바일에서는 더 보수적인 비율 계산
+      const maxWidth = pdfWidth - (pageMargin * 2);
+      const maxHeight = availableHeight;
+      const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+
       const finalWidth = imgWidth * ratio;
       const finalHeight = imgHeight * ratio;
       const x = (pdfWidth - finalWidth) / 2;
-      const y = 5;
+      const y = pageMargin;
 
       pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
     }
@@ -478,146 +514,233 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
     });
   };
 
-  // 🔥 PDF용 스타일 적용 함수
-  const applyPDFStyles = (clonedDoc: Document, clonedElement: HTMLElement, isMultiPage: boolean = false) => {
+  // 🔥 PDF용 스타일 적용 함수 - 모바일 최적화 추가
+  const applyPDFStyles = (
+    clonedDoc: Document,
+    clonedElement: HTMLElement,
+    isMultiPage: boolean = false,
+    isMobileOrSmall: boolean = false
+  ) => {
     const style = clonedDoc.createElement('style');
+
+    // 🔥 모바일 최적화된 스타일
+    const baseFontSize = isMobileOrSmall ? '14px' : '16px';
+    const cellPadding = isMobileOrSmall ? '8px 4px' : '10px 6px';
+    const tableBorder = isMobileOrSmall ? '2px solid #000' : '3px solid #000';
+    const cellBorder = isMobileOrSmall ? '1px solid #000' : '2px solid #000';
+
     style.textContent = `
       .download-optimized {
         background: white !important;
         color: black !important;
         font-family: Arial, sans-serif !important;
-        padding: 20px !important;
-        width: 900px !important;
+        padding: ${isMobileOrSmall ? '15px' : '20px'} !important;
+        width: ${isMobileOrSmall ? '750px' : '900px'} !important;
         max-width: none !important;
         margin: 0 !important;
-        font-size: 16px !important;
+        font-size: ${baseFontSize} !important;
         line-height: 1.4 !important;
       }
       
       .download-optimized table {
         width: 100% !important;
         border-collapse: collapse !important;
-        border: 3px solid #000 !important;
-        margin: 10px 0 !important;
+        border: ${tableBorder} !important;
+        margin: ${isMobileOrSmall ? '8px 0' : '10px 0'} !important;
         table-layout: fixed !important;
       }
       
       .download-optimized th,
       .download-optimized td {
-        border: 2px solid #000 !important;
-        padding: 10px 6px !important;
+        border: ${cellBorder} !important;
+        padding: ${cellPadding} !important;
         text-align: center !important;
-        font-size: 14px !important;
+        font-size: ${isMobileOrSmall ? '12px' : '14px'} !important;
         line-height: 1.4 !important;
         vertical-align: middle !important;
         word-wrap: break-word !important;
         background: white !important;
         color: black !important;
         height: auto !important;
-        min-height: 32px !important;
+        min-height: ${isMobileOrSmall ? '28px' : '32px'} !important;
         white-space: normal !important;
       }
       
       .download-optimized th {
         background: #e0e0e0 !important;
         font-weight: bold !important;
-        font-size: 15px !important;
+        font-size: ${isMobileOrSmall ? '13px' : '15px'} !important;
       }
 
-/* 🔥 합계 행 기본 스타일 - 라벨은 작게 */
-.download-optimized .bg-gray-100 td,
-.download-optimized .bg-blue-50 td {
-  font-size: 16px !important;
-  font-weight: bold !important;
-  background: #e0e0e0 !important;
-  color: #000 !important;
-}
-
-/* 🔥 "합계", "총횟수", "총액" 라벨은 작게 유지 */
-.download-optimized .bg-gray-100 td:first-child,
-.download-optimized .bg-blue-50 td:first-child,
-.download-optimized .bg-gray-100 td:nth-child(3),
-.download-optimized .bg-blue-50 td:nth-child(3),
-.download-optimized .bg-gray-100 td:nth-child(5),
-.download-optimized .bg-blue-50 td:nth-child(5) {
-  font-size: 16px !important;
-  font-weight: bold !important;
-}
-
-/* 🔥 숫자 셀만 크게 */
-.download-optimized .bg-gray-100 td:nth-child(2),
-.download-optimized .bg-gray-100 td:nth-child(4),
-.download-optimized .bg-gray-100 td:nth-child(6),
-.download-optimized .bg-blue-50 td:nth-child(2),
-.download-optimized .bg-blue-50 td:nth-child(4),
-.download-optimized .bg-blue-50 td:nth-child(6) {
-  font-size: 28px !important;
-  font-weight: 900 !important;
-  color: #000 !important;
-}
-      /* 🔥 청구서 제목 크기 확대 */
-      .download-optimized td[colspan="7"] {
-        font-size: 26px !important;
-        font-weight: 900 !important;
-        padding: 15px !important;
-      }
-
-      /* 🔥 현장명 글씨 크기 확대 */
-      .download-optimized .text-lg {
-        font-size: 22px !important;
-        font-weight: 900 !important;
-      }
-      
-      /* 청구서 컬럼 너비 최적화 */
-      .download-optimized table[style*="table-layout: fixed"] th:nth-child(1),
-      .download-optimized table[style*="table-layout: fixed"] td:nth-child(1) { width: 90px !important; }
-      .download-optimized table[style*="table-layout: fixed"] th:nth-child(2),
-      .download-optimized table[style*="table-layout: fixed"] td:nth-child(2) { width: 160px !important; }
-      .download-optimized table[style*="table-layout: fixed"] th:nth-child(3),
-      .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) { width: 100px !important; }
-      .download-optimized table[style*="table-layout: fixed"] th:nth-child(4),
-      .download-optimized table[style*="table-layout: fixed"] td:nth-child(4) { width: 60px !important; }
-      .download-optimized table[style*="table-layout: fixed"] th:nth-child(5),
-      .download-optimized table[style*="table-layout: fixed"] td:nth-child(5) { width: 110px !important; }
-      .download-optimized table[style*="table-layout: fixed"] th:nth-child(6),
-      .download-optimized table[style*="table-layout: fixed"] td:nth-child(6) { width: 130px !important; }
-      .download-optimized table[style*="table-layout: fixed"] th:nth-child(7),
-      .download-optimized table[style*="table-layout: fixed"] td:nth-child(7) { width: 80px !important; }
-      
-      /* Select 드롭다운 요소를 텍스트로 변환 */
-      .download-optimized select,
-      .download-optimized button[role="combobox"],
-      .download-optimized [data-radix-select-trigger] {
-        appearance: none !important;
-        background: transparent !important;
-        border: none !important;
-        outline: none !important;
-        box-shadow: none !important;
-        padding: 6px !important;
-        font-size: 13px !important;
+      /* 🔥 합계 행 기본 스타일 - 라벨은 작게 */
+      .download-optimized .bg-gray-100 td,
+      .download-optimized .bg-blue-50 td {
+        font-size: ${isMobileOrSmall ? '14px' : '16px'} !important;
         font-weight: bold !important;
-        color: black !important;
-        text-align: center !important;
-        display: block !important;
-        width: 100% !important;
-        height: auto !important;
-        line-height: 1.3 !important;
+        background: #e0e0e0 !important;
+        color: #000 !important;
+      }
+
+      /* 🔥 "합계", "총횟수", "총액" 라벨은 작게 유지 */
+      .download-optimized .bg-gray-100 td:first-child,
+      .download-optimized .bg-blue-50 td:first-child,
+      .download-optimized .bg-gray-100 td:nth-child(3),
+      .download-optimized .bg-blue-50 td:nth-child(3),
+      .download-optimized .bg-gray-100 td:nth-child(5),
+      .download-optimized .bg-blue-50 td:nth-child(5) {
+        font-size: ${isMobileOrSmall ? '14px' : '16px'} !important;
+        font-weight: bold !important;
+      }
+
+      /* 🔥 숫자 셀만 크게 - 모바일에서는 상대적으로 작게 */
+      .download-optimized .bg-gray-100 td:nth-child(2),
+      .download-optimized .bg-gray-100 td:nth-child(4),
+      .download-optimized .bg-gray-100 td:nth-child(6),
+      .download-optimized .bg-blue-50 td:nth-child(2),
+      .download-optimized .bg-blue-50 td:nth-child(4),
+      .download-optimized .bg-blue-50 td:nth-child(6) {
+        font-size: ${isMobileOrSmall ? '22px' : '28px'} !important;
+        font-weight: 900 !important;
+        color: #000 !important;
       }
       
-      .download-optimized select:after,
-      .download-optimized select:before,
-      .download-optimized button[role="combobox"]:after,
-      .download-optimized button[role="combobox"]:before,
-      .download-optimized [data-radix-select-trigger]:after,
-      .download-optimized [data-radix-select-trigger]:before,
-      .download-optimized [data-radix-select-icon],
-      .download-optimized svg {
-        display: none !important;
-        visibility: hidden !important;
+      /* 🔥 청구서 제목 크기 확대 - 모바일 최적화 */
+      .download-optimized td[colspan="7"] {
+        font-size: ${isMobileOrSmall ? '20px' : '26px'} !important;
+        font-weight: 900 !important;
+        padding: ${isMobileOrSmall ? '12px' : '15px'} !important;
+      }
+
+      /* 🔥 현장명 글씨 크기 확대 - 모바일 최적화 */
+      .download-optimized .text-lg {
+        font-size: ${isMobileOrSmall ? '18px' : '22px'} !important;
+        font-weight: 900 !important;
       }
       
-      .download-optimized * { color: #000 !important; }
-    `;
+      /* 청구서 컬럼 너비 최적화 - 모바일 조정 */
+      .download-optimized table[style*="table-layout: fixed"] th:nth-child(1),
+      .download-optimized table[style*="table-layout: fixed"] td:nth-child(1) { 
+        width: ${isMobileOrSmall ? '85px' : '90px'} !important; 
+      }
+      .download-optimized table[style*="table-layout: fixed"] th:nth-child(2),
+      .download-optimized table[style*="table-layout: fixed"] td:nth-child(2) { 
+        width: ${isMobileOrSmall ? '140px' : '160px'} !important; 
+     }
+     .download-optimized table[style*="table-layout: fixed"] th:nth-child(3),
+     .download-optimized table[style*="table-layout: fixed"] td:nth-child(3) { 
+       width: ${isMobileOrSmall ? '85px' : '100px'} !important; 
+     }
+     .download-optimized table[style*="table-layout: fixed"] th:nth-child(4),
+     .download-optimized table[style*="table-layout: fixed"] td:nth-child(4) { 
+       width: ${isMobileOrSmall ? '50px' : '60px'} !important; 
+     }
+     .download-optimized table[style*="table-layout: fixed"] th:nth-child(5),
+     .download-optimized table[style*="table-layout: fixed"] td:nth-child(5) { 
+       width: ${isMobileOrSmall ? '95px' : '110px'} !important; 
+     }
+     .download-optimized table[style*="table-layout: fixed"] th:nth-child(6),
+     .download-optimized table[style*="table-layout: fixed"] td:nth-child(6) { 
+       width: ${isMobileOrSmall ? '110px' : '130px'} !important; 
+     }
+     .download-optimized table[style*="table-layout: fixed"] th:nth-child(7),
+     .download-optimized table[style*="table-layout: fixed"] td:nth-child(7) { 
+       width: ${isMobileOrSmall ? '70px' : '80px'} !important; 
+     }
+
+     /* 🔥 일간보고서 컬럼 너비 - 모바일 최적화 */
+     .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(1),
+     .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(1) { 
+       width: ${isMobileOrSmall ? '70px' : '80px'} !important; 
+     }
+     .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(2),
+     .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(2) { 
+       width: ${isMobileOrSmall ? '90px' : '100px'} !important; 
+     }
+     .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(3),
+     .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(3) { 
+       width: ${isMobileOrSmall ? '110px' : '120px'} !important; 
+     }
+     .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(4),
+     .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(4) { 
+       width: ${isMobileOrSmall ? '110px' : '120px'} !important; 
+     }
+     .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(5),
+     .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(5) { 
+       width: ${isMobileOrSmall ? '80px' : '90px'} !important; 
+     }
+     .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(6),
+     .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(6) { 
+       width: ${isMobileOrSmall ? '55px' : '60px'} !important; 
+     }
+     .download-optimized table:not([style*="table-layout: fixed"]) th:nth-child(7),
+     .download-optimized table:not([style*="table-layout: fixed"]) td:nth-child(7) { 
+       width: ${isMobileOrSmall ? '90px' : '100px'} !important; 
+     }
+     
+     /* Select 드롭다운 요소를 텍스트로 변환 */
+     .download-optimized select,
+     .download-optimized button[role="combobox"],
+     .download-optimized [data-radix-select-trigger] {
+       appearance: none !important;
+       background: transparent !important;
+       border: none !important;
+       outline: none !important;
+       box-shadow: none !important;
+       padding: ${isMobileOrSmall ? '4px' : '6px'} !important;
+       font-size: ${isMobileOrSmall ? '11px' : '13px'} !important;
+       font-weight: bold !important;
+       color: black !important;
+       text-align: center !important;
+       display: block !important;
+       width: 100% !important;
+       height: auto !important;
+       line-height: 1.3 !important;
+     }
+     
+     .download-optimized select:after,
+     .download-optimized select:before,
+     .download-optimized button[role="combobox"]:after,
+     .download-optimized button[role="combobox"]:before,
+     .download-optimized [data-radix-select-trigger]:after,
+     .download-optimized [data-radix-select-trigger]:before,
+     .download-optimized [data-radix-select-icon],
+     .download-optimized svg {
+       display: none !important;
+       visibility: hidden !important;
+     }
+     
+     .download-optimized * { color: #000 !important; }
+
+     /* 🔥 모바일 추가 최적화 */
+     ${isMobileOrSmall ? `
+       .download-optimized {
+         max-width: 750px !important;
+         overflow-x: visible !important;
+       }
+       
+       .download-optimized table {
+         font-size: 11px !important;
+       }
+       
+       .download-optimized th,
+       .download-optimized td {
+         padding: 6px 3px !important;
+         font-size: 11px !important;
+         line-height: 1.2 !important;
+       }
+       
+       .download-optimized th {
+         font-size: 12px !important;
+       }
+       
+       /* 페이지 정보 스타일 */
+       .download-optimized div:last-child {
+         font-size: 10px !important;
+         margin-top: 6px !important;
+         padding: 3px 0 !important;
+       }
+     ` : ''}
+   `;
 
     // 🔥 클론된 문서에서 Select 요소를 텍스트로 변환
     const selectElements = clonedElement.querySelectorAll('select, button[role="combobox"], [data-radix-select-trigger]');
@@ -627,15 +750,15 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
       const textSpan = clonedDoc.createElement('span');
       textSpan.textContent = value;
       textSpan.style.cssText = `
-        font-size: 13px !important;
-        font-weight: bold !important;
-        color: #000 !important;
-        text-align: center !important;
-        display: block !important;
-        width: 100% !important;
-        padding: 4px !important;
-        line-height: 1.3 !important;
-      `;
+       font-size: ${isMobileOrSmall ? '10px' : '13px'} !important;
+       font-weight: bold !important;
+       color: #000 !important;
+       text-align: center !important;
+       display: block !important;
+       width: 100% !important;
+       padding: ${isMobileOrSmall ? '3px' : '4px'} !important;
+       line-height: 1.3 !important;
+     `;
 
       if (select.parentNode) {
         select.parentNode.replaceChild(textSpan, select);
@@ -698,6 +821,14 @@ const ReportDownloader: React.FC<ReportDownloaderProps> = ({
                 취소
               </Button>
             </div>
+            {downloading && (
+              <div className="text-center py-4">
+                <div className="animate-spin inline-block h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                <p className="mt-2 text-gray-500 text-sm">
+                  {downloading ? '다운로드 처리 중...' : ''}
+                </p>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </>
