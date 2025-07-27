@@ -1,4 +1,4 @@
-/* src/index.css - 정리된 버전 */
+/* src/index.css - 청구서 헤더 스타일 통일 수정 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -145,6 +145,43 @@
   font-size: 1.25rem;
 }
 
+/* 🔥 청구서 헤더 스타일 통일 - 모바일에서 모든 헤더 텍스트를 검정색으로 */
+.invoice-container .bg-gray-100,
+.invoice-container .font-bold {
+  color: #000 !important;
+  font-weight: bold !important;
+  font-size: 0.875rem !important;
+  /* 종목과 같은 크기로 통일 */
+}
+
+/* 🔥 모바일에서 청구서 헤더 텍스트 색상 강제 지정 */
+@media (max-width: 768px) {
+
+  .invoice-container td,
+  .invoice-container th {
+    color: #000 !important;
+  }
+
+  .invoice-container .bg-gray-100 {
+    background-color: #f3f4f6 !important;
+    color: #000 !important;
+    font-weight: bold !important;
+    font-size: 14px !important;
+    /* 모바일에서 적절한 크기 */
+  }
+
+  .invoice-container .font-bold {
+    color: #000 !important;
+    font-weight: bold !important;
+    font-size: 14px !important;
+  }
+
+  /* 🔥 모든 텍스트 색상 강제 검정 */
+  .invoice-container * {
+    color: #000 !important;
+  }
+}
+
 /* 🎯 모바일 화면에서 보고서 최적화 */
 @media (max-width: 768px) {
 
@@ -189,6 +226,8 @@
     border: 1px solid #ddd !important;
     background-color: #f8f9fa !important;
     white-space: nowrap !important;
+    color: #000 !important;
+    /* 강제 검정색 */
   }
 
   /* 🔥 모바일 테이블 데이터 셀 최적화 */
@@ -201,6 +240,8 @@
     text-align: center !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
+    color: #000 !important;
+    /* 강제 검정색 */
   }
 
   /* 🔥 운행보고서 모바일 컬럼별 스타일링 */
@@ -209,13 +250,15 @@
     font-family: monospace !important;
     font-weight: bold !important;
     min-width: 35px !important;
+    color: #000 !important;
   }
 
   .report-container td:nth-child(2) {
     /* 차량 */
     font-family: monospace !important;
     font-weight: bold !important;
-    color: #0066cc !important;
+    color: #000 !important;
+    /* 파란색 제거 */
     min-width: 40px !important;
   }
 
@@ -227,6 +270,7 @@
     white-space: normal !important;
     line-height: 1.1 !important;
     min-width: 45px !important;
+    color: #000 !important;
   }
 
   .report-container td:nth-child(5),
@@ -236,59 +280,63 @@
     font-family: monospace !important;
     font-weight: bold !important;
     min-width: 35px !important;
+    color: #000 !important;
   }
 
   .report-container td:nth-child(6) {
     /* 횟수 */
     font-weight: bold !important;
     min-width: 25px !important;
+    color: #000 !important;
   }
 
   /* 🔥 청구서 모바일 컬럼별 스타일링 */
   .invoice-container td:nth-child(1) {
     min-width: 80px !important;
-    /* 날짜 */
+    color: #000 !important;
   }
 
   .invoice-container td:nth-child(2) {
     min-width: 120px !important;
-    /* 품목 */
+    color: #000 !important;
   }
 
   .invoice-container td:nth-child(3) {
     min-width: 90px !important;
-    /* 반입/반출 */
+    color: #000 !important;
   }
 
   .invoice-container td:nth-child(4) {
     min-width: 50px !important;
-    /* 횟수 */
+    color: #000 !important;
   }
 
   .invoice-container td:nth-child(5) {
     min-width: 100px !important;
-    /* 단가 */
+    color: #000 !important;
   }
 
   .invoice-container td:nth-child(6) {
     min-width: 120px !important;
-    /* 금액 */
+    color: #000 !important;
   }
 
   .invoice-container td:nth-child(7) {
     min-width: 60px !important;
-    /* 비고 */
+    color: #000 !important;
   }
 
   /* 🔥 모바일 보고서 제목 및 정보 영역 */
   .report-container .text-lg,
   .invoice-container .text-lg {
     font-size: 11px !important;
+    color: #000 !important;
   }
 
   .report-container .text-xl,
   .invoice-container .text-xl {
     font-size: 13px !important;
+    color: #000 !important;
   }
 
   .report-container .bg-blue-50,
@@ -296,6 +344,7 @@
     padding: 4px 2px !important;
     font-size: 7px !important;
     margin-bottom: 2px !important;
+    color: #000 !important;
   }
 
   /* 🔥 모바일 간격 최적화 */
@@ -329,36 +378,37 @@
   .report-container table[style*="table-layout: fixed"] td {
     width: auto !important;
     min-width: unset !important;
+    color: #000 !important;
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(1),
   .report-container table[style*="table-layout: fixed"] td:nth-child(1) {
     min-width: 50px !important;
-    /* 날짜 */
+    color: #000 !important;
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(2),
   .report-container table[style*="table-layout: fixed"] td:nth-child(2) {
     min-width: 80px !important;
-    /* 품목 */
+    color: #000 !important;
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(3),
   .report-container table[style*="table-layout: fixed"] td:nth-child(3) {
     min-width: 30px !important;
-    /* 횟수 */
+    color: #000 !important;
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(4),
   .report-container table[style*="table-layout: fixed"] td:nth-child(4) {
     min-width: 50px !important;
-    /* 단가 */
+    color: #000 !important;
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(5),
   .report-container table[style*="table-layout: fixed"] td:nth-child(5) {
     min-width: 50px !important;
-    /* 금액 */
+    color: #000 !important;
   }
 }
 
@@ -529,123 +579,106 @@
     line-height: 1.2 !important;
     height: auto !important;
     min-height: 5mm !important;
+    color: #000 !important;
+    /* 🔥 인쇄용 검정색 강제 */
   }
 
   /* 🔥 운행보고서 인쇄용 컬럼 너비 */
   .report-container th:nth-child(1),
   .report-container td:nth-child(1) {
     width: 24mm !important;
-    /* 날짜 */
   }
 
   .report-container th:nth-child(2),
   .report-container td:nth-child(2) {
     width: 28mm !important;
-    /* 차량 */
   }
 
   .report-container th:nth-child(3),
   .report-container td:nth-child(3) {
     width: 38mm !important;
-    /* 출발지 */
   }
 
   .report-container th:nth-child(4),
   .report-container td:nth-child(4) {
     width: 38mm !important;
-    /* 목적지 */
   }
 
   .report-container th:nth-child(5),
   .report-container td:nth-child(5) {
     width: 25mm !important;
-    /* 단가 */
   }
 
   .report-container th:nth-child(6),
   .report-container td:nth-child(6) {
     width: 18mm !important;
-    /* 횟수 */
   }
 
   .report-container th:nth-child(7),
   .report-container td:nth-child(7) {
     width: 29mm !important;
-    /* 총액 */
   }
 
   /* 🔥 청구서 인쇄용 컬럼 너비 - 반입/반출 확대, 금액 확대 */
   .invoice-container table[style*="table-layout: fixed"] th:nth-child(1),
   .invoice-container table[style*="table-layout: fixed"] td:nth-child(1) {
     width: 24mm !important;
-    /* 날짜 */
   }
 
   .invoice-container table[style*="table-layout: fixed"] th:nth-child(2),
   .invoice-container table[style*="table-layout: fixed"] td:nth-child(2) {
     width: 45mm !important;
-    /* 품목 */
   }
 
   .invoice-container table[style*="table-layout: fixed"] th:nth-child(3),
   .invoice-container table[style*="table-layout: fixed"] td:nth-child(3) {
     width: 26mm !important;
-    /* 반입/반출 - 확대 */
   }
 
   .invoice-container table[style*="table-layout: fixed"] th:nth-child(4),
   .invoice-container table[style*="table-layout: fixed"] td:nth-child(4) {
     width: 15mm !important;
-    /* 횟수 */
   }
 
   .invoice-container table[style*="table-layout: fixed"] th:nth-child(5),
   .invoice-container table[style*="table-layout: fixed"] td:nth-child(5) {
     width: 28mm !important;
-    /* 단가 */
   }
 
   .invoice-container table[style*="table-layout: fixed"] th:nth-child(6),
   .invoice-container table[style*="table-layout: fixed"] td:nth-child(6) {
     width: 35mm !important;
-    /* 금액 - 확대 */
   }
 
   .invoice-container table[style*="table-layout: fixed"] th:nth-child(7),
   .invoice-container table[style*="table-layout: fixed"] td:nth-child(7) {
     width: 27mm !important;
-    /* 비고 */
   }
 
   /* 🔥 월간보고서 인쇄용 컬럼 너비 */
   .report-container table[style*="table-layout: fixed"] th:nth-child(1),
   .report-container table[style*="table-layout: fixed"] td:nth-child(1) {
     width: 35mm !important;
-    /* 날짜 */
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(2),
   .report-container table[style*="table-layout: fixed"] td:nth-child(2) {
     width: 60mm !important;
-    /* 품목 */
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(3),
   .report-container table[style*="table-layout: fixed"] td:nth-child(3) {
     width: 15mm !important;
-    /* 횟수 */
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(4),
   .report-container table[style*="table-layout: fixed"] td:nth-child(4) {
     width: 32mm !important;
-    /* 단가 */
   }
 
   .report-container table[style*="table-layout: fixed"] th:nth-child(5),
   .report-container table[style*="table-layout: fixed"] td:nth-child(5) {
     width: 33mm !important;
-    /* 금액 */
   }
 
   /* 🔥 테이블 헤더 스타일 */
@@ -655,6 +688,8 @@
     font-weight: bold !important;
     font-size: 10px !important;
     text-transform: none !important;
+    color: #000 !important;
+    /* 🔥 헤더도 검정색 */
   }
 
   /* 🔥 청구서 제목 영역 */
@@ -666,6 +701,7 @@
     border: 2px solid #000 !important;
     padding: 4mm !important;
     page-break-after: avoid !important;
+    color: #000 !important;
   }
 
   /* 🔥 현장 정보 테이블 */
@@ -682,6 +718,19 @@
     font-size: 10px !important;
     padding: 2.5mm 1.5mm !important;
     border: 1px solid #000 !important;
+    color: #000 !important;
+    /* 🔥 현장 정보도 검정색 */
+  }
+
+  /* 🔥 청구서 헤더 라벨들 - 모두 통일된 크기와 색상 */
+  .invoice-container .bg-gray-100,
+  .invoice-container .font-bold {
+    font-size: 10px !important;
+    /* 통일된 크기 */
+    font-weight: bold !important;
+    color: #000 !important;
+    /* 검정색 강제 */
+    background-color: #f0f0f0 !important;
   }
 
   /* 🔥 현장명 특별 스타일링 */
@@ -690,6 +739,7 @@
     font-size: 14px !important;
     font-weight: bold !important;
     padding: 3mm 2mm !important;
+    color: #000 !important;
   }
 
   /* 🔥 셀 내용별 정렬 최적화 */
@@ -699,6 +749,7 @@
     text-align: center !important;
     font-family: monospace !important;
     font-weight: bold !important;
+    color: #000 !important;
   }
 
   .report-container td:nth-child(3),
@@ -706,6 +757,7 @@
     text-align: center !important;
     word-break: break-word !important;
     white-space: normal !important;
+    color: #000 !important;
   }
 
   .report-container td:nth-child(5),
@@ -716,11 +768,13 @@
     font-family: monospace !important;
     font-weight: bold !important;
     padding-right: 2mm !important;
+    color: #000 !important;
   }
 
   .report-container td:nth-child(6) {
     text-align: center !important;
     font-weight: bold !important;
+    color: #000 !important;
   }
 
   /* 🔥 반입/반출 컬럼 텍스트 잘림 방지 */
@@ -732,9 +786,10 @@
     overflow: visible !important;
     text-overflow: clip !important;
     padding: 1.5mm 0.5mm !important;
+    color: #000 !important;
   }
 
-  /* 🔥 색상 제거 - 인쇄용 */
+  /* 🔥 색상 제거 - 인쇄용 모든 텍스트 검정색 */
   .report-container .text-blue-600,
   .report-container .text-blue-700,
   .report-container .text-blue-800,
@@ -859,12 +914,14 @@
   .invoice-container .text-lg {
     font-size: 12px !important;
     font-weight: bold !important;
+    color: #000 !important;
   }
 
   .report-container .text-xl,
   .invoice-container .text-xl {
     font-size: 14px !important;
     font-weight: bold !important;
+    color: #000 !important;
   }
 
   /* 🔥 통합 정보 라인 인쇄 최적화 */
@@ -874,6 +931,7 @@
     border: 1px solid #000 !important;
     padding: 2mm !important;
     margin-bottom: 2mm !important;
+    color: #000 !important;
   }
 
   /* 🔥 페이지 분할 최적화 */
@@ -929,6 +987,7 @@
     background: transparent !important;
     font-size: 8px !important;
     text-align: center !important;
+    color: #000 !important;
   }
 
   /* 🔥 현장 정보 + 첫 번째 테이블은 함께 유지 */
@@ -941,6 +1000,7 @@
   .invoice-container .bg-gray-100 {
     background: #e0e0e0 !important;
     font-size: 10px !important;
+    color: #000 !important;
   }
 
   /* 🔥 상위 항목들 bold 강화 */
@@ -948,20 +1008,17 @@
   .invoice-container th,
   .invoice-container .bg-gray-100 {
     font-weight: 900 !important;
+    color: #000 !important;
   }
 
-  /* 🔥 합계 행 내 숫자 강조 */
-  .invoice-container .text-lg {
-    font-size: 12px !important;
-    font-weight: 900 !important;
-  }
 
-  /* 🔥 제목 테이블 셀 특별 처리 */
+  /* 🔥 제목 테이블 셀 특별 처리 
   .invoice-container td[colspan="7"] {
     font-size: 16px !important;
     font-weight: 900 !important;
     padding: 5mm !important;
-  }
+    color: #000 !important;
+  }*/
 
   /* 🔥 감사 문구 */
   .invoice-container>div:last-child {
@@ -970,6 +1027,7 @@
     font-weight: bold !important;
     margin-top: 5mm !important;
     page-break-before: avoid !important;
+    color: #000 !important;
   }
 }
 
@@ -1230,4 +1288,101 @@
 .monthly-report-grid td:nth-child(3) input {
   max-width: 50px !important;
   text-align: center !important;
+}
+
+/* 🔥 청구서 합계 행 강제 스타일 적용 - 24px로 업데이트 */
+.invoice-container table .bg-gray-100 td,
+.invoice-container table .bg-white td,
+.invoice-container table .bg-blue-100 td {
+  font-size: 24px !important;
+  font-weight: bold !important;
+  color: #000 !important;
+  line-height: 1.2 !important;
+}
+
+/* 🔥 모바일에서는 조금 작게 */
+@media (max-width: 768px) {
+
+  .invoice-container table .bg-gray-100 td,
+  .invoice-container table .bg-white td,
+  .invoice-container table .bg-blue-100 td {
+    font-size: 20px !important;
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+}
+
+/* 🔥 다운로드용에서도 24px */
+.download-optimized .bg-white,
+.download-optimized .bg-gray-100,
+.download-optimized .bg-blue-100 {
+  font-size: 24px !important;
+  font-weight: bold !important;
+  color: #000 !important;
+}
+
+/* 🔥 인쇄용에서는 조금 작게 */
+@media print {
+
+  .invoice-container table .bg-gray-100 td,
+  .invoice-container table .bg-white td,
+  .invoice-container table .bg-blue-100 td {
+    font-size: 18px !important;
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+}
+
+/* 🔥 청구서 합계 행 배경색 차별화 */
+.invoice-container .bg-white {
+  background-color: #ffffff !important;
+  color: #000 !important;
+}
+
+.invoice-container .bg-gray-100 {
+  background-color: #e5e7eb !important;
+  color: #000 !important;
+}
+
+/* 🔥 인쇄용에서 합계 테이블 외곽선 제거 */
+@media print {
+  .invoice-container .bg-white {
+    background-color: #ffffff !important;
+    color: #000 !important;
+  }
+
+  .invoice-container .bg-gray-100 {
+    background-color: #e5e7eb !important;
+    color: #000 !important;
+  }
+
+  /* 🔥 합계 테이블을 감싸는 div의 외곽선 제거 */
+  .invoice-container>div:nth-last-child(2) {
+    border: none !important;
+  }
+
+  /* 🔥 합계 테이블 자체는 유지하되 외곽 테두리만 조정 */
+  .invoice-container>div:nth-last-child(2) table {
+    border: 2px solid #000 !important;
+  }
+}
+
+/* 🔥 다운로드용에서도 배경색 유지 */
+.download-optimized .bg-white {
+  background-color: #ffffff !important;
+  color: #000 !important;
+}
+
+.download-optimized .bg-gray-100 {
+  background-color: #e5e7eb !important;
+  color: #000 !important;
+}
+
+/* 🔥 다운로드용에서도 외곽선 정리 */
+.download-optimized .invoice-container>div:nth-last-child(2) {
+  border: none !important;
+}
+
+.download-optimized .invoice-container>div:nth-last-child(2) table {
+  border: 2px solid #000 !important;
 }

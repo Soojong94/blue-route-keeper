@@ -200,26 +200,28 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
 
             {/* Row 3-5: 현장 정보 */}
             <tr>
-              {/* 🔥 현장명 글자 크기 증가 및 bold 적용 (A3:A5 병합) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center align-middle text-lg" rowSpan={3}>
+              {/* 🔥 현장명 - 통일된 스타일 적용 */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center align-middle text-sm text-black" rowSpan={3}>
                 현장명
               </td>
               {/* 현장명 입력칸 (B3:C5 병합) */}
-              <td className="border border-black px-2 py-1" colSpan={2} rowSpan={3}>
+              <td className="border border-black px-2 py-1 " colSpan={2} rowSpan={3}>
                 {viewMode === 'edit' ? (
                   <Input
                     value={reportData.siteInfo.siteName}
                     onChange={(e) => handleSiteInfoChange('siteName', e.target.value)}
-                    className="border-0 p-0 text-base h-full font-medium"
+                    className="border-0 p-0 text-sm h-full font-medium text-black"
                     placeholder="현장명 입력"
                   />
                 ) : (
-                  <span className="text-base font-medium">{reportData.siteInfo.siteName}</span>
+                  <span className="text-sm font-medium text-black">{reportData.siteInfo.siteName}</span>
                 )}
               </td>
-              {/* 🔥 등록번호 bold 적용 (D3) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
-                등록번호
+              {/* 🔥 등록번호 - 통일된 스타일 적용 */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center text-sm text-black">
+                등록
+                <br></br>
+                번호
               </td>
               {/* 등록번호 입력칸 (E3:G3 병합) */}
               <td className="border border-black px-2 py-1" colSpan={3}>
@@ -227,19 +229,19 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <Input
                     value={reportData.siteInfo.registrationNumber}
                     onChange={(e) => handleSiteInfoChange('registrationNumber', e.target.value)}
-                    className="border-0 p-0 text-sm h-6"
+                    className="border-0 p-0 text-sm h-6 text-black"
                     placeholder="등록번호 입력"
                   />
                 ) : (
-                  <span>{reportData.siteInfo.registrationNumber}</span>
+                  <span className="text-sm text-black">{reportData.siteInfo.registrationNumber}</span>
                 )}
               </td>
             </tr>
 
             <tr>
               {/* A3:A5, B3:C5는 위에서 rowSpan으로 처리됨 */}
-              {/* 🔥 상호 bold 적용 (D4) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
+              {/* 🔥 상호 - 통일된 스타일 적용 */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center text-sm text-black">
                 상호
               </td>
               {/* 상호 입력칸 (E4) */}
@@ -248,15 +250,15 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <Input
                     value={reportData.siteInfo.companyName}
                     onChange={(e) => handleSiteInfoChange('companyName', e.target.value)}
-                    className="border-0 p-0 text-sm h-6"
+                    className="border-0 p-0 text-sm h-6 text-black"
                     placeholder="상호 입력"
                   />
                 ) : (
-                  <span>{reportData.siteInfo.companyName}</span>
+                  <span className="text-sm text-black">{reportData.siteInfo.companyName}</span>
                 )}
               </td>
-              {/* 🔥 성명 bold 적용 (F4) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
+              {/* 🔥 성명 - 통일된 스타일 적용 */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center text-sm text-black">
                 성명
               </td>
               {/* 성명 입력칸 (G4) */}
@@ -265,19 +267,19 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <Input
                     value={reportData.siteInfo.ownerName}
                     onChange={(e) => handleSiteInfoChange('ownerName', e.target.value)}
-                    className="border-0 p-0 text-sm h-6"
+                    className="border-0 p-0 text-sm h-6 text-black"
                     placeholder="성명 입력"
                   />
                 ) : (
-                  <span>{reportData.siteInfo.ownerName}</span>
+                  <span className="text-sm text-black">{reportData.siteInfo.ownerName}</span>
                 )}
               </td>
             </tr>
 
             <tr>
               {/* A3:A5, B3:C5는 위에서 rowSpan으로 처리됨 */}
-              {/* 🔥 사업장 주소 bold 적용 (D5:G5 병합) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
+              {/* 🔥 사업장 주소 - 통일된 스타일 적용 */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center text-sm text-black">
                 사업장 주소
               </td>
               <td className="border border-black px-2 py-1" colSpan={3}>
@@ -285,23 +287,23 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <Input
                     value={reportData.siteInfo.address}
                     onChange={(e) => handleSiteInfoChange('address', e.target.value)}
-                    className="border-0 p-0 text-sm h-6"
+                    className="border-0 p-0 text-sm h-6 text-black"
                     placeholder="사업장 주소 입력"
                   />
                 ) : (
-                  <span>{reportData.siteInfo.address}</span>
+                  <span className="text-sm text-black">{reportData.siteInfo.address}</span>
                 )}
               </td>
             </tr>
 
             {/* Row 6: 청구 안내 + 업태/종목 */}
             <tr>
-              {/* 🔥 아래와 같이 청구합니다 bold 적용 (A6:C6 병합) */}
-              <td className="border border-black px-2 py-3 text-center font-bold" colSpan={3}>
+              {/* 🔥 아래와 같이 청구합니다 - 통일된 스타일 적용 */}
+              <td className="border border-black px-2 py-3 text-center font-bold text-sm text-black" colSpan={3}>
                 아래와 같이 청구합니다.
               </td>
-              {/* 🔥 업태 bold 적용 (D6) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
+              {/* 🔥 업태 - 통일된 스타일 적용 */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center text-sm text-black">
                 업태
               </td>
               {/* 업태 입력칸 (E6) */}
@@ -310,15 +312,15 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <Input
                     value={reportData.siteInfo.businessType}
                     onChange={(e) => handleSiteInfoChange('businessType', e.target.value)}
-                    className="border-0 p-0 text-sm h-6"
+                    className="border-0 p-0 text-sm h-6 text-black"
                     placeholder="업태 입력"
                   />
                 ) : (
-                  <span>{reportData.siteInfo.businessType}</span>
+                  <span className="text-sm text-black">{reportData.siteInfo.businessType}</span>
                 )}
               </td>
-              {/* 🔥 종목 bold 적용 (F6) */}
-              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center">
+              {/* 🔥 종목 - 통일된 스타일 적용 */}
+              <td className="border border-black px-2 py-1 bg-gray-100 font-bold text-center text-sm text-black">
                 종목
               </td>
               {/* 종목 입력칸 (G6) */}
@@ -327,11 +329,11 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
                   <Input
                     value={reportData.siteInfo.businessCategory}
                     onChange={(e) => handleSiteInfoChange('businessCategory', e.target.value)}
-                    className="border-0 p-0 text-sm h-6"
+                    className="border-0 p-0 text-sm h-6 text-black"
                     placeholder="종목 입력"
                   />
                 ) : (
-                  <span>{reportData.siteInfo.businessCategory}</span>
+                  <span className="text-sm text-black">{reportData.siteInfo.businessCategory}</span>
                 )}
               </td>
             </tr>
@@ -361,20 +363,20 @@ const InvoiceReport: React.FC<InvoiceReportProps> = ({
             <col style={{ width: '14.29%' }} />
           </colgroup>
           <tbody>
-            <tr className="bg-gray-100">
-              <td className="border border-black px-2 py-2 text-center font-bold" colSpan={2}>
+            <tr>
+              <td className="border border-black px-2 py-2 text-center font-bold bg-blue-100" colSpan={2} style={{ fontSize: '24px', fontWeight: 'bold' }}>
                 합계
               </td>
-              <td className="border border-black px-2 py-2 text-center font-bold">
+              <td className="border border-black px-2 py-2 text-center font-bold bg-white" style={{ fontSize: '24px', fontWeight: 'bold' }}>
                 총 횟수
               </td>
-              <td className="border border-black px-2 py-2 text-center font-bold text-lg">
+              <td className="border border-black px-2 py-2 text-center font-bold bg-gray-100" style={{ fontSize: '24px', fontWeight: 'bold' }}>
                 {getTotalCount()}
               </td>
-              <td className="border border-black px-2 py-2 text-center font-bold">
+              <td className="border border-black px-2 py-2 text-center font-bold bg-white" style={{ fontSize: '24px', fontWeight: 'bold' }}>
                 총액
               </td>
-              <td className="border border-black px-2 py-2 text-center font-bold text-lg" colSpan={2}>
+              <td className="border border-black px-2 py-2 text-center font-bold bg-gray-100" colSpan={2} style={{ fontSize: '24px', fontWeight: 'bold' }}>
                 {getTotalAmount().toLocaleString()}원
               </td>
             </tr>
