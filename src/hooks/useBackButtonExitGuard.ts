@@ -1,42 +1,47 @@
-
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
-/**
- * 모바일 환경에서 뒤로가기 버튼을 두 번 눌러야 앱이 종료되도록 처리하는 훅.
- * PWA 또는 웹앱 환경에서 사용자의 실수로 인한 앱 종료를 방지합니다.
- */
 export const useBackButtonExitGuard = () => {
-  const [isExitAttempted, setIsExitAttempted] = useState(false);
+  const isExitAttempted = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handlePopState = useCallback((event: PopStateEvent) => {
-    // 사용자가 뒤로가기를 시도했을 때
-    if (!isExitAttempted) {
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isExitAttempted.current) {
+        // 두 번째 시도: 앱 종료 허용
+        isExitAttempted.current = false;
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+        // 사용자가 실제로 뒤로 가도록 허용
+        return;
+      }
+
       // 첫 번째 시도
-      event.preventDefault(); // 기본 동작(앱 종료 또는 이전 페이지 이동)을 막음
-      setIsExitAttempted(true);
+      isExitAttempted.current = true;
       toast.info('한 번 더 누르면 종료됩니다.', {
         duration: 2000,
         position: 'bottom-center',
       });
 
-      // 2초 후에 종료 시도 상태를 리셋
-      setTimeout(() => {
-        setIsExitAttempted(false);
-      }, 2000);
-    } else {
-      // 두 번째 시도 (2초 이내)
-      // 여기서는 기본 동작을 막지 않으므로, 앱이 종료되거나 이전 페이지로 이동함
-    }
-  }, [isExitAttempted]);
+      // 뒤로가기 방지: 현재 페이지를 history에 다시 추가
+      history.pushState(null, '', location.href);
 
-  useEffect(() => {
-    // 컴포넌트가 마운트될 때 popstate 이벤트 리스너 추가
+      // 2초 후에 종료 시도 상태 리셋
+      timeoutRef.current = setTimeout(() => {
+        isExitAttempted.current = false;
+      }, 2000);
+    };
+
+    // 초기 history 상태 설정 및 이벤트 리스너 추가
+    history.pushState(null, '', location.href);
     window.addEventListener('popstate', handlePopState);
 
-    // 컴포넌트가 언마운트될 때 리스너 제거
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
-  }, [handlePopState]);
+  }, []);
 };
