@@ -9,11 +9,13 @@ import Notepad from '@/components/Notepad';
 import UserProfile from '@/components/UserProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useBackButtonExitGuard } from '@/hooks/useBackButtonExitGuard';
 
 const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeTab, setActiveTab] = useLocalStorage('activeTab', 'input');
   const { user } = useAuth();
+  useBackButtonExitGuard();
 
   const handleTripSaved = () => {
     setRefreshTrigger(prev => prev + 1);
